@@ -1,0 +1,6 @@
+[submodule "ext/multipart-parser-c"]
+	path = ext/multipart-parser-c
+	url = git://github.com/iafonov/multipart-parser-c.git
+[submodule "ext/http-parser"]
+	path = ext/http-parser
+	url = https://github.com/joyent/http-parser
