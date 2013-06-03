@@ -32,6 +32,10 @@ module Nyara
       assert_equal [:to_s, :to_i, :to_i, :to_f, :hex], conv
       s = '1/2/-3/4.5/F'
       assert_equal [s, *s.split('/')], s.match(Regexp.new re).to_a
+
+      re, conv = Route.compile_re '/'
+      assert_equal '^/$', re
+      assert_equal [], conv
     end
 
     it "#analyse_path" do
@@ -40,6 +44,10 @@ module Nyara
 
       prefix, suffix = Route.analyse_path 'GET', '/hello'
       assert_equal 'GET /hello', prefix
+      assert_equal nil, suffix
+
+      prefix, suffix = Route.analyse_path 'GET', '/'
+      assert_equal 'GET /', prefix
       assert_equal nil, suffix
     end
   end

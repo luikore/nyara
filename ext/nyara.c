@@ -189,9 +189,10 @@ void Init_nyara() {
   rb_define_method(request, "path", request_path, 0);
   rb_define_method(request, "query", request_query, 0);
 
-  // routes
+  // route
   init_route();
   rb_define_singleton_method(request, "register_route", request_register_route, 1);
+  // route utils
   rb_define_singleton_method(request, "clear_route", request_clear_route, 0);
   rb_define_singleton_method(request, "inspect_route", request_inspect_route, 0);
   rb_define_singleton_method(request, "search_route", request_search_route, 1);

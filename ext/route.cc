@@ -9,11 +9,13 @@ struct RouteEntry {
   bool is_sub; // = last_prefix.start_with? prefix
   char* prefix;
   long prefix_len;
-  regex_t *suffix;
+  regex_t *suffix_re;
   VALUE controller;
-  ID id;
+  VALUE id; // symbol, doesn't need mark
   std::vector<ID> conv;
   VALUE scope;
+  char* suffix; // only for inspect
+  long suffix_len;
 
   // don't make it destructor, or it could be called twice if on stack
   void dealloc() {
@@ -21,8 +23,12 @@ struct RouteEntry {
       free(prefix);
       prefix = NULL;
     }
+    if (suffix_re) {
+      onig_free(suffix_re);
+      suffix_re = NULL;
+    }
     if (suffix) {
-      onig_free(suffix);
+      free(suffix);
       suffix = NULL;
     }
   }
@@ -55,36 +61,45 @@ VALUE request_clear_route(VALUE req) {
 
 extern "C"
 VALUE request_register_route(VALUE self, VALUE v_e) {
+  // prefix
   VALUE v_prefix = rb_iv_get(v_e, "@prefix");
-  VALUE v_suffix = rb_iv_get(v_e, "@suffix");
-  VALUE v_conv = rb_iv_get(v_e, "@conv");
   long prefix_len = RSTRING_LEN(v_prefix);
   char* prefix = (char*)malloc(prefix_len);
   memcpy(prefix, RSTRING_PTR(v_prefix), prefix_len);
+
+  // check if prefix is substring of last entry
   bool is_sub = false;
   if (route_entries.size()) {
     is_sub = start_with(route_entries.rbegin()->prefix, route_entries.rbegin()->prefix_len, prefix, prefix_len);
   }
-  regex_t* suffix;
-  OnigErrorInfo err_info;
-  onig_new(&suffix, (const UChar*)RSTRING_PTR(v_suffix), (const UChar*)(RSTRING_PTR(v_suffix) + RSTRING_LEN(v_suffix)),
-           ONIG_OPTION_NONE, ONIG_ENCODING_ASCII, ONIG_SYNTAX_RUBY, &err_info);
-  std::vector<ID> _conv;
 
+  // suffix
+  VALUE v_suffix = rb_iv_get(v_e, "@suffix");
+  long suffix_len = RSTRING_LEN(v_suffix);
+  char* suffix = (char*)malloc(suffix_len);
+  memcpy(suffix, RSTRING_PTR(v_suffix), suffix_len);
+  regex_t* suffix_re;
+  OnigErrorInfo err_info;
+  onig_new(&suffix_re, (const UChar*)suffix, (const UChar*)(suffix + suffix_len),
+           ONIG_OPTION_NONE, ONIG_ENCODING_ASCII, ONIG_SYNTAX_RUBY, &err_info);
+
+  std::vector<ID> _conv;
   RouteEntry e = {
     .is_sub = is_sub,
     .prefix = prefix,
     .prefix_len = prefix_len,
-    .suffix = suffix,
+    .suffix_re = suffix_re,
     .controller = rb_iv_get(v_e, "@controller"),
-    .id = SYM2ID(rb_iv_get(v_e, "@id")),
+    .id = rb_iv_get(v_e, "@id"),
     .conv = _conv,
     .scope = rb_iv_get(v_e, "@scope")
   };
 
+  // conv
+  VALUE v_conv = rb_iv_get(v_e, "@conv");
   VALUE* conv_ptr = RARRAY_PTR(v_conv);
   long conv_len = RARRAY_LEN(v_conv);
-  if (onig_number_of_captures(suffix) != conv_len) {
+  if (onig_number_of_captures(suffix_re) != conv_len) {
     e.dealloc();
     rb_raise(rb_eRuntimeError, "number of captures mismatch");
   }
@@ -111,12 +126,12 @@ VALUE request_inspect_route(VALUE self) {
   volatile VALUE conv;
   for (auto i = route_entries.begin(); i != route_entries.end(); i++) {
     e = rb_ary_new();
+    rb_ary_push(e, i->is_sub ? Qtrue : Qfalse);
     rb_ary_push(e, i->scope);
     rb_ary_push(e, rb_str_new(i->prefix, i->prefix_len));
-    rb_ary_push(e, i->is_sub ? Qtrue : Qfalse);
-    // can not get compiled suffix back
+    rb_ary_push(e, rb_str_new(i->suffix, i->suffix_len));
     rb_ary_push(e, i->controller);
-    rb_ary_push(e, ID2SYM(i->id));
+    rb_ary_push(e, i->id);
     conv = rb_ary_new();
     for (size_t j = 0; j < i->conv.size(); j++) {
       rb_ary_push(conv, ID2SYM(i->conv[j]));
@@ -127,8 +142,8 @@ VALUE request_inspect_route(VALUE self) {
   return arr;
 }
 
-static VALUE build_args(char* suffix, std::vector<ID>& conv) {
-  volatile VALUE args = rb_ary_new();
+static VALUE build_args(VALUE id, char* suffix, std::vector<ID>& conv) {
+  volatile VALUE args = rb_ary_new3(1, id);
   volatile VALUE str = rb_str_new2("");
   long last_len = 0;
   for (size_t j = 0; j < conv.size(); j++) {
@@ -170,15 +185,15 @@ RouteResult search_route(VALUE v_pathinfo) {
       char* suffix = pathinfo + i->prefix_len;
       long suffix_len = len - i->prefix_len;
       if (suffix_len == 0) {
-        r.args = rb_ary_new();
+        r.args = rb_ary_new3(1, i->id);
         r.controller = i->controller;
         r.scope = i->scope;
         break;
       } else {
-        long matched_len = onig_match(i->suffix, (const UChar*)suffix, (const UChar*)(suffix + suffix_len),
+        long matched_len = onig_match(i->suffix_re, (const UChar*)suffix, (const UChar*)(suffix + suffix_len),
                                       (const UChar*)suffix, &region, 0);
         if (matched_len > 0) {
-          r.args = build_args(suffix, i->conv);
+          r.args = build_args(i->id, suffix, i->conv);
           r.controller = i->controller;
           r.scope = i->scope;
           break;

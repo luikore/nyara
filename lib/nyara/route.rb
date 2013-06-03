@@ -34,8 +34,11 @@ module Nyara
     def process preprocessed
       entries = []
       preprocessed.each do |(scope, controller, actions)|
-        actions.each do |(method, path, id)|
-          path = scope.sub /\/?$/, path
+        actions.each do |(method, relative_path, id)|
+          path = scope.sub /\/?$/, relative_path
+          if path.empty?
+            path = '/'
+          end
           prefix, suffix = analyse_path method, path
           suffix, conv = compile_re suffix
           entries << RouteEntry.new{
@@ -86,7 +89,7 @@ module Nyara
     def analyse_path method, path
       raise 'path must contain no new line' if path.index "\n"
       raise 'path must start with /' unless path.start_with? '/'
-      path = path.sub(/\/$/, '')
+      path = path.sub(/\/$/, '') if path != '/'
 
       prefix, suffix = path.split(/(?=%[dfsux])/, 2)
       ["#{method} #{prefix}", suffix]

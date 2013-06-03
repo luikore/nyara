@@ -28,28 +28,27 @@ module Nyara
       Request.clear_route
     end
 
-    it '#register_route' do
+    it '#register_route sub-prefix optimization' do
       rules = Request.inspect_route
       assert_equal 2, rules.size
 
-      scope, prefix, is_sub = rules[0]
-      assert_equal false, is_sub
-      scope, prefix, is_sub = rules[1]
-      assert_equal true, is_sub
+      assert_equal false, rules[0].first # not sub of prev
+      assert_equal true, rules[1].first  # is sub of prev
     end
 
     it '#search_route' do
       scope, cont, args = Request.search_route '/hello'
       assert_equal @e2.scope, scope
       assert_equal @e2.controller, cont
-      assert_equal [], args
+      assert_equal [:'#second'], args
 
       scope, cont, args = Request.search_route '/hello/3world'
       assert_equal @e1.scope, scope
       assert_equal @e1.controller, cont
-      assert_equal [3], args
+      assert_equal [:'#1', 3], args
 
-      assert_equal nil, (Request.search_route '/world').first
+      scope, _ = Request.search_route '/world'
+      assert_equal nil, scope
     end
   end
 end
