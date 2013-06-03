@@ -10,8 +10,9 @@ typedef struct {
   VALUE scope;
 } RouteResult;
 
-extern VALUE request_register_route(VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
+extern VALUE request_register_route(VALUE, VALUE);
 extern VALUE request_clear_route(VALUE);
+extern void init_route();
 extern RouteResult search_route(VALUE pathinfo);
 
 // for debug

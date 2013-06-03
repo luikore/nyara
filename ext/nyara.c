@@ -10,7 +10,7 @@ typedef struct {
   VALUE headers;
   VALUE params;
   VALUE fiber;
-  VALUE prefix; // mapped prefix
+  VALUE scope; // mapped prefix
   VALUE pathinfo;
   VALUE path;
   VALUE query;
@@ -40,7 +40,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
   volatile RouteResult result = search_route(p->pathinfo);
   if (RTEST(result.controller)) {
     p->fiber = rb_funcall(p->self, id_build_fiber, 2, result.controller, result.args);
-    p->prefix = result.scope;
+    p->scope = result.scope;
 
     // todo url encoding
     p->path = rb_str_new(s, i);
@@ -95,7 +95,7 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->headers);
     rb_gc_mark_maybe(p->params);
     rb_gc_mark_maybe(p->fiber);
-    rb_gc_mark_maybe(p->prefix);
+    rb_gc_mark_maybe(p->scope);
     rb_gc_mark_maybe(p->pathinfo);
     rb_gc_mark_maybe(p->path);
     rb_gc_mark_maybe(p->query);
@@ -109,7 +109,7 @@ static VALUE request_alloc(VALUE klass) {
   p->headers = Qnil;
   p->params = Qnil;
   p->fiber = Qnil;
-  p->prefix = Qnil;
+  p->scope = Qnil;
   p->pathinfo = Qnil;
   p->path = Qnil;
   p->query = Qnil;
@@ -139,10 +139,10 @@ static VALUE request_headers(VALUE self) {
   return p->headers;
 }
 
-static VALUE request_prefix(VALUE self) {
+static VALUE request_scope(VALUE self) {
   Request* p;
   Data_Get_Struct(self, Request, p);
-  return p->prefix;
+  return p->scope;
 }
 
 static VALUE request_pathinfo(VALUE self) {
@@ -184,13 +184,14 @@ void Init_nyara() {
   rb_define_method(request, "receive_data", request_receive_data, 1);
   rb_define_method(request, "http_method", request_http_method, 0);
   rb_define_method(request, "headers", request_headers, 0);
-  rb_define_method(request, "prefix", request_prefix, 0);
+  rb_define_method(request, "scope", request_scope, 0);
   rb_define_method(request, "pathinfo", request_pathinfo, 0);
   rb_define_method(request, "path", request_path, 0);
   rb_define_method(request, "query", request_query, 0);
 
   // routes
-  rb_define_singleton_method(request, "register_route", request_register_route, 6);
+  init_route();
+  rb_define_singleton_method(request, "register_route", request_register_route, 1);
   rb_define_singleton_method(request, "clear_route", request_clear_route, 0);
   rb_define_singleton_method(request, "inspect_route", request_inspect_route, 0);
   rb_define_singleton_method(request, "search_route", request_search_route, 1);

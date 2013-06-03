@@ -5,16 +5,18 @@
 #include "str_intern.h"
 
 struct RouteEntry {
-  bool is_sub;
-  long prefix_len;
+  // note on order: scope is supposed to be the last, but when searching, is_sub is checked first
+  bool is_sub; // = last_prefix.start_with? prefix
   char* prefix;
+  long prefix_len;
   regex_t *suffix;
   VALUE controller;
   ID id;
-  VALUE scope;
   std::vector<ID> conv;
+  VALUE scope;
 
-  ~RouteEntry() {
+  // don't make it destructor, or it could be called twice if on stack
+  void dealloc() {
     if (prefix) {
       free(prefix);
       prefix = NULL;
@@ -27,7 +29,6 @@ struct RouteEntry {
 };
 
 static std::vector<RouteEntry> route_entries;
-static bool initialized = false;
 static OnigRegion region; // we can reuse the region without worrying thread safety
 static ID id_to_s;
 
@@ -45,13 +46,19 @@ static bool start_with(const char* a, long a_len, const char* b, long b_len) {
 
 extern "C"
 VALUE request_clear_route(VALUE req) {
+  for (size_t i = 0; i < route_entries.size(); i++) {
+    route_entries[i].dealloc();
+  }
   route_entries.clear();
   return Qnil;
 }
 
 extern "C"
-VALUE request_register_route(VALUE self, VALUE v_prefix, VALUE v_suffix, VALUE controller, VALUE v_id, VALUE scope, VALUE v_conv) {
-  long prefix_len = RSTRING_LEN(v_prefix); 
+VALUE request_register_route(VALUE self, VALUE v_e) {
+  VALUE v_prefix = rb_iv_get(v_e, "@prefix");
+  VALUE v_suffix = rb_iv_get(v_e, "@suffix");
+  VALUE v_conv = rb_iv_get(v_e, "@conv");
+  long prefix_len = RSTRING_LEN(v_prefix);
   char* prefix = (char*)malloc(prefix_len);
   memcpy(prefix, RSTRING_PTR(v_prefix), prefix_len);
   bool is_sub = false;
@@ -66,30 +73,34 @@ VALUE request_register_route(VALUE self, VALUE v_prefix, VALUE v_suffix, VALUE c
 
   RouteEntry e = {
     .is_sub = is_sub,
-    .prefix_len = prefix_len,
     .prefix = prefix,
+    .prefix_len = prefix_len,
     .suffix = suffix,
-    .controller = controller,
-    .id = SYM2ID(v_id),
-    .scope = scope,
-    .conv = _conv
+    .controller = rb_iv_get(v_e, "@controller"),
+    .id = SYM2ID(rb_iv_get(v_e, "@id")),
+    .conv = _conv,
+    .scope = rb_iv_get(v_e, "@scope")
   };
 
   VALUE* conv_ptr = RARRAY_PTR(v_conv);
   long conv_len = RARRAY_LEN(v_conv);
+  if (onig_number_of_captures(suffix) != conv_len) {
+    e.dealloc();
+    rb_raise(rb_eRuntimeError, "number of captures mismatch");
+  }
   for (long i = 0; i < conv_len; i++) {
     ID conv_id = SYM2ID(conv_ptr[i]);
     e.conv.push_back(conv_id);
   }
 
   route_entries.push_back(e);
-
-  if (!initialized) {
-    initialized = true;
-    id_to_s = rb_intern("to_s");
-    onig_region_init(&region);
-  }
   return Qnil;
+}
+
+extern "C"
+void init_route() {
+  id_to_s = rb_intern("to_s");
+  onig_region_init(&region);
 }
 
 extern "C"
@@ -100,12 +111,12 @@ VALUE request_inspect_route(VALUE self) {
   volatile VALUE conv;
   for (auto i = route_entries.begin(); i != route_entries.end(); i++) {
     e = rb_ary_new();
-    rb_ary_push(e, i->is_sub ? Qtrue : Qfalse);
+    rb_ary_push(e, i->scope);
     rb_ary_push(e, rb_str_new(i->prefix, i->prefix_len));
-    // todo suffix
+    rb_ary_push(e, i->is_sub ? Qtrue : Qfalse);
+    // can not get compiled suffix back
     rb_ary_push(e, i->controller);
     rb_ary_push(e, ID2SYM(i->id));
-    rb_ary_push(e, i->scope);
     conv = rb_ary_new();
     for (size_t j = 0; j < i->conv.size(); j++) {
       rb_ary_push(conv, ID2SYM(i->conv[j]));
@@ -167,9 +178,6 @@ RouteResult search_route(VALUE v_pathinfo) {
         long matched_len = onig_match(i->suffix, (const UChar*)suffix, (const UChar*)(suffix + suffix_len),
                                       (const UChar*)suffix, &region, 0);
         if (matched_len > 0) {
-          if (region.num_regs - 1 != i->conv.size()) {
-            rb_raise(rb_eRuntimeError, "captures=%u but conv size=%lu", region.num_regs - 1, i->conv.size());
-          }
           r.args = build_args(suffix, i->conv);
           r.controller = i->controller;
           r.scope = i->scope;
@@ -185,8 +193,8 @@ extern "C"
 VALUE request_search_route(VALUE self, VALUE pathinfo) {
   volatile RouteResult r = search_route(pathinfo);
   volatile VALUE a = rb_ary_new();
+  rb_ary_push(a, r.scope);
   rb_ary_push(a, r.controller);
   rb_ary_push(a, r.args);
-  rb_ary_push(a, r.scope);
   return a;
 }
