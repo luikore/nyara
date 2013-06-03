@@ -173,13 +173,13 @@ static VALUE accepter_try_accept(VALUE self, VALUE vfd) {
   return INT2FIX(client_fd);
 }
 
-void Init_iber() {
+void Init_nyara() {
   id_not_found = rb_intern("not_found");
   id_search = rb_intern("search");
   id_build_fiber = rb_intern("build_fiber");
-  VALUE iber = rb_define_module("Iber");
+  VALUE nyara = rb_define_module("Nyara");
 
-  VALUE request = rb_const_get(iber, rb_intern("Request"));
+  VALUE request = rb_const_get(nyara, rb_intern("Request"));
   rb_define_alloc_func(request, request_alloc);
   rb_define_method(request, "receive_data", request_receive_data, 1);
   rb_define_method(request, "http_method", request_http_method, 0);
@@ -195,6 +195,6 @@ void Init_iber() {
   rb_define_singleton_method(request, "inspect_route", request_inspect_route, 0);
   rb_define_singleton_method(request, "search_route", request_search_route, 1);
 
-  VALUE accepter = rb_const_get(iber, rb_intern("Accepter"));
+  VALUE accepter = rb_const_get(nyara, rb_intern("Accepter"));
   rb_define_method(accepter, "try_accept", accepter_try_accept, 1);
 }

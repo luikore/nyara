@@ -18,7 +18,7 @@ $CFLAGS << " -I#{http_parser_dir.shellescape}"
 # enable c++11
 RbConfig::MAKEFILE_CONFIG['CXXFLAGS'] << ' -stdlib=libc++ -std=c++11'
 
-create_makefile 'iber'
+create_makefile 'nyara'
 
 puts "modifying Makefile"
 makefile = File.readlines 'Makefile'
