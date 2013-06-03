@@ -5,11 +5,15 @@ module Nyara
   class Request < EM::Connection
     GET = 'GET'.freeze
 
-    attr_accessor :io
+    def initialize s, io
+      super
+      @io = io
+    end
 
     # c-ext: receive_data
-    # c-ext attrs: method, path, query, pathinfo, headers, prefix
+    # c-ext attrs: method, path, query, pathinfo, headers, scope
     # c-ext routing: clear_route, register_route
+    # c-ext test util: inspect_route, search_route
 
     def build_fiber controller, args
       instance = controller.new self, Response.new(@signature)

@@ -1,7 +1,7 @@
 module Nyara
   class Response
     def initialize signature
-      @status = 200
+      @status = '200'
       @header = {
         'Connection' => 'close',
         'Content-Type' => 'text/plain; charset=UTF-8'

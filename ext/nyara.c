@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include <ruby/io.h>
 #include <sys/socket.h>
 #include <http_parser.h>
 #include <multipart_parser.h>
@@ -163,8 +164,10 @@ static VALUE request_query(VALUE self) {
   return p->query;
 }
 
-static VALUE accepter_try_accept(VALUE self, VALUE vfd) {
-  int fd = FIX2INT(vfd);
+static VALUE accepter_try_accept(VALUE self, VALUE io) {
+  rb_io_t *fptr;
+  GetOpenFile(io, fptr);
+  int fd = fptr->fd;
   int client_fd = accept(fd, NULL, NULL);
   if (client_fd < 0) {
     // todo handle fd overflow
