@@ -20,8 +20,17 @@ module Nyara
         @conv = []
         @controller = 'stub2'
       }
+      @e3 = RouteEntry.new{
+        @scope = '/a目录'
+        @prefix = '/a目录/'
+        @suffix = '(\d+)-(\d+)-(\d+)'
+        @id = :'#dir'
+        @conv = [:to_i, :to_i, :to_i]
+        @controller = 'stub3'
+      }
       Request.register_route @e1
       Request.register_route @e2
+      Request.register_route @e3
     end
 
     after :all do
@@ -30,10 +39,11 @@ module Nyara
 
     it '#register_route sub-prefix optimization' do
       rules = Request.inspect_route
-      assert_equal 2, rules.size
+      assert_equal 3, rules.size
 
-      assert_equal false, rules[0].first # not sub of prev
+      assert_equal false, rules[0].first # first
       assert_equal true, rules[1].first  # is sub of prev
+      assert_equal false, rules[2].first # not sub of prev
     end
 
     it '#search_route' do
@@ -49,6 +59,9 @@ module Nyara
 
       scope, _ = Request.search_route '/world'
       assert_equal nil, scope
+
+      scope, _, args = Request.search_route '/a目录/2013-6-1'
+      assert_equal [:'#dir', 2013, 6, 1], args
     end
   end
 end
