@@ -49,7 +49,7 @@ module Nyara
       end
 
       def parse input
-        Ext.parse_pathinfo @output, input
+        Ext.parse_path @output, input
       end
     end
   end

@@ -133,12 +133,12 @@ static VALUE ext_list_route(VALUE self) {
   return arr;
 }
 
-static VALUE build_args(VALUE id, char* suffix, std::vector<ID>& conv) {
+static VALUE build_args(VALUE id, const char* suffix, std::vector<ID>& conv) {
   volatile VALUE args = rb_ary_new3(1, id);
   volatile VALUE str = rb_str_new2("");
   long last_len = 0;
   for (size_t j = 0; j < conv.size(); j++) {
-    char* capture_ptr = suffix + region.beg[j+1];
+    const char* capture_ptr = suffix + region.beg[j+1];
     long capture_len = region.end[j+1] - region.beg[j+1];
     if (conv[j] == id_to_s) {
       rb_ary_push(args, rb_str_new(capture_ptr, capture_len));
@@ -158,9 +158,7 @@ static VALUE build_args(VALUE id, char* suffix, std::vector<ID>& conv) {
 }
 
 extern "C"
-RouteResult lookup_route(VALUE v_pathinfo) {
-  char* pathinfo = RSTRING_PTR(v_pathinfo);
-  long len = RSTRING_LEN(v_pathinfo);
+RouteResult lookup_route(const char* pathinfo, long len) {
   RouteResult r = {Qnil, Qnil, Qnil};
   // must iterate all
   bool last_matched = false;
@@ -173,7 +171,7 @@ RouteResult lookup_route(VALUE v_pathinfo) {
     }
     last_matched = matched;
     if (matched) {
-      char* suffix = pathinfo + i->prefix_len;
+      const char* suffix = pathinfo + i->prefix_len;
       long suffix_len = len - i->prefix_len;
       if (suffix_len == 0) {
         r.args = rb_ary_new3(1, i->id);
@@ -196,7 +194,7 @@ RouteResult lookup_route(VALUE v_pathinfo) {
 }
 
 static VALUE ext_lookup_route(VALUE self, VALUE pathinfo) {
-  volatile RouteResult r = lookup_route(pathinfo);
+  volatile RouteResult r = lookup_route(RSTRING_PTR(pathinfo), RSTRING_LEN(pathinfo));
   volatile VALUE a = rb_ary_new();
   rb_ary_push(a, r.scope);
   rb_ary_push(a, r.controller);

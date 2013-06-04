@@ -11,7 +11,7 @@ module Nyara
     end
 
     # c-ext: receive_data
-    # c-ext attrs: method, path, query, pathinfo, headers, scope
+    # c-ext attrs: method, scope, path, query, headers
 
     def build_fiber controller, args
       instance = controller.new self, Response.new(@signature)

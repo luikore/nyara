@@ -13,7 +13,6 @@ typedef struct {
   VALUE params;
   VALUE fiber;
   VALUE scope; // mapped prefix
-  VALUE pathinfo; // method with path, without query
   VALUE path;
   VALUE query;
   VALUE last_field;
@@ -30,18 +29,18 @@ static ID id_build_fiber;
 static int on_url(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
 
-  p->pathinfo = rb_str_new2(http_method_str(parser->method));
-  rb_str_cat(p->pathinfo, " ", 1);
-  size_t i = parse_pathinfo(p->pathinfo, s, len);
-  volatile RouteResult result = lookup_route(p->pathinfo);
+  size_t method_len = strlen(http_method_str(parser->method));
+  p->path = rb_str_new2("");
+  size_t query_i = parse_path(p->path, s, len);
+  // because tcp window size is quite large, the method and url would never be split
+  // it's safe to look back
+  volatile RouteResult result = lookup_route(s - method_len - 1, query_i + method_len);
   if (RTEST(result.controller)) {
     p->fiber = rb_funcall(p->self, id_build_fiber, 2, result.controller, result.args);
     p->scope = result.scope;
 
-    // todo url encoding
-    p->path = rb_str_new(s, i);
-    if (i < len) {
-      p->query = rb_str_new(s + i + 1, len - i - 1);
+    if (query_i < len) {
+      p->query = rb_str_new(s + query_i, len - query_i);
     }
     p->headers = rb_hash_new();
     return 0;
@@ -92,7 +91,6 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->params);
     rb_gc_mark_maybe(p->fiber);
     rb_gc_mark_maybe(p->scope);
-    rb_gc_mark_maybe(p->pathinfo);
     rb_gc_mark_maybe(p->path);
     rb_gc_mark_maybe(p->query);
     rb_gc_mark_maybe(p->last_field);
@@ -106,7 +104,6 @@ static VALUE request_alloc(VALUE klass) {
   p->params = Qnil;
   p->fiber = Qnil;
   p->scope = Qnil;
-  p->pathinfo = Qnil;
   p->path = Qnil;
   p->query = Qnil;
   p->last_field = Qnil;
@@ -139,12 +136,6 @@ static VALUE request_scope(VALUE self) {
   Request* p;
   Data_Get_Struct(self, Request, p);
   return p->scope;
-}
-
-static VALUE request_pathinfo(VALUE self) {
-  Request* p;
-  Data_Get_Struct(self, Request, p);
-  return p->pathinfo;
 }
 
 static VALUE request_path(VALUE self) {
@@ -183,7 +174,6 @@ void Init_nyara() {
   rb_define_method(request, "http_method", request_http_method, 0);
   rb_define_method(request, "headers", request_headers, 0);
   rb_define_method(request, "scope", request_scope, 0);
-  rb_define_method(request, "pathinfo", request_pathinfo, 0);
   rb_define_method(request, "path", request_path, 0);
   rb_define_method(request, "query", request_query, 0);
 

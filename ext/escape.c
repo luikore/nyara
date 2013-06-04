@@ -15,13 +15,13 @@ static char parse_half_octet(char c) {
 }
 
 // return parsed len, s + return == start of query
-size_t parse_pathinfo(VALUE pathinfo, const char*s, size_t len) {
+size_t parse_path(VALUE path, const char*s, size_t len) {
   const char* last_s = s;
   long last_len = 0;
 
 # define FLUSH_UNESCAPED\
   if (last_len) {\
-    rb_str_cat(pathinfo, last_s, last_len);\
+    rb_str_cat(path, last_s, last_len);\
     last_s += last_len;\
     last_len = 0;\
   }
@@ -47,7 +47,7 @@ size_t parse_pathinfo(VALUE pathinfo, const char*s, size_t len) {
       unsigned char r = ((unsigned char)r1 << 4) | (unsigned char)r2;
       FLUSH_UNESCAPED;
       last_s += 3;
-      rb_str_cat(pathinfo, (char*)&r, 1);
+      rb_str_cat(path, (char*)&r, 1);
 
     } else if (s[i] == '?') {
       i++;
@@ -55,7 +55,7 @@ size_t parse_pathinfo(VALUE pathinfo, const char*s, size_t len) {
 
     } else if (s[i] == '+') {
       FLUSH_UNESCAPED;
-      rb_str_cat(pathinfo, " ", 1);
+      rb_str_cat(path, " ", 1);
 
     } else {
       last_len++;
@@ -67,11 +67,11 @@ size_t parse_pathinfo(VALUE pathinfo, const char*s, size_t len) {
   return i;
 }
 
-static VALUE ext_parse_pathinfo(VALUE self, VALUE output, VALUE input) {
-  size_t parsed = parse_pathinfo(output, RSTRING_PTR(input), RSTRING_LEN(input));
+static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
+  size_t parsed = parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
   return ULONG2NUM(parsed);
 }
 
 void Init_escape(VALUE ext) {
-  rb_define_singleton_method(ext, "parse_pathinfo", ext_parse_pathinfo, 2);
+  rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);
 }

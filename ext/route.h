@@ -11,7 +11,7 @@ typedef struct {
 } RouteResult;
 
 extern void Init_route(VALUE ext);
-extern RouteResult lookup_route(VALUE pathinfo);
+extern RouteResult lookup_route(const char* pathinfo, long len);
 
 #ifdef __cplusplus
 }
