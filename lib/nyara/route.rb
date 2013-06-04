@@ -78,7 +78,7 @@ module Nyara
           conv << :to_s
           '([^/]+)'
         else
-          Regexp.quote s
+          Regexp.quote make_url_safe s
         end
       end
       ["^#{re_segs.join}$", conv]
@@ -91,7 +91,15 @@ module Nyara
       path = path.sub(/\/$/, '') if path != '/'
 
       prefix, suffix = path.split(/(?=%[dfsux])/, 2)
-      ["#{method} #{prefix}", suffix]
+      ["#{method} #{make_url_safe prefix}", suffix]
+    end
+
+    # similar to CGI.escape, but '/' is untouched
+    def make_url_safe s
+      s = s.dup.force_encoding 'binary'
+      s.gsub(/([^ a-zA-Z0-9_.-\/]+)/) do
+        '%' + $1.unpack('H2' * $1.bytesize).join('%').upcase
+      end.tr(' ', '+')
     end
   end
 end
