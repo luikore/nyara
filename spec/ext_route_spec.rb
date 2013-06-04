@@ -1,9 +1,9 @@
 require_relative "spec_helper"
 
 module Nyara
-  describe [Request, Controller] do
+  describe Ext do
     before :each do
-      Request.clear_route
+      Ext.clear_route
       @e1 = RouteEntry.new{
         @scope = '/hello'
         @prefix = '/hello/'
@@ -28,17 +28,17 @@ module Nyara
         @conv = [:to_i, :to_i, :to_i]
         @controller = 'stub3'
       }
-      Request.register_route @e1
-      Request.register_route @e2
-      Request.register_route @e3
+      Ext.register_route @e1
+      Ext.register_route @e2
+      Ext.register_route @e3
     end
 
     after :all do
-      Request.clear_route
+      Ext.clear_route
     end
 
     it '#register_route sub-prefix optimization' do
-      rules = Request.inspect_route
+      rules = Ext.list_route
       assert_equal 3, rules.size
 
       assert_equal false, rules[0].first # first
@@ -46,21 +46,21 @@ module Nyara
       assert_equal false, rules[2].first # not sub of prev
     end
 
-    it '#search_route' do
-      scope, cont, args = Request.search_route '/hello'
+    it '#lookup_route' do
+      scope, cont, args = Ext.lookup_route '/hello'
       assert_equal @e2.scope, scope
       assert_equal @e2.controller, cont
       assert_equal [:'#second'], args
 
-      scope, cont, args = Request.search_route '/hello/3world'
+      scope, cont, args = Ext.lookup_route '/hello/3world'
       assert_equal @e1.scope, scope
       assert_equal @e1.controller, cont
       assert_equal [:'#1', 3], args
 
-      scope, _ = Request.search_route '/world'
+      scope, _ = Ext.lookup_route '/world'
       assert_equal nil, scope
 
-      scope, _, args = Request.search_route '/a目录/2013-6-1'
+      scope, _, args = Ext.lookup_route '/a目录/2013-6-1'
       assert_equal [:'#dir', 2013, 6, 1], args
     end
   end

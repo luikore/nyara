@@ -1,6 +1,5 @@
 module Nyara
   # provide route preprocessing utils
-  # the core register/search is in Request
   Route = Object.new
   class << Route
     # note that controller may be not defined yet
@@ -17,15 +16,15 @@ module Nyara
       a = @controllers.map do |(scope, c)|
         [scope, c, c.preprocess_actions]
       end
-      Request.clear_route
+      Ext.clear_route
       process(a).each do |args|
-        Request.register_route *args
+        Ext.register_route *args
       end
     end
 
     def clear
       # gc mark fail if wrong order?
-      Request.clear_route
+      Ext.clear_route
       @controllers = []
     end
 

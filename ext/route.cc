@@ -50,8 +50,7 @@ static bool start_with(const char* a, long a_len, const char* b, long b_len) {
   return true;
 }
 
-extern "C"
-VALUE request_clear_route(VALUE req) {
+static VALUE ext_clear_route(VALUE req) {
   for (size_t i = 0; i < route_entries.size(); i++) {
     route_entries[i].dealloc();
   }
@@ -59,8 +58,7 @@ VALUE request_clear_route(VALUE req) {
   return Qnil;
 }
 
-extern "C"
-VALUE request_register_route(VALUE self, VALUE v_e) {
+static VALUE ext_register_route(VALUE self, VALUE v_e) {
   // prefix
   VALUE v_prefix = rb_iv_get(v_e, "@prefix");
   long prefix_len = RSTRING_LEN(v_prefix);
@@ -112,14 +110,7 @@ VALUE request_register_route(VALUE self, VALUE v_e) {
   return Qnil;
 }
 
-extern "C"
-void init_route() {
-  id_to_s = rb_intern("to_s");
-  onig_region_init(&region);
-}
-
-extern "C"
-VALUE request_inspect_route(VALUE self) {
+static VALUE ext_list_route(VALUE self) {
   volatile VALUE arr = rb_ary_new();
   volatile VALUE e;
   volatile VALUE prefix;
@@ -167,7 +158,7 @@ static VALUE build_args(VALUE id, char* suffix, std::vector<ID>& conv) {
 }
 
 extern "C"
-RouteResult search_route(VALUE v_pathinfo) {
+RouteResult lookup_route(VALUE v_pathinfo) {
   char* pathinfo = RSTRING_PTR(v_pathinfo);
   long len = RSTRING_LEN(v_pathinfo);
   RouteResult r = {Qnil, Qnil, Qnil};
@@ -204,12 +195,24 @@ RouteResult search_route(VALUE v_pathinfo) {
   return r;
 }
 
-extern "C"
-VALUE request_search_route(VALUE self, VALUE pathinfo) {
-  volatile RouteResult r = search_route(pathinfo);
+static VALUE ext_lookup_route(VALUE self, VALUE pathinfo) {
+  volatile RouteResult r = lookup_route(pathinfo);
   volatile VALUE a = rb_ary_new();
   rb_ary_push(a, r.scope);
   rb_ary_push(a, r.controller);
   rb_ary_push(a, r.args);
   return a;
+}
+
+extern "C"
+void Init_route(VALUE ext) {
+  id_to_s = rb_intern("to_s");
+  onig_region_init(&region);
+
+  rb_define_singleton_method(ext, "register_route", RUBY_METHOD_FUNC(ext_register_route), 1);
+  rb_define_singleton_method(ext, "clear_route", RUBY_METHOD_FUNC(ext_clear_route), 0);
+
+  // for test
+  rb_define_singleton_method(ext, "list_route", RUBY_METHOD_FUNC(ext_list_route), 0);
+  rb_define_singleton_method(ext, "lookup_route", RUBY_METHOD_FUNC(ext_lookup_route), 1);
 }

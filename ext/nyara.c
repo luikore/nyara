@@ -4,6 +4,7 @@
 #include <http_parser.h>
 #include <multipart_parser.h>
 #include "route.h"
+#include "escape.h"
 
 typedef struct {
   http_parser hparser;
@@ -12,7 +13,7 @@ typedef struct {
   VALUE params;
   VALUE fiber;
   VALUE scope; // mapped prefix
-  VALUE pathinfo;
+  VALUE pathinfo; // method with path, without query
   VALUE path;
   VALUE query;
   VALUE last_field;
@@ -28,17 +29,11 @@ static ID id_build_fiber;
 
 static int on_url(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
-  size_t i;
-  for (i = 0; i < len; i++) {
-    if (s[i] == '?') {
-      break;
-    }
-  }
 
   p->pathinfo = rb_str_new2(http_method_str(parser->method));
   rb_str_cat(p->pathinfo, " ", 1);
-  rb_str_cat(p->pathinfo, s, i);
-  volatile RouteResult result = search_route(p->pathinfo);
+  size_t i = parse_pathinfo(p->pathinfo, s, len);
+  volatile RouteResult result = lookup_route(p->pathinfo);
   if (RTEST(result.controller)) {
     p->fiber = rb_funcall(p->self, id_build_fiber, 2, result.controller, result.args);
     p->scope = result.scope;
@@ -192,14 +187,10 @@ void Init_nyara() {
   rb_define_method(request, "path", request_path, 0);
   rb_define_method(request, "query", request_query, 0);
 
-  // route
-  init_route();
-  rb_define_singleton_method(request, "register_route", request_register_route, 1);
-  // route utils
-  rb_define_singleton_method(request, "clear_route", request_clear_route, 0);
-  rb_define_singleton_method(request, "inspect_route", request_inspect_route, 0);
-  rb_define_singleton_method(request, "search_route", request_search_route, 1);
-
   VALUE accepter = rb_const_get(nyara, rb_intern("Accepter"));
   rb_define_method(accepter, "try_accept", accepter_try_accept, 1);
+
+  VALUE ext = rb_define_module_under(nyara, "Ext");
+  Init_route(ext);
+  Init_escape(ext);
 }

@@ -4,3 +4,6 @@
 [submodule "ext/http-parser"]
 	path = ext/http-parser
 	url = https://github.com/joyent/http-parser
+[submodule "ext/houdini"]
+	path = ext/houdini
+	url = git://github.com/vmg/houdini.git
