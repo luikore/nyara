@@ -4,7 +4,8 @@ module Nyara
   # request and handler
   class Request < EM::Connection
     # c-ext: self.alloc, receive_data
-    # c-ext attrs: http_method, scope, path, query, headers, body
+
+    # c-ext attrs: http_method, scope, path, query, header[s], body
     # note: path is unescaped
     # note: query is raw
 
