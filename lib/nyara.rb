@@ -25,6 +25,8 @@ module Nyara
       when 'production'
         server = TCPServer.new '127.0.0.1', 3000
         server.listen 1000
+        GC.start
+        # todo cpu count
         3.times do
           fork {
             EM.run do

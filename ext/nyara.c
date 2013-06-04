@@ -95,7 +95,7 @@ static void request_mark(void* pp) {
   }
 }
 
-static VALUE request_alloc(VALUE klass, VALUE signature, VALUE io) {
+static VALUE request_alloc_func(VALUE klass) {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
   p->headers = Qnil;
@@ -106,9 +106,15 @@ static VALUE request_alloc(VALUE klass, VALUE signature, VALUE io) {
   p->query = Qnil;
   p->last_field = Qnil;
   p->self = Data_Wrap_Struct(klass, request_mark, free, p);
-  rb_iv_set(p->self, "@signature", signature);
-  rb_iv_set(p->self, "@io", io);
   return p->self;
+}
+
+// hack to get around the stupid EM::Connection.new
+static VALUE request_alloc(VALUE klass, VALUE signature, VALUE io) {
+  VALUE self = request_alloc_func(klass);
+  rb_iv_set(self, "@signature", signature);
+  rb_iv_set(self, "@io", io);
+  return self;
 }
 
 static VALUE request_receive_data(VALUE self, VALUE data) {
@@ -175,6 +181,7 @@ void Init_nyara() {
 # undef METHOD_STR2NUM
 
   VALUE request = rb_const_get(nyara, rb_intern("Request"));
+  rb_define_alloc_func(request, request_alloc_func);
   rb_define_singleton_method(request, "alloc", request_alloc, 2);
   rb_define_method(request, "receive_data", request_receive_data, 1);
   rb_define_method(request, "http_method", request_http_method, 0);

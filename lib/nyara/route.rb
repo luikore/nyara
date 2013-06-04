@@ -17,8 +17,8 @@ module Nyara
         [scope, c, c.preprocess_actions]
       end
       Ext.clear_route
-      process(a).each do |args|
-        Ext.register_route *args
+      process(a).each do |entry|
+        Ext.register_route entry
       end
     end
 
@@ -58,7 +58,7 @@ module Nyara
 
     # returns [str_re, conv]
     def compile_re suffix
-      return [//, []] unless suffix
+      return ['', []] unless suffix
       conv = []
       re_segs = suffix.split(/(?<=%[dfsux])|(?=%[dfsux])/).map do |s|
         case s
