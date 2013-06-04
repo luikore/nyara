@@ -73,5 +73,6 @@ static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
 }
 
 void Init_escape(VALUE ext) {
+  // for test
   rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);
 }

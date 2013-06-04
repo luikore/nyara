@@ -38,9 +38,10 @@ module Nyara
           if path.empty?
             path = '/'
           end
-          prefix, suffix = analyse_path method, path
+          prefix, suffix = analyse_path path
           suffix, conv = compile_re suffix
           entries << RouteEntry.new{
+            @http_method = HTTP_METHODS[method]
             @scope = scope
             @prefix = prefix
             @suffix = suffix
@@ -78,28 +79,19 @@ module Nyara
           conv << :to_s
           '([^/]+)'
         else
-          Regexp.quote make_url_safe s
+          Regexp.quote s
         end
       end
       ["^#{re_segs.join}$", conv]
     end
 
-    # split the path into parts and join with method
-    def analyse_path method, path
+    # split the path into parts
+    def analyse_path path
       raise 'path must contain no new line' if path.index "\n"
       raise 'path must start with /' unless path.start_with? '/'
       path = path.sub(/\/$/, '') if path != '/'
 
-      prefix, suffix = path.split(/(?=%[dfsux])/, 2)
-      ["#{method} #{make_url_safe prefix}", suffix]
-    end
-
-    # similar to CGI.escape, but '/' is untouched
-    def make_url_safe s
-      s = s.dup.force_encoding 'binary'
-      s.gsub(/([^ a-zA-Z0-9_.-\/]+)/) do
-        '%' + $1.unpack('H2' * $1.bytesize).join('%').upcase
-      end.tr(' ', '+')
+      path.split(/(?=%[dfsux])/, 2)
     end
   end
 end

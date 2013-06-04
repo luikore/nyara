@@ -16,10 +16,10 @@ module Nyara
 
       rules = Route.process preprocessed_rules
       e_prefices, e_scopes, e_ids = [
-        ['POST /',      '/',     :'#post'],
-        ['GET /hello/', '/',     :'#hello_f'],
-        ['GET /hel',    '/hel',  :'#hel'],
-        ['GET /ello/',  '/ello', :'#ello_s']
+        ['/hello/', '/',     :'#hello_f'],
+        ['/hel',    '/hel',  :'#hel'],
+        ['/ello/',  '/ello', :'#ello_s'],
+        ['/',       '/',     :'#post']
       ].transpose
 
       assert_equal e_prefices, rules.map(&:prefix)
@@ -41,20 +41,20 @@ module Nyara
     it "#compile_re with utf-8 chars" do
       re, conv = Route.compile_re '/目录/%da/也可以'
       assert_equal [:to_i], conv
-      s = "/#{CGI.escape "目录"}/12a/#{CGI.escape "也可以"}"
+      s = "/目录/12a/也可以"
       assert_equal [s, '12'], s.match(Regexp.new re).to_a
     end
 
     it "#analyse_path" do
-      r = Route.analyse_path 'GET', '/hello/%d-world%u/%s/'
-      assert_equal ['GET /hello/', '%d-world%u/%s'], r
+      r = Route.analyse_path '/hello/%d-world%u/%s/'
+      assert_equal ['/hello/', '%d-world%u/%s'], r
 
-      prefix, suffix = Route.analyse_path 'GET', '/hello'
-      assert_equal 'GET /hello', prefix
+      prefix, suffix = Route.analyse_path '/hello'
+      assert_equal '/hello', prefix
       assert_equal nil, suffix
 
-      prefix, suffix = Route.analyse_path 'GET', '/'
-      assert_equal 'GET /', prefix
+      prefix, suffix = Route.analyse_path '/'
+      assert_equal '/', prefix
       assert_equal nil, suffix
     end
   end

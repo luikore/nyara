@@ -3,15 +3,17 @@
 module Nyara
   # request and handler
   class Request < EM::Connection
-    GET = 'GET'.freeze
+    # c-ext: self.alloc, receive_data
+    # c-ext attrs: http_method, scope, path, query, headers, body
+    # note: path is unescaped
+    # note: query is raw
 
-    def initialize s, io
-      super
-      @io = io
+    def params
+      @params ||= begin
+        # todo wait for body
+        Ext.parse_query(get? ? query : body)
+      end
     end
-
-    # c-ext: receive_data
-    # c-ext attrs: method, scope, path, query, headers
 
     def build_fiber controller, args
       instance = controller.new self, Response.new(@signature)

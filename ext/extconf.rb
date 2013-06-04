@@ -7,14 +7,16 @@ def build_prereq
   Dir.chdir multipart_dir do
     system "make"
   end
-  $CFLAGS << " -I#{multipart_dir.shellescape}"
 
   puts "building http-parser"
   http_parser_dir = File.join dir, "http-parser"
   Dir.chdir http_parser_dir do
     system "make libhttp_parser.o"
   end
-  $CFLAGS << " -I#{http_parser_dir.shellescape}"
+
+  flags = " -I#{multipart_dir.shellescape} -I#{http_parser_dir.shellescape}"
+  $CFLAGS << flags
+  $CPPFLAGS << flags
 end
 
 def tweak_cflags

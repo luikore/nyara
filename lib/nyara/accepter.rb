@@ -9,9 +9,9 @@ module Nyara
 
       # faster than EM::attach_io
       io = IO.for_fd fd
-      fd = io.fileno # EM won't accept number
+      fd = io.fileno # EM won' accept number
       s = EM.attach_fd fd, false
-      c = Request.new s, io
+      c = Request.alloc s, io # get around EM::Connection.new
       EM.instance_variable_get(:@conns)[s] = c
 
       # seems we can ignore the following 2

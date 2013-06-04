@@ -2,6 +2,7 @@
 #include <ruby/re.h>
 #include "route.h"
 #include <vector>
+#include <map>
 #include "str_intern.h"
 
 struct RouteEntry {
@@ -34,7 +35,8 @@ struct RouteEntry {
   }
 };
 
-static std::vector<RouteEntry> route_entries;
+typedef std::vector<RouteEntry> RouteEntries;
+static std::map<enum http_method, RouteEntries*> route_map;
 static OnigRegion region; // we can reuse the region without worrying thread safety
 static ID id_to_s;
 
@@ -50,15 +52,42 @@ static bool start_with(const char* a, long a_len, const char* b, long b_len) {
   return true;
 }
 
-static VALUE ext_clear_route(VALUE req) {
-  for (size_t i = 0; i < route_entries.size(); i++) {
-    route_entries[i].dealloc();
+static enum http_method canonicalize_http_method(VALUE m) {
+  VALUE method_num;
+  if (TYPE(m) == T_STRING) {
+    VALUE method_map = rb_const_get(rb_const_get(rb_cObject, rb_intern("Nyara")), rb_intern("HTTP_METHODS"));
+    method_num = rb_hash_aref(method_map, m);
+  } else {
+    method_num = m;
   }
-  route_entries.clear();
+  Check_Type(method_num, T_FIXNUM);
+  return (enum http_method)FIX2INT(method_num);
+}
+
+static VALUE ext_clear_route(VALUE req) {
+  for (auto i = route_map.begin(); i != route_map.end(); ++i) {
+    RouteEntries* entries = i->second;
+    for (auto j = entries->begin(); j != entries->end(); ++j) {
+      j->dealloc();
+    }
+    delete entries;
+  }
+  route_map.clear();
   return Qnil;
 }
 
 static VALUE ext_register_route(VALUE self, VALUE v_e) {
+  // get route entries
+  enum http_method m = canonicalize_http_method(rb_iv_get(v_e, "@http_method"));
+  RouteEntries* route_entries;
+  auto map_iter = route_map.find(m);
+  if (map_iter == route_map.end()) {
+    route_entries = new RouteEntries();
+    route_map[m] = route_entries;
+  } else {
+    route_entries = map_iter->second;
+  }
+
   // prefix
   VALUE v_prefix = rb_iv_get(v_e, "@prefix");
   long prefix_len = RSTRING_LEN(v_prefix);
@@ -67,8 +96,8 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
 
   // check if prefix is substring of last entry
   bool is_sub = false;
-  if (route_entries.size()) {
-    is_sub = start_with(route_entries.rbegin()->prefix, route_entries.rbegin()->prefix_len, prefix, prefix_len);
+  if (route_entries->size()) {
+    is_sub = start_with(route_entries->rbegin()->prefix, route_entries->rbegin()->prefix_len, prefix, prefix_len);
   }
 
   // suffix
@@ -106,31 +135,38 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
     e.conv.push_back(conv_id);
   }
 
-  route_entries.push_back(e);
+  route_entries->push_back(e);
   return Qnil;
 }
 
 static VALUE ext_list_route(VALUE self) {
-  volatile VALUE arr = rb_ary_new();
+  volatile VALUE arr;
   volatile VALUE e;
   volatile VALUE prefix;
   volatile VALUE conv;
-  for (auto i = route_entries.begin(); i != route_entries.end(); i++) {
-    e = rb_ary_new();
-    rb_ary_push(e, i->is_sub ? Qtrue : Qfalse);
-    rb_ary_push(e, i->scope);
-    rb_ary_push(e, rb_str_new(i->prefix, i->prefix_len));
-    rb_ary_push(e, rb_str_new(i->suffix, i->suffix_len));
-    rb_ary_push(e, i->controller);
-    rb_ary_push(e, i->id);
-    conv = rb_ary_new();
-    for (size_t j = 0; j < i->conv.size(); j++) {
-      rb_ary_push(conv, ID2SYM(i->conv[j]));
+
+  volatile VALUE route_hash = rb_hash_new();
+  for (auto j = route_map.begin(); j != route_map.end(); j++) {
+    RouteEntries* route_entries = j->second;
+    VALUE arr = rb_ary_new();
+    rb_hash_aset(route_hash, rb_str_new2(http_method_str(j->first)), arr);
+    for (auto i = route_entries->begin(); i != route_entries->end(); i++) {
+      e = rb_ary_new();
+      rb_ary_push(e, i->is_sub ? Qtrue : Qfalse);
+      rb_ary_push(e, i->scope);
+      rb_ary_push(e, rb_str_new(i->prefix, i->prefix_len));
+      rb_ary_push(e, rb_str_new(i->suffix, i->suffix_len));
+      rb_ary_push(e, i->controller);
+      rb_ary_push(e, i->id);
+      conv = rb_ary_new();
+      for (size_t j = 0; j < i->conv.size(); j++) {
+        rb_ary_push(conv, ID2SYM(i->conv[j]));
+      }
+      rb_ary_push(e, conv);
+      rb_ary_push(arr, e);
     }
-    rb_ary_push(e, conv);
-    rb_ary_push(arr, e);
   }
-  return arr;
+  return route_hash;
 }
 
 static VALUE build_args(VALUE id, const char* suffix, std::vector<ID>& conv) {
@@ -158,20 +194,28 @@ static VALUE build_args(VALUE id, const char* suffix, std::vector<ID>& conv) {
 }
 
 extern "C"
-RouteResult lookup_route(const char* pathinfo, long len) {
+RouteResult lookup_route(enum http_method method_num, VALUE vpath) {
   RouteResult r = {Qnil, Qnil, Qnil};
+  auto map_iter = route_map.find(method_num);
+  if (map_iter == route_map.end()) {
+    return r;
+  }
+  RouteEntries* route_entries = map_iter->second;
+
+  const char* path = RSTRING_PTR(vpath);
+  long len = RSTRING_LEN(vpath);
   // must iterate all
   bool last_matched = false;
-  for (auto i = route_entries.begin(); i != route_entries.end(); ++i) {
+  for (auto i = route_entries->begin(); i != route_entries->end(); ++i) {
     bool matched;
     if (i->is_sub && last_matched) { // save a bit compare
       matched = last_matched;
     } else {
-      matched = start_with(pathinfo, len, i->prefix, i->prefix_len);
+      matched = start_with(path, len, i->prefix, i->prefix_len);
     }
     last_matched = matched;
     if (matched) {
-      const char* suffix = pathinfo + i->prefix_len;
+      const char* suffix = path + i->prefix_len;
       long suffix_len = len - i->prefix_len;
       if (suffix_len == 0) {
         r.args = rb_ary_new3(1, i->id);
@@ -193,8 +237,9 @@ RouteResult lookup_route(const char* pathinfo, long len) {
   return r;
 }
 
-static VALUE ext_lookup_route(VALUE self, VALUE pathinfo) {
-  volatile RouteResult r = lookup_route(RSTRING_PTR(pathinfo), RSTRING_LEN(pathinfo));
+static VALUE ext_lookup_route(VALUE self, VALUE method, VALUE path) {
+  enum http_method method_num = canonicalize_http_method(method);
+  volatile RouteResult r = lookup_route(method_num, path);
   volatile VALUE a = rb_ary_new();
   rb_ary_push(a, r.scope);
   rb_ary_push(a, r.controller);
@@ -212,5 +257,5 @@ void Init_route(VALUE ext) {
 
   // for test
   rb_define_singleton_method(ext, "list_route", RUBY_METHOD_FUNC(ext_list_route), 0);
-  rb_define_singleton_method(ext, "lookup_route", RUBY_METHOD_FUNC(ext_lookup_route), 1);
+  rb_define_singleton_method(ext, "lookup_route", RUBY_METHOD_FUNC(ext_lookup_route), 2);
 }

@@ -29,12 +29,10 @@ static ID id_build_fiber;
 static int on_url(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
 
-  size_t method_len = strlen(http_method_str(parser->method));
+  // matching raw path is bad idea, for example: %a0 and %A0 are different strings but same route
   p->path = rb_str_new2("");
   size_t query_i = parse_path(p->path, s, len);
-  // because tcp window size is quite large, the method and url would never be split
-  // it's safe to look back
-  volatile RouteResult result = lookup_route(s - method_len - 1, query_i + method_len);
+  volatile RouteResult result = lookup_route(parser->method, p->path);
   if (RTEST(result.controller)) {
     p->fiber = rb_funcall(p->self, id_build_fiber, 2, result.controller, result.args);
     p->scope = result.scope;
@@ -97,7 +95,7 @@ static void request_mark(void* pp) {
   }
 }
 
-static VALUE request_alloc(VALUE klass) {
+static VALUE request_alloc(VALUE klass, VALUE signature, VALUE io) {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
   p->headers = Qnil;
@@ -108,6 +106,8 @@ static VALUE request_alloc(VALUE klass) {
   p->query = Qnil;
   p->last_field = Qnil;
   p->self = Data_Wrap_Struct(klass, request_mark, free, p);
+  rb_iv_set(p->self, "@signature", signature);
+  rb_iv_set(p->self, "@io", io);
   return p->self;
 }
 
@@ -168,8 +168,14 @@ void Init_nyara() {
   id_build_fiber = rb_intern("build_fiber");
   VALUE nyara = rb_define_module("Nyara");
 
+  volatile VALUE method_map = rb_hash_new();
+  rb_const_set(nyara, rb_intern("HTTP_METHODS"), method_map);
+# define METHOD_STR2NUM(n, name, string) rb_hash_aset(method_map, rb_str_new2(#string), INT2FIX(n));
+  HTTP_METHOD_MAP(METHOD_STR2NUM);
+# undef METHOD_STR2NUM
+
   VALUE request = rb_const_get(nyara, rb_intern("Request"));
-  rb_define_alloc_func(request, request_alloc);
+  rb_define_singleton_method(request, "alloc", request_alloc, 2);
   rb_define_method(request, "receive_data", request_receive_data, 1);
   rb_define_method(request, "http_method", request_http_method, 0);
   rb_define_method(request, "headers", request_headers, 0);
