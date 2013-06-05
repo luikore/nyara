@@ -4,7 +4,8 @@
 #include <http_parser.h>
 #include <multipart_parser.h>
 #include "route.h"
-#include "escape.h"
+#include "url_encoded.h"
+#include "hashes.h"
 
 typedef struct {
   http_parser hparser;
@@ -40,7 +41,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
     if (query_i < len) {
       p->query = rb_str_new(s + query_i, len - query_i);
     }
-    p->headers = rb_hash_new();
+    p->headers = rb_class_new_instance(0, NULL, nyara_param_hash_class);
     return 0;
   } else {
     rb_funcall(p->self, id_not_found, 0);
@@ -174,12 +175,17 @@ void Init_nyara() {
   id_build_fiber = rb_intern("build_fiber");
   VALUE nyara = rb_define_module("Nyara");
 
-  volatile VALUE method_map = rb_hash_new();
+  // utils: hashes
+  Init_hashes(nyara);
+
+  // utils: method map
+  volatile VALUE method_map = rb_class_new_instance(0, NULL, nyara_param_hash_class);
   rb_const_set(nyara, rb_intern("HTTP_METHODS"), method_map);
 # define METHOD_STR2NUM(n, name, string) rb_hash_aset(method_map, rb_str_new2(#string), INT2FIX(n));
   HTTP_METHOD_MAP(METHOD_STR2NUM);
 # undef METHOD_STR2NUM
 
+  // request
   VALUE request = rb_const_get(nyara, rb_intern("Request"));
   rb_define_alloc_func(request, request_alloc_func);
   rb_define_singleton_method(request, "alloc", request_alloc, 2);
@@ -191,10 +197,12 @@ void Init_nyara() {
   rb_define_method(request, "path", request_path, 0);
   rb_define_method(request, "query", request_query, 0);
 
+  // accepter
   VALUE accepter = rb_const_get(nyara, rb_intern("Accepter"));
   rb_define_method(accepter, "try_accept", accepter_try_accept, 1);
 
+  // ext & misc
   VALUE ext = rb_define_module_under(nyara, "Ext");
-  Init_route(ext);
-  Init_escape(ext);
+  Init_route(nyara, ext);
+  Init_url_encoded(ext);
 }

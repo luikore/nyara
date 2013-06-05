@@ -39,6 +39,7 @@ typedef std::vector<RouteEntry> RouteEntries;
 static std::map<enum http_method, RouteEntries*> route_map;
 static OnigRegion region; // we can reuse the region without worrying thread safety
 static ID id_to_s;
+static VALUE nyara_http_methods;
 
 static bool start_with(const char* a, long a_len, const char* b, long b_len) {
   if (b_len > a_len) {
@@ -55,8 +56,7 @@ static bool start_with(const char* a, long a_len, const char* b, long b_len) {
 static enum http_method canonicalize_http_method(VALUE m) {
   VALUE method_num;
   if (TYPE(m) == T_STRING) {
-    VALUE method_map = rb_const_get(rb_const_get(rb_cObject, rb_intern("Nyara")), rb_intern("HTTP_METHODS"));
-    method_num = rb_hash_aref(method_map, m);
+    method_num = rb_hash_aref(nyara_http_methods, m);
   } else {
     method_num = m;
   }
@@ -140,10 +140,11 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
 }
 
 static VALUE ext_list_route(VALUE self) {
-  volatile VALUE arr;
-  volatile VALUE e;
-  volatile VALUE prefix;
-  volatile VALUE conv;
+  // note: prevent leak with init nil
+  volatile VALUE arr = Qnil;
+  volatile VALUE e = Qnil;
+  volatile VALUE prefix = Qnil;
+  volatile VALUE conv = Qnil;
 
   volatile VALUE route_hash = rb_hash_new();
   for (auto j = route_map.begin(); j != route_map.end(); j++) {
@@ -248,7 +249,8 @@ static VALUE ext_lookup_route(VALUE self, VALUE method, VALUE path) {
 }
 
 extern "C"
-void Init_route(VALUE ext) {
+void Init_route(VALUE nyara, VALUE ext) {
+  nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
   id_to_s = rb_intern("to_s");
   onig_region_init(&region);
 

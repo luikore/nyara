@@ -3,6 +3,12 @@ require "http/parser"
 require "active_support/all"
 require "fiber"
 require "cgi"
+
+module Nyara
+  class Request < EM::Connection; end
+  class Accepter < EM::Connection; end
+end
+require_relative "../ext/nyara"
 require_relative "nyara/controller"
 require_relative "nyara/request"
 require_relative "nyara/response"
@@ -10,7 +16,6 @@ require_relative "nyara/accepter"
 require_relative "nyara/config"
 require_relative "nyara/route"
 require_relative "nyara/route_entry"
-require_relative "../ext/nyara"
 
 module Nyara
   class << self

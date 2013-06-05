@@ -1,5 +1,5 @@
 module Nyara
-  Config = ActiveSupport::HashWithIndifferentAccess.new
+  Config = ConfigHash.new
   class << Config
     def map prefix, controller
       Route.register_controller prefix, controller

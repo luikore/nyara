@@ -1,7 +1,7 @@
 module Nyara
   Controller = Struct.new :request, :response
   class Controller
-    module KlassMethods
+    module ClassMethods
       def on method, path, &blk
         @actions ||= []
         @used_ids = {}
@@ -64,7 +64,7 @@ module Nyara
 
     def self.inherited klass
       # klass will also have this inherited method
-      klass.extend KlassMethods
+      klass.extend ClassMethods
     end
 
     def status n

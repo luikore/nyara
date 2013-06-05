@@ -1,6 +1,6 @@
 module Nyara
   # provide route preprocessing utils
-  Route = Object.new
+  module Route; end
   class << Route
     # note that controller may be not defined yet
     def register_controller scope, controller

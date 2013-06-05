@@ -1,6 +1,6 @@
 module Nyara
   # child process watch for io events
-  class Accepter < EM::Connection
+  class Accepter
     # c-ext try_accept
 
     def notify_readable

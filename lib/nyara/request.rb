@@ -2,7 +2,7 @@
 
 module Nyara
   # request and handler
-  class Request < EM::Connection
+  class Request
     # c-ext: self.alloc, receive_data
 
     # c-ext attrs: http_method, scope, path, query, header[s], body
