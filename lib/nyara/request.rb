@@ -5,9 +5,7 @@ module Nyara
   class Request
     # c-ext: self.alloc, receive_data
 
-    # c-ext attrs: http_method, scope, path, query, headers, body
-    # note: path is unescaped
-    # note: query is raw
+    # c-ext attrs: http_method, scope, path, raw_query, headers, body
 
     eval(%w[get post put delete options patch].map do |m|
       <<-RUBY
@@ -22,7 +20,7 @@ module Nyara
     def params
       @params ||= begin
         # todo wait for body
-        data = get? ? query : body
+        data = get? ? raw_query : body
         res = ParamHash.new
         data.split('&').each do |seg|
           Ext.parse_param_seg res, seg, true

@@ -15,7 +15,7 @@ typedef struct {
   VALUE fiber;
   VALUE scope; // mapped prefix
   VALUE path;
-  VALUE query;
+  VALUE raw_query;
   VALUE last_field;
   VALUE self;
 } Request;
@@ -54,7 +54,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
     p->scope = result.scope;
 
     if (query_i < len) {
-      p->query = rb_str_new(s + query_i, len - query_i);
+      p->raw_query = rb_str_new(s + query_i, len - query_i);
     }
     p->headers = rb_class_new_instance(0, NULL, nyara_param_hash_class);
     return 0;
@@ -106,7 +106,7 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->fiber);
     rb_gc_mark_maybe(p->scope);
     rb_gc_mark_maybe(p->path);
-    rb_gc_mark_maybe(p->query);
+    rb_gc_mark_maybe(p->raw_query);
     rb_gc_mark_maybe(p->last_field);
   }
 }
@@ -119,7 +119,7 @@ static VALUE request_alloc_func(VALUE klass) {
   p->fiber = Qnil;
   p->scope = Qnil;
   p->path = Qnil;
-  p->query = Qnil;
+  p->raw_query = Qnil;
   p->last_field = Qnil;
   p->self = Data_Wrap_Struct(klass, request_mark, free, p);
   return p->self;
@@ -166,10 +166,10 @@ static VALUE request_path(VALUE self) {
   return p->path;
 }
 
-static VALUE request_query(VALUE self) {
+static VALUE request_raw_query(VALUE self) {
   Request* p;
   Data_Get_Struct(self, Request, p);
-  return p->query;
+  return p->raw_query;
 }
 
 static VALUE accepter_try_accept(VALUE self, VALUE io) {
@@ -208,7 +208,7 @@ void Init_nyara() {
   rb_define_method(request, "headers", request_headers, 0);
   rb_define_method(request, "scope", request_scope, 0);
   rb_define_method(request, "path", request_path, 0);
-  rb_define_method(request, "query", request_query, 0);
+  rb_define_method(request, "raw_query", request_raw_query, 0);
 
   // response
   response_class = rb_define_class_under(nyara, "Response", rb_cObject);
