@@ -1,6 +1,5 @@
 require "eventmachine"
 require "http/parser"
-require "active_support/all"
 require "fiber"
 require "cgi"
 
