@@ -1,3 +1,4 @@
+# master require
 require "eventmachine"
 require "http/parser"
 require "fiber"
@@ -23,15 +24,18 @@ module Nyara
       Config
     end
 
-    def start_server port
+    def start_server
+      port = Config[:port] || 3000
+      workers = Config[:workers] || 3
+
       puts "starting #{Config[:env]} server at 127.0.0.1:#{port}"
       case Config[:env].to_s
       when 'production'
-        server = TCPServer.new '127.0.0.1', 3000
+        server = TCPServer.new '127.0.0.1', port
         server.listen 1000
         GC.start
         # todo cpu count
-        3.times do
+        workers.times do
           fork {
             EM.run do
               EM.watch(server, Accepter).notify_readable = true
@@ -43,14 +47,9 @@ module Nyara
         # don't
       else
         EM.run do
-          EM.start_server '127.0.0.1', 3000, Request
+          EM.start_server '127.0.0.1', port, Request
         end
       end
     end
   end
 end
-
-# at_exit do
-#   Nyara::Route.compile
-#   Nyara.start_server 3000
-# end
