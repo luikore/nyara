@@ -16,11 +16,6 @@ module Nyara
       end
     end
 
-    def build_fiber controller, args
-      instance = controller.new self, Response.new(@signature)
-      Fiber.new{instance.send *args}
-    end
-
     def not_found
       puts "not found"
       send_data "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"

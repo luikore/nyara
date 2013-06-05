@@ -25,7 +25,14 @@ typedef struct {
 
 static ID id_not_found;
 static ID id_search;
-static ID id_build_fiber;
+static VALUE response_class;
+
+static VALUE fiber_func(VALUE _, VALUE args) {
+  VALUE instance = rb_ary_pop(args);
+  VALUE meth = rb_ary_pop(args);
+  rb_funcall(instance, SYM2ID(meth), (int)RARRAY_LEN(args), RARRAY_PTR(args));
+  return Qnil;
+}
 
 static int on_url(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
@@ -35,7 +42,15 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
   size_t query_i = parse_path(p->path, s, len);
   volatile RouteResult result = lookup_route(parser->method, p->path);
   if (RTEST(result.controller)) {
-    p->fiber = rb_funcall(p->self, id_build_fiber, 2, result.controller, result.args);
+    {
+      VALUE response_args[] = {rb_iv_get(p->self, "@signature")};
+      volatile VALUE response = rb_class_new_instance(1, response_args, response_class);
+      VALUE instance_args[] = {p->self, response};
+      VALUE instance = rb_class_new_instance(2, instance_args, result.controller);
+      rb_ary_push(result.args, instance);
+    }
+    // result.args is on stack, no need to worry gc
+    p->fiber = rb_fiber_new(fiber_func, result.args);
     p->scope = result.scope;
 
     if (query_i < len) {
@@ -172,7 +187,6 @@ static VALUE accepter_try_accept(VALUE self, VALUE io) {
 void Init_nyara() {
   id_not_found = rb_intern("not_found");
   id_search = rb_intern("search");
-  id_build_fiber = rb_intern("build_fiber");
   VALUE nyara = rb_define_module("Nyara");
 
   // utils: hashes
@@ -196,6 +210,9 @@ void Init_nyara() {
   rb_define_method(request, "scope", request_scope, 0);
   rb_define_method(request, "path", request_path, 0);
   rb_define_method(request, "query", request_query, 0);
+
+  // response
+  response_class = rb_define_class_under(nyara, "Response", rb_cObject);
 
   // accepter
   VALUE accepter = rb_const_get(nyara, rb_intern("Accepter"));
