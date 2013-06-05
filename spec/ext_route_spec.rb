@@ -64,7 +64,7 @@ module Nyara
       assert_equal nil, scope
 
       scope, _, args = Ext.lookup_route 'GET', '/a目录/2013-6-1'
-      assert_equal [:'#dir', 2013, 6, 1], args
+      assert_equal [2013, 6, 1, :'#dir'], args
     end
   end
 end

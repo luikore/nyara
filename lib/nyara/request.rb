@@ -5,16 +5,32 @@ module Nyara
   class Request
     # c-ext: self.alloc, receive_data
 
-    # c-ext attrs: http_method, scope, path, query, header[s], body
+    # c-ext attrs: http_method, scope, path, query, headers, body
     # note: path is unescaped
     # note: query is raw
+
+    eval(%w[get post put delete options patch].map do |m|
+      <<-RUBY
+        def #{m}?
+          http_method == "#{m.upcase}"
+        end
+      RUBY
+    end.join "\n")
+
+    alias header headers
 
     def params
       @params ||= begin
         # todo wait for body
-        Ext.parse_query(get? ? query : body)
+        data = get? ? query : body
+        res = ParamHash.new
+        data.split('&').each do |seg|
+          Ext.parse_param_seg res, seg, true
+        end
+        res
       end
     end
+    alias param params
 
     def not_found
       puts "not found"

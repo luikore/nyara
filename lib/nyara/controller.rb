@@ -35,6 +35,16 @@ module Nyara
         on 'DELETE', path, &blk
       end
 
+      def patch path, &blk
+        on 'PATCH', path, &blk
+      end
+
+      # todo generate options response for a url
+      # see http://tools.ietf.org/html/rfc5789
+      def options path, &blk
+        on 'OPTIONS', path, &blk
+      end
+
       # [[method, path, id]]
       def preprocess_actions
         raise 'no action defined' unless @actions

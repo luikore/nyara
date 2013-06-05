@@ -206,7 +206,6 @@ void Init_nyara() {
   rb_define_method(request, "receive_data", request_receive_data, 1);
   rb_define_method(request, "http_method", request_http_method, 0);
   rb_define_method(request, "headers", request_headers, 0);
-  rb_define_method(request, "header", request_headers, 0); // for convenience
   rb_define_method(request, "scope", request_scope, 0);
   rb_define_method(request, "path", request_path, 0);
   rb_define_method(request, "query", request_query, 0);
