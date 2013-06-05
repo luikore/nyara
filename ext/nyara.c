@@ -56,7 +56,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
     if (query_i < len) {
       p->raw_query = rb_str_new(s + query_i, len - query_i);
     }
-    p->headers = rb_class_new_instance(0, NULL, nyara_param_hash_class);
+    p->headers = rb_class_new_instance(0, NULL, nyara_header_hash_class);
     return 0;
   } else {
     rb_funcall(p->self, id_not_found, 0);
@@ -77,6 +77,7 @@ static int on_message_complete(http_parser* parser) {
 static int on_header_field(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
   p->last_field = rb_str_new(s, len);
+  headerlize(p->last_field);
   return 0;
 }
 
@@ -195,9 +196,14 @@ void Init_nyara() {
   // utils: method map
   volatile VALUE method_map = rb_class_new_instance(0, NULL, nyara_param_hash_class);
   rb_const_set(nyara, rb_intern("HTTP_METHODS"), method_map);
-# define METHOD_STR2NUM(n, name, string) rb_hash_aset(method_map, rb_str_new2(#string), INT2FIX(n));
+  VALUE tmp_key = Qnil;
+# define METHOD_STR2NUM(n, name, string) \
+    tmp_key = rb_str_new2(#string);\
+    OBJ_FREEZE(tmp_key);\
+    rb_hash_aset(method_map, tmp_key, INT2FIX(n));
   HTTP_METHOD_MAP(METHOD_STR2NUM);
 # undef METHOD_STR2NUM
+  OBJ_FREEZE(method_map);
 
   // request
   VALUE request = rb_const_get(nyara, rb_intern("Request"));

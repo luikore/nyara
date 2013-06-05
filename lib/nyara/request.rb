@@ -8,6 +8,7 @@ module Nyara
     # c-ext attrs: http_method, scope, path, raw_query, headers, body
 
     # method predicates
+    # todo method simulation
     %w[get post put delete options patch].each do |m|
       eval <<-RUBY
         def #{m}?
@@ -27,15 +28,30 @@ module Nyara
       RUBY
     end
 
+    # without port
     def host
-      @host ||= headers['Host'].split(':', 2).first
+      @host ||= begin
+        r = headers['Host']
+        if r
+          r.split(':', 2).first
+        else
+          ''
+        end
+      end
     end
 
     def port
       @port ||= begin
-        r = headers['Host'].split(':', 2).last
-        r ? r.to_i : 80
+        r = headers['Host']
+        if r
+          r = r.split(':', 2).last
+        end
+        r ? r.to_i : 80 # or server running port?
       end
+    end
+
+    def xhr?
+      headers["Requested-With"] == "XMLHttpRequest"
     end
 
     def params
@@ -50,6 +66,12 @@ module Nyara
       end
     end
     alias param params
+
+    def cookies
+      @cookies ||= begin
+      end
+    end
+    alias cookie cookies
 
     def not_found
       puts "not found"

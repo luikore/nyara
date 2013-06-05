@@ -1,5 +1,5 @@
 #pragma once
-
+#include <ruby.h>
 #include <http_parser.h>
 
 #ifdef __cplusplus
