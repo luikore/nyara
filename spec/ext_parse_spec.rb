@@ -1,8 +1,42 @@
 require_relative "spec_helper"
 
 module Nyara
-  describe Ext, "escape/unescape" do
-    context "#parse_parthinfo" do
+  describe Ext, "parse" do
+    context "#parse_param_seg" do
+      [false, true].each do |nested|
+        context (nested ? 'nested mode' : 'flat mode') do
+          it "normal parse" do
+            assert_equal({'a' => 'b'}, parse('a=b', nested))
+          end
+
+          it "param seg end with '='" do
+            assert_equal({'a' => ''}, parse('a=', nested))
+          end
+
+          it "param seg begin with '='" do
+            assert_equal({'' => 'b'}, parse('=b', nested))
+          end
+
+          it "param seg without value" do
+            assert_equal({'a' => ''}, parse('a', nested))
+          end
+
+          it "raises error" do
+            assert_raise ArgumentError do
+              parse 'a=&b'
+            end
+          end
+        end
+      end
+
+      def parse str, nested
+        h = {}
+        Ext.parse_param_seg h, str, nested
+        h
+      end
+    end
+
+    context "#parse_path" do
       before :each do
         @output = ''
       end

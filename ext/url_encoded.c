@@ -104,7 +104,7 @@ static void hash_aset_keys(VALUE output, VALUE keys, VALUE value) {
   rb_hash_aset(output, key, value);
 }
 
-static VALUE ext_parse_param_seg(VALUE output, VALUE kv, VALUE v_nested_mode) {
+static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nested_mode) {
   // let ruby do the split job, it's too nasty in c
   // (note if we parse_url_seg with '&' first, then there may be multiple '='s in one kv)
 
@@ -115,35 +115,39 @@ static VALUE ext_parse_param_seg(VALUE output, VALUE kv, VALUE v_nested_mode) {
 
   // rule out the value part
   {
-    const char* value_s = strstr(s, "=");
-    long key_len = value_s ? value_s - s - 1 : len;
+    const char* value_s = strnstr(s, "=", len);
     if (value_s) {
-      parse_url_seg(value, value_s + 1, len - key_len - 1, '&');
+      value_s++;
+      long value_len = s + len - value_s;
+      long parsed = parse_url_seg(value, value_s, value_len, '&');
+      if (parsed != value_len) {
+        rb_raise(rb_eArgError, "separator & in param segment");
+      }
+      len = value_s - s - 1;
     }
     if (value_s == s) {
       rb_hash_aset(output, rb_str_new2(""), value);
       return Qnil;
     }
-    len = key_len;
   }
 
   volatile VALUE key = rb_str_new2("");
   if (nested_mode) {
     // todo fault-tolerant?
     long parsed = parse_url_seg(key, s, len, '[');
-    s += parsed;
-    len -= parsed;
     if (parsed == len) {
       rb_hash_aset(output, key, value);
       return Qnil;
     }
+    s += parsed;
+    len -= parsed;
     volatile VALUE keys = rb_ary_new3(1, key);
     while (len) {
       key = rb_str_new2("");
       parsed = parse_url_seg(key, s, len, ']');
+      rb_ary_push(keys, key);
       s += parsed;
       len -= parsed;
-      rb_ary_push(keys, key);
       if (len) {
         if (s[0] == '[') {
           s++;

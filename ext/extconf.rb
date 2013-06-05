@@ -21,12 +21,8 @@ end
 
 def tweak_cflags
   mf_conf = RbConfig::MAKEFILE_CONFIG
-  # enable c++11
+  # enable c++11 (todo $CPPFLAGS ?)
   mf_conf['CXXFLAGS'] << ' -stdlib=libc++ -std=c++11'
-  if mf_conf['CC'].index('clang')
-    # lldb symbol table
-    mf_conf['debugflags'] = '-g'
-  end
 
   $CFLAGS << ' $(xflags)'
   puts 'To add extra CFLAGS:'

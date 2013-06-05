@@ -1,7 +1,7 @@
 require_relative "spec_helper"
 
 module Nyara
-  describe Ext do
+  describe Ext, "route" do
     before :each do
       Ext.clear_route
       @e1 = RouteEntry.new{
