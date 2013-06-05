@@ -7,15 +7,36 @@ module Nyara
 
     # c-ext attrs: http_method, scope, path, raw_query, headers, body
 
-    eval(%w[get post put delete options patch].map do |m|
-      <<-RUBY
+    # method predicates
+    %w[get post put delete options patch].each do |m|
+      eval <<-RUBY
         def #{m}?
           http_method == "#{m.upcase}"
         end
       RUBY
-    end.join "\n")
+    end
 
     alias header headers
+
+    # header delegates
+    %w[content_length content_type referrer user_agent].each do |m|
+      eval <<-RUBY
+        def #{m}
+          headers["#{m.split('_').map(&:capitalize).join '-'}"]
+        end
+      RUBY
+    end
+
+    def host
+      @host ||= headers['Host'].split(':', 2).first
+    end
+
+    def port
+      @port ||= begin
+        r = headers['Host'].split(':', 2).last
+        r ? r.to_i : 80
+      end
+    end
 
     def params
       @params ||= begin
