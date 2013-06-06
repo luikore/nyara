@@ -115,6 +115,7 @@ static void request_mark(void* pp) {
 static VALUE request_alloc_func(VALUE klass) {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
+  p->mparser = NULL;
   p->headers = Qnil;
   p->params = Qnil;
   p->fiber = Qnil;
