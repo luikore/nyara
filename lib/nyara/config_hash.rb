@@ -1,21 +1,43 @@
 module Nyara
   class ConfigHash
+    alias aget []
     alias aset []=
+
+    # so you can find with chained keys
+    def [] *keys
+      h = self
+      keys.each do |key|
+        if h.has_key?(key)
+          if h.is_a?(ConfigHash)
+            h = h.aget key
+          else
+            h = h[key]
+          end
+        else
+          return nil # todo default value?
+        end
+      end
+      h
+    end
 
     # so you can write:
     # config['a', 'very', 'deep', 'key'] = 'value
     def []= *keys, last_key, value
       h = self
-      keys.each_with_index do |key, i|
+      keys.each do |key|
         if h.has_key?(key)
-          h = h[key]
-        elsif h.is_a?(ConfigHash)
-          new_h = ConfigHash.new
-          h.aset key, new_h
-          h = new_h
+          if h.is_a?(ConfigHash)
+            h = h.aget key
+          else
+            h = h[key]
+          end
         else
           new_h = ConfigHash.new
-          h[key] = new_h
+          if h.is_a?(ConfigHash)
+            h.aset key, new_h
+          else
+            h[key] = new_h
+          end
           h = new_h
         end
       end
