@@ -3,8 +3,8 @@ module Nyara
     def initialize signature
       @status = 200
       @header = HeaderHash.new
-      @header.aset 'Connection', 'close'
-      @header.aset 'Content-Type', 'text/plain; charset=UTF-8'
+      @header._aset 'Connection', 'close'
+      @header._aset 'Content-Type', 'text/plain; charset=UTF-8'
       @signature = signature
     end
     attr_reader :status, :header

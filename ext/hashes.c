@@ -103,4 +103,8 @@ void Init_hashes(VALUE nyara) {
   rb_define_method(nyara_header_hash_class, "[]", header_hash_aref, 1);
   rb_define_method(nyara_header_hash_class, "key?", header_hash_key_p, 1);
   rb_define_method(nyara_header_hash_class, "[]=", header_hash_aset, 2);
+
+  // for internal use
+  rb_define_method(nyara_header_hash_class, "_aset", rb_hash_aset, 2);
+  rb_define_method(nyara_header_hash_class, "_aref", rb_hash_aref, 1);
 }
