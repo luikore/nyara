@@ -17,11 +17,17 @@ module Nyara
       Config[:workers] = n
     end
 
-    def config &p
-      instance_eval &p
-      unless @at_exit_hooked
-        @at_exit_hooked = true
-      end
+    def development?
+      env = self[:env].to_s
+      env.empty? or env == 'development'
+    end
+
+    def production?
+      self[:env].to_s == 'production'
+    end
+
+    def test?
+      self[:env].to_s == 'test'
     end
 
     alias set []=
@@ -30,6 +36,18 @@ module Nyara
     def assert expr
       raise ArgumentError unless expr
     end
+
+    # todo env aware configure
+    def configure &blk
+      instance_eval &blk
+    end
   end
-  Config[:env] = 'development'
+end
+
+def configure *xs, &blk
+  Nyara::Config.configure *xs, &blk
+end
+
+configure do
+  set :env, 'development'
 end

@@ -47,7 +47,7 @@ module Nyara
 
       # [[method, path, id]]
       def preprocess_actions
-        raise 'no action defined' unless @actions
+        raise 'no action defined' unless @action
 
         @curr_id = '#0'
         next_id = proc{

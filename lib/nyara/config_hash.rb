@@ -14,7 +14,9 @@ module Nyara
           h.aset key, new_h
           h = new_h
         else
-          raise "self#{keys[0...i].inspect} is not a ConfigHash"
+          new_h = ConfigHash.new
+          h[key] = new_h
+          h = new_h
         end
       end
       h.aset last_key, value

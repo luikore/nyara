@@ -1,4 +1,4 @@
-require_relative "../lib/nyara"
+require_relative "../lib/nyara/nyara"
 require 'rspec/core'
 require 'rspec/mocks'
 require 'rspec/autorun'
@@ -41,4 +41,8 @@ RSpec.configure do |config|
   end
 end
 
-Nyara::Config[:env] = 'test'
+configure do
+  set :env, 'test'
+end
+
+# todo a test helper to compile routes after app loaded
