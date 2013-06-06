@@ -1,8 +1,5 @@
 // parse path / query / url-encoded body
-#include <ruby.h>
-#include "url_encoded.h"
-#include "hashes.h"
-#include <assert.h>
+#include "nyara.h"
 
 static char parse_half_octet(char c) {
   // there's a faster way but not validating the range:
@@ -79,7 +76,10 @@ size_t nyara_parse_path(VALUE output, const char* s, size_t len) {
 static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) {
   VALUE* arr = RARRAY_PTR(keys);
   long len = RARRAY_LEN(keys);
-  assert(len);
+  if (!len) {
+    rb_bug("bug: aset 0 length key");
+    return;
+  }
 
   // first key seg
   volatile VALUE key = arr[0];

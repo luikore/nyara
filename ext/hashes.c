@@ -1,7 +1,6 @@
 // provide handy hash variants
-#include <ruby.h>
+#include "nyara.h"
 #include <ruby/st.h>
-#include "hashes.h"
 
 VALUE nyara_param_hash_class;
 VALUE nyara_header_hash_class;
@@ -90,6 +89,10 @@ static VALUE header_hash_aset(VALUE self, VALUE key, VALUE value) {
   return rb_hash_aset(self, header_hash_tidy_key(key), value);
 }
 
+static VALUE header_hash_serialize(VALUE self, VALUE code) {
+  return Qnil;
+}
+
 void Init_hashes(VALUE nyara) {
   id_to_s = rb_intern("to_s");
 
@@ -104,4 +107,5 @@ void Init_hashes(VALUE nyara) {
   rb_define_method(nyara_header_hash_class, "[]", header_hash_aref, 1);
   rb_define_method(nyara_header_hash_class, "key?", header_hash_key_p, 1);
   rb_define_method(nyara_header_hash_class, "[]=", header_hash_aset, 2);
+  rb_define_method(nyara_header_hash_class, "serialize", header_hash_serialize, 1);
 }

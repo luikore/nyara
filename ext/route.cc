@@ -1,6 +1,7 @@
-#include <ruby.h>
+extern "C" {
+#include "nyara.h"
+}
 #include <ruby/re.h>
-#include "route.h"
 #include <vector>
 #include <map>
 #include "str_intern.h"

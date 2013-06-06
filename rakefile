@@ -1,0 +1,29 @@
+desc "collect line stat"
+task :lines do
+  c = 0
+  Dir.glob('{**/*.rb,ext/*.{c,cc,h}}') do |f|
+    c += (File.read(f).count "\n")
+  end
+  puts "#{c} lines"
+end
+
+status_file = "ext/status_code.inc"
+
+desc "code generate"
+task :gen => [status_file]
+
+desc "generate http status code"
+file status_file do
+  require "nokogiri"
+  require "open-uri"
+  f = File.open 'ext/status_code.inc', 'w'
+  f.puts "#define HTTP_STATUS_CODES(XX)\\"
+  Nokogiri::XML(open("http://www.iana.org/assignments/http-status-codes/http-status-codes.xml")).css("record").each do |r|
+    value = r.css('value').text
+    next if value.index '-'
+    description = r.css('description').text
+    f.puts %Q|  XX(#{value}, "#{description}");\\|
+  end
+  f.puts "// end define"
+  f.close
+end
