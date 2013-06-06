@@ -89,8 +89,39 @@ static VALUE header_hash_aset(VALUE self, VALUE key, VALUE value) {
   return rb_hash_aset(self, header_hash_tidy_key(key), value);
 }
 
-static VALUE header_hash_serialize(VALUE self, VALUE code) {
-  return Qnil;
+static int header_hash_sum_len(VALUE key, VALUE value, VALUE user_data) {
+  long* total_size = (long*)user_data;
+  total_size[0] += RSTRING_LEN(key) + RSTRING_LEN(value) + 4;
+  return ST_CONTINUE;
+}
+
+static int header_hash_concat(VALUE key, VALUE value, VALUE user_data) {
+  char** p = (char**)user_data;
+
+  long len = RSTRING_LEN(key);
+  memcpy(p[0], RSTRING_PTR(key), len);
+  p[0] += len;
+
+  memcpy(p[0], ": ", 2);
+  p[0] += 2;
+
+  len = RSTRING_LEN(value);
+  memcpy(p[0], RSTRING_PTR(value), len);
+  p[0] += len;
+
+  memcpy(p[0], "\r\n", 2);
+  p[0] += 2;
+
+  return ST_CONTINUE;
+}
+
+static VALUE header_hash_serialize(VALUE self, VALUE first_line) {
+  long total_size = RSTRING_LEN(first_line);
+  rb_hash_foreach(self, header_hash_sum_len, (VALUE)&total_size);
+  volatile VALUE r = rb_str_new(NULL, total_size);
+  char* p = RSTRING_PTR(r);
+  rb_hash_foreach(self, header_hash_concat, (VALUE)&p);
+  return r;
 }
 
 void Init_hashes(VALUE nyara) {

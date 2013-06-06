@@ -22,7 +22,7 @@ struct RouteEntry {
   // don't make it destructor, or it could be called twice if on stack
   void dealloc() {
     if (prefix) {
-      free(prefix);
+      xfree(prefix);
       prefix = NULL;
     }
     if (suffix_re) {
@@ -30,7 +30,7 @@ struct RouteEntry {
       suffix_re = NULL;
     }
     if (suffix) {
-      free(suffix);
+      xfree(suffix);
       suffix = NULL;
     }
   }
@@ -92,7 +92,7 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
   // prefix
   VALUE v_prefix = rb_iv_get(v_e, "@prefix");
   long prefix_len = RSTRING_LEN(v_prefix);
-  char* prefix = (char*)malloc(prefix_len);
+  char* prefix = ALLOC_N(char, prefix_len);
   memcpy(prefix, RSTRING_PTR(v_prefix), prefix_len);
 
   // check if prefix is substring of last entry
@@ -104,7 +104,7 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
   // suffix
   VALUE v_suffix = rb_iv_get(v_e, "@suffix");
   long suffix_len = RSTRING_LEN(v_suffix);
-  char* suffix = (char*)malloc(suffix_len);
+  char* suffix = ALLOC_N(char, suffix_len);
   memcpy(suffix, RSTRING_PTR(v_suffix), suffix_len);
   regex_t* suffix_re;
   OnigErrorInfo err_info;

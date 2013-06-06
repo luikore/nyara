@@ -142,7 +142,7 @@ static VALUE request_alloc_func(VALUE klass) {
   p->raw_query = Qnil;
   p->last_field = Qnil;
   p->last_value = Qnil;
-  p->self = Data_Wrap_Struct(klass, request_mark, free, p);
+  p->self = Data_Wrap_Struct(klass, request_mark, xfree, p);
   return p->self;
 }
 

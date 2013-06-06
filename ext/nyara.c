@@ -34,9 +34,11 @@ void Init_nyara() {
 
   // utils: status codes
   volatile VALUE status_map = rb_hash_new();
+  rb_const_set(nyara, rb_intern("HTTP_STATUS_CODES"), status_map);
   VALUE tmp_value = Qnil;
 # define STATUS_DESC(status, desc) \
     tmp_value = rb_str_new2(desc);\
+    OBJ_FREEZE(tmp_value);\
     rb_hash_aset(status_map, INT2FIX(status), tmp_value);
   HTTP_STATUS_CODES(STATUS_DESC);
 # undef STATUS_DESC
