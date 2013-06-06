@@ -181,7 +181,7 @@ static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nes
           s++;
           len--;
         } else {
-          rb_raise(rb_eRuntimeError, "malformat params: remaining chars in key but not starting with '['");
+          rb_raise(rb_eRuntimeError, "malformed params: remaining chars in key but not starting with '['");
           return output;
         }
       }

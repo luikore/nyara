@@ -116,6 +116,8 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
     .prefix = prefix,
     .prefix_len = prefix_len,
     .suffix_re = suffix_re,
+    .suffix = suffix,
+    .suffix_len = suffix_len,
     .controller = rb_iv_get(v_e, "@controller"),
     .id = rb_iv_get(v_e, "@id"),
     .conv = _conv,
