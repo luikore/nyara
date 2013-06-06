@@ -35,5 +35,14 @@ module Nyara
       assert_equal 'value1', h['a', 'deep', :key1]
       assert_equal 'value2', h['a']['deep']['key2']
     end
+
+    it "works when last available key exists as other hash type" do
+      h = ConfigHash.new
+      other_h = {}
+      h['a'] = other_h
+      h['a', 'b'] = 3
+      assert_equal 3, h['a', 'b']
+      assert_equal other_h.object_id, h['a'].object_id
+    end
   end
 end
