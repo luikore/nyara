@@ -1,6 +1,6 @@
 module Nyara
   class ConfigHash
-    alias :aset, :[]=
+    alias aset []=
 
     # so you can write:
     # config['a', 'very', 'deep', 'key'] = 'value
@@ -17,7 +17,7 @@ module Nyara
           raise "self#{keys[0...i].inspect} is not a ConfigHash"
         end
       end
-      h[last_key] = value
+      h.aset last_key, value
     end
   end
 end
