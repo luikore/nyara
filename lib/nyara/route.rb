@@ -14,6 +14,9 @@ module Nyara
     def compile
       # todo, get controller class if it is string
       a = @controllers.map do |(scope, c)|
+        if c.is_a?(String)
+          c = str2controller c
+        end
         [scope, c, c.preprocess_actions]
       end
       Ext.clear_route
@@ -28,7 +31,24 @@ module Nyara
       @controllers = []
     end
 
-    # private and not interacting methods
+    def str2controller str
+      if @str2controller_map
+        if c = @str2controller_map[str]
+          return c
+        end
+      end
+      str = str.gsub /(?<=\b|_)[a-z]/, &:upcase
+      str.gsub! '_', ''
+      str << 'Controller'
+      Module.const_get str
+    end
+
+    def register_str2controller str, controller
+      @str2controller_map ||= {}
+      @str2controller_map[str] = controller
+    end
+
+    # private
 
     def process preprocessed
       entries = []

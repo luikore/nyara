@@ -14,6 +14,12 @@ module Nyara
         end
       end
 
+      # set controller name, useful in path helper
+      def name n
+        Route.register_str2controller n, self
+        @name = n
+      end
+
       def meta tag=nil, opts=nil
         if @meta_exist
           raise 'contiguous meta data descriptors, should follow by an action'
@@ -68,7 +74,7 @@ module Nyara
 
       # [[method, path, id]]
       def preprocess_actions
-        raise 'no action defined' unless @action
+        raise "#{self}: no action defined" unless @actions
 
         @curr_id = '#0'
         next_id = proc{
