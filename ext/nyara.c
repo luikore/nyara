@@ -41,8 +41,8 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
 
   // matching raw path is bad idea, for example: %a0 and %A0 are different strings but same route
   p->path = rb_str_new2("");
-  size_t query_i = parse_path(p->path, s, len);
-  volatile RouteResult result = lookup_route(parser->method, p->path);
+  size_t query_i = nyara_parse_path(p->path, s, len);
+  volatile RouteResult result = nyara_lookup_route(parser->method, p->path);
   if (RTEST(result.controller)) {
     {
       VALUE response_args[] = {rb_iv_get(p->self, "@signature")};
@@ -96,7 +96,7 @@ static int on_header_value(http_parser* parser, const char* s, size_t len) {
     }
     rb_str_cat(p->last_value, s, len);
   } else {
-    headerlize(p->last_field);
+    nyara_headerlize(p->last_field);
     p->last_value = rb_str_new(s, len);
     rb_hash_aset(p->headers, p->last_field, p->last_value);
     p->last_field = Qnil;

@@ -13,7 +13,7 @@ typedef struct {
 } RouteResult;
 
 extern void Init_route(VALUE nyara, VALUE ext);
-extern RouteResult lookup_route(enum http_method method_num, VALUE vpath);
+extern RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath);
 
 #ifdef __cplusplus
 }

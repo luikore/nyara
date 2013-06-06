@@ -71,7 +71,7 @@ static size_t parse_url_seg(VALUE path, const char*s, size_t len, char stop_char
 }
 
 // return parsed len, s + return == start of query
-size_t parse_path(VALUE output, const char* s, size_t len) {
+size_t nyara_parse_path(VALUE output, const char* s, size_t len) {
   return parse_url_seg(output, s, len, '?');
 }
 
@@ -90,7 +90,7 @@ static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) 
     key = arr[i];
     long next_is_hash_key = RSTRING_LEN(arr[i + 1]);
     if (is_hash_key) {
-      if (_rb_hash_has_key(output, key)) {
+      if (nyara_rb_hash_has_key(output, key)) {
         output = rb_hash_aref(output, key);
         if (next_is_hash_key) {
           if (TYPE(output != T_HASH)) {
@@ -196,7 +196,7 @@ static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nes
 }
 
 static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
-  size_t parsed = parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
+  size_t parsed = nyara_parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
   return ULONG2NUM(parsed);
 }
 

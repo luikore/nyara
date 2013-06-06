@@ -197,7 +197,7 @@ static VALUE build_args(const char* suffix, std::vector<ID>& conv) {
 }
 
 extern "C"
-RouteResult lookup_route(enum http_method method_num, VALUE vpath) {
+RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
   RouteResult r = {Qnil, Qnil, Qnil};
   auto map_iter = route_map.find(method_num);
   if (map_iter == route_map.end()) {
@@ -243,7 +243,7 @@ RouteResult lookup_route(enum http_method method_num, VALUE vpath) {
 
 static VALUE ext_lookup_route(VALUE self, VALUE method, VALUE path) {
   enum http_method method_num = canonicalize_http_method(method);
-  volatile RouteResult r = lookup_route(method_num, path);
+  volatile RouteResult r = nyara_lookup_route(method_num, path);
   volatile VALUE a = rb_ary_new();
   rb_ary_push(a, r.scope);
   rb_ary_push(a, r.controller);

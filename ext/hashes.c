@@ -8,7 +8,7 @@ VALUE nyara_header_hash_class;
 VALUE nyara_config_hash_class;
 
 // stolen from hash.c
-int _rb_hash_has_key(VALUE hash, VALUE key) {
+int nyara_rb_hash_has_key(VALUE hash, VALUE key) {
   if (!RHASH(hash)->ntbl)
     return 0;
   if (st_lookup(RHASH(hash)->ntbl, key, 0))
@@ -30,7 +30,7 @@ static VALUE param_hash_key_p(VALUE self, VALUE key) {
   if (TYPE(key) == T_SYMBOL) {
     key = rb_sym_to_s(key);
   }
-  return _rb_hash_has_key(self, key) ? Qtrue : Qfalse;
+  return nyara_rb_hash_has_key(self, key) ? Qtrue : Qfalse;
 }
 
 static VALUE param_hash_aset(VALUE self, VALUE key, VALUE value) {
@@ -40,7 +40,7 @@ static VALUE param_hash_aset(VALUE self, VALUE key, VALUE value) {
   return rb_hash_aset(self, key, value);
 }
 
-void headerlize(VALUE str) {
+void nyara_headerlize(VALUE str) {
   char* s = (char*)RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
   int border = 1;
@@ -70,7 +70,7 @@ static VALUE header_hash_tidy_key(VALUE key) {
   }
   Check_Type(key, T_STRING);
   key = rb_str_new(RSTRING_PTR(key), RSTRING_LEN(key));
-  headerlize(key);
+  nyara_headerlize(key);
   return key;
 }
 
@@ -79,7 +79,7 @@ static VALUE header_hash_aref(VALUE self, VALUE key) {
 }
 
 static VALUE header_hash_key_p(VALUE self, VALUE key) {
-  return _rb_hash_has_key(self, header_hash_tidy_key(key)) ? Qtrue : Qfalse;
+  return nyara_rb_hash_has_key(self, header_hash_tidy_key(key)) ? Qtrue : Qfalse;
 }
 
 ID id_to_s;
