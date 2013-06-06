@@ -9,6 +9,9 @@ module Nyara
   class Accepter < EM::Connection; end
 end
 require_relative "../../ext/nyara"
+require_relative "param_hash"
+require_relative "header_hash"
+require_relative "config_hash"
 require_relative "controller"
 require_relative "request"
 require_relative "response"

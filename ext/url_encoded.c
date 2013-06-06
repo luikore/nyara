@@ -75,15 +75,6 @@ size_t parse_path(VALUE output, const char* s, size_t len) {
   return parse_url_seg(output, s, len, '?');
 }
 
-// stolen from hash.c
-static int rb_hash_has_key(VALUE hash, VALUE key) {
-  if (!RHASH(hash)->ntbl)
-    return 0;
-  if (st_lookup(RHASH(hash)->ntbl, key, 0))
-    return 1;
-  return 0;
-}
-
 // a, b, c = keys; h[a][b][c] = value
 static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) {
   VALUE* arr = RARRAY_PTR(keys);
@@ -99,7 +90,7 @@ static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) 
     key = arr[i];
     long next_is_hash_key = RSTRING_LEN(arr[i + 1]);
     if (is_hash_key) {
-      if (rb_hash_has_key(output, key)) {
+      if (_rb_hash_has_key(output, key)) {
         output = rb_hash_aref(output, key);
         if (next_is_hash_key) {
           if (TYPE(output != T_HASH)) {
