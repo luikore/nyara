@@ -1,11 +1,10 @@
 module Nyara
   class Response
     def initialize signature
-      @status = '200'
-      @header = {
-        'Connection' => 'close',
-        'Content-Type' => 'text/plain; charset=UTF-8'
-      }
+      @status = 200
+      @header = HeaderHash.new
+      @header.aset 'Connection', 'close'
+      @header.aset 'Content-Type', 'text/plain; charset=UTF-8'
       @signature = signature
     end
     attr_reader :status, :header
@@ -16,11 +15,9 @@ module Nyara
     end
 
     def render_header
-      data = "HTTP/1.1 #{@status} OK\r\n"
-      EM.send_data @signature, data, data.bytesize
-
-      data = @header.map do |k, v|
-        "#{k}: #{v}\r\n" # todo escape newlines in k,v
+      data = [HTTP_STATUS_FIRST_LINES[@status]]
+      @header.each do |k,v|
+        data << "#{k}: #{v}\r\n"
       end
       data << "\r\n"
       data = data.join

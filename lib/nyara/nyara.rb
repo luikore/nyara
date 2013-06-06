@@ -21,6 +21,8 @@ require_relative "route"
 require_relative "route_entry"
 
 module Nyara
+  HTTP_STATUS_FIRST_LINES = Hash[HTTP_STATUS_CODES.map{|k,v|[k, "HTTP/1.1 #{k} #{v}\r\n".freeze]}].freeze
+
   class << self
     def config
       raise ArgumentError, 'block not accepted, did you mean Nyara::Config.config?' if block_given?
