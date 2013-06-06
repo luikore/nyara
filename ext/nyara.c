@@ -17,6 +17,7 @@ typedef struct {
   VALUE path;
   VALUE raw_query;
   VALUE last_field;
+  VALUE last_value;
   VALUE self;
 } Request;
 
@@ -34,6 +35,7 @@ static VALUE fiber_func(VALUE _, VALUE args) {
   return Qnil;
 }
 
+// assume url is always whole
 static int on_url(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
 
@@ -76,15 +78,37 @@ static int on_message_complete(http_parser* parser) {
 
 static int on_header_field(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
-  p->last_field = rb_str_new(s, len);
-  headerlize(p->last_field);
+  if (p->last_field == Qnil) {
+    p->last_field = rb_str_new(s, len);
+    p->last_value = Qnil;
+  } else {
+    rb_str_cat(p->last_field, s, len);
+  }
   return 0;
 }
 
 static int on_header_value(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
-  rb_hash_aset(p->headers, p->last_field, rb_str_new(s, len));
+  if (p->last_field == Qnil) {
+    if (p->last_value == Qnil) {
+      rb_bug("on_header_value called when neither last_field nor last_value exist");
+      return 1;
+    }
+    rb_str_cat(p->last_value, s, len);
+  } else {
+    headerlize(p->last_field);
+    p->last_value = rb_str_new(s, len);
+    rb_hash_aset(p->headers, p->last_field, p->last_value);
+    p->last_field = Qnil;
+  }
+  return 0;
+}
+
+static int on_headers_complete(http_parser* parser) {
+  Request* p = (Request*)parser;
   p->last_field = Qnil;
+  p->last_value = Qnil;
+  // todo resume fiber here
   return 0;
 }
 
@@ -94,7 +118,7 @@ static const http_parser_settings request_settings = {
   .on_status_complete = NULL,
   .on_header_field = on_header_field,
   .on_header_value = on_header_value,
-  .on_headers_complete = NULL, // cb
+  .on_headers_complete = on_headers_complete,
   .on_body = NULL,             // data_cb
   .on_message_complete = on_message_complete
 };
@@ -109,6 +133,7 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->path);
     rb_gc_mark_maybe(p->raw_query);
     rb_gc_mark_maybe(p->last_field);
+    rb_gc_mark_maybe(p->last_value);
   }
 }
 
@@ -123,6 +148,7 @@ static VALUE request_alloc_func(VALUE klass) {
   p->path = Qnil;
   p->raw_query = Qnil;
   p->last_field = Qnil;
+  p->last_value = Qnil;
   p->self = Data_Wrap_Struct(klass, request_mark, free, p);
   return p->self;
 }
