@@ -1,6 +1,6 @@
 module Nyara
   class ConfigHash
-    alias aget []
+    alias aref []
     alias aset []=
 
     # so you can find with chained keys
@@ -9,7 +9,7 @@ module Nyara
       keys.each do |key|
         if h.has_key?(key)
           if h.is_a?(ConfigHash)
-            h = h.aget key
+            h = h.aref key
           else
             h = h[key]
           end
@@ -27,7 +27,7 @@ module Nyara
       keys.each do |key|
         if h.has_key?(key)
           if h.is_a?(ConfigHash)
-            h = h.aget key
+            h = h.aref key
           else
             h = h[key]
           end
