@@ -85,23 +85,56 @@ static int rb_hash_has_key(VALUE hash, VALUE key) {
 }
 
 // a, b, c = keys; h[a][b][c] = value
-static void hash_aset_keys(VALUE output, VALUE keys, VALUE value) {
+static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) {
   VALUE* arr = RARRAY_PTR(keys);
   long len = RARRAY_LEN(keys);
   assert(len);
-  VALUE key = arr[0];
+
+  // first key seg
+  volatile VALUE key = arr[0];
+  long is_hash_key = 1;
+
+  // middle key segs
   for (long i = 0; i < len - 1; i++) {
     key = arr[i];
-    if (rb_hash_has_key(output, key)) {
-      output = rb_hash_aref(output, key);
-      Check_Type(output, T_HASH);
+    long next_is_hash_key = RSTRING_LEN(arr[i + 1]);
+    if (is_hash_key) {
+      if (rb_hash_has_key(output, key)) {
+        output = rb_hash_aref(output, key);
+        if (next_is_hash_key) {
+          if (TYPE(output != T_HASH)) {
+            // note: StringValueCstr requires VALUE* as param, and can raise another error if there's nul in the string
+            rb_raise(rb_eRuntimeError, 
+              "error parsing param %.*s: segments[%ld] is not array index (expect to be empty)",
+              (int)RSTRING_LEN(kv_src), RSTRING_PTR(kv_src), i);
+          }
+        } else {
+          if (TYPE(output != T_ARRAY)) {
+            rb_raise(rb_eRuntimeError,
+              "error parsing param %.*s: segments[%ld] is not hash key (expect to be non-empty)",
+              (int)RSTRING_LEN(kv_src), RSTRING_PTR(kv_src), i);
+          }
+        }
+      } else {
+        volatile VALUE child = next_is_hash_key ? rb_class_new_instance(0, NULL, nyara_param_hash_class) : rb_ary_new();
+        rb_hash_aset(output, key, child);
+        output = child;
+      }
     } else {
-      volatile VALUE child = rb_class_new_instance(0, NULL, nyara_param_hash_class);
-      rb_hash_aset(output, key, child);
+      volatile VALUE child = next_is_hash_key ? rb_class_new_instance(0, NULL, nyara_param_hash_class) : rb_ary_new();
+      rb_ary_push(output, child);
       output = child;
     }
+    is_hash_key = next_is_hash_key;
   }
-  rb_hash_aset(output, key, value);
+
+  // terminate key seg: add value
+  key = arr[len - 1];
+  if (is_hash_key) {
+    rb_hash_aset(output, key, value);
+  } else {
+    rb_ary_push(output, value);
+  }
 }
 
 static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nested_mode) {
@@ -110,6 +143,10 @@ static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nes
 
   const char* s = RSTRING_PTR(kv);
   long len = RSTRING_LEN(kv);
+  if (!len) {
+    return output;
+  }
+
   int nested_mode = RTEST(v_nested_mode);
   volatile VALUE value = rb_str_new2("");
 
@@ -127,7 +164,7 @@ static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nes
     }
     if (value_s == s) {
       rb_hash_aset(output, rb_str_new2(""), value);
-      return Qnil;
+      return output;
     }
   }
 
@@ -137,7 +174,7 @@ static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nes
     long parsed = parse_url_seg(key, s, len, '[');
     if (parsed == len) {
       rb_hash_aset(output, key, value);
-      return Qnil;
+      return output;
     }
     s += parsed;
     len -= parsed;
@@ -153,19 +190,18 @@ static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nes
           s++;
           len--;
         } else {
-          // there are remaining chars in key but not starting with '['
-          rb_raise(rb_eRuntimeError, "malformat params");
-          return Qnil;
+          rb_raise(rb_eRuntimeError, "malformat params: remaining chars in key but not starting with '['");
+          return output;
         }
       }
     }
-    hash_aset_keys(output, keys, value);
+    hash_aset_keys(output, keys, value, kv);
   } else {
     parse_url_seg(key, s, len, '=');
     rb_hash_aset(output, key, value);
   }
 
-  return Qnil;
+  return output;
 }
 
 static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {

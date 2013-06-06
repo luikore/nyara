@@ -29,10 +29,31 @@ module Nyara
         end
       end
 
+      context "nested key" do
+        it "parses nested key" do
+          res = {"a"=>{"b"=>[[{"c"=>"1"}]]}}
+          assert_equal res, Ext.parse_param_seg({}, "a[b][][][c]=1", true)
+        end
+
+        it 'allows "[]" as input' do
+          res = {""=>[""]}
+          assert_equal res, Ext.parse_param_seg({}, "[]", true)
+        end
+
+        it 'ignores empty input' do
+          res = {}
+          assert_equal res, Ext.parse_param_seg({}, "", true)
+        end
+
+        it "content hash is ParamHash" do
+          h = ParamHash.new
+          assert_equal ParamHash, Ext.parse_param_seg(h, "a[b]=c", true)[:a].class
+        end
+      end
+
       def parse str, nested
         h = {}
         Ext.parse_param_seg h, str, nested
-        h
       end
     end
 
