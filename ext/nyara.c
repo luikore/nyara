@@ -30,7 +30,7 @@ static VALUE response_class;
 static VALUE fiber_func(VALUE _, VALUE args) {
   VALUE instance = rb_ary_pop(args);
   VALUE meth = rb_ary_pop(args);
-  rb_funcall(instance, SYM2ID(meth), (int)RARRAY_LEN(args), RARRAY_PTR(args));
+  rb_funcallv(instance, SYM2ID(meth), (int)RARRAY_LEN(args), RARRAY_PTR(args));
   return Qnil;
 }
 
