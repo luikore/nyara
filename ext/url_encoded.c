@@ -128,7 +128,7 @@ static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) 
   }
 }
 
-static VALUE ext_parse_param_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nested_mode) {
+static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nested_mode) {
   // let ruby do the split job, it's too nasty in c
   // (note if we parse_url_seg with '&' first, then there may be multiple '='s in one kv)
 
@@ -201,7 +201,7 @@ static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
 }
 
 void Init_url_encoded(VALUE ext) {
-  rb_define_singleton_method(ext, "parse_param_seg", ext_parse_param_seg, 3);
+  rb_define_singleton_method(ext, "parse_url_encoded_seg", ext_parse_url_encoded_seg, 3);
   // for test
   rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);
 }

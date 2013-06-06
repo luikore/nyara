@@ -50,25 +50,46 @@ module Nyara
       end
     end
 
+    def host_with_port
+      headers['Host']
+    end
+
     def xhr?
       headers["Requested-With"] == "XMLHttpRequest"
     end
 
     def params
       @params ||= begin
-        # todo wait for body
-        data = get? ? raw_query : body
         res = ParamHash.new
-        data.split('&').each do |seg|
-          Ext.parse_param_seg res, seg, true
+        if raw_query
+          raw_query.split(/[&;] */n).each do |seg|
+            Ext.parse_url_encoded_seg res, seg, true
+          end
+        end
+        unless get?
+          # todo validate content type of
+          # application/x-www-form-urlencoded
+          # multipart/form-data
+          # todo wait for body
+          body.split(/[&;] */n).each do |seg|
+            Ext.parse_url_encoded_seg res, seg, true
+          end
         end
         res
       end
     end
     alias param params
 
+    # rfc2109
     def cookies
       @cookies ||= begin
+        res = ParamHash.new
+        if data = headers['Cookie']
+          data.split(/[,;] */n).reverse_each do |seg|
+            Ext.parse_url_encoded_seg res, seg, false
+          end
+        end
+        res
       end
     end
     alias cookie cookies
