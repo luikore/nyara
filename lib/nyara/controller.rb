@@ -10,13 +10,34 @@ module Nyara
           raise ArgumentError, "action id #{@curr_id} already in use" if @used_ids[@curr_id]
           @used_ids[@curr_id] = true
           @curr_id = nil
+          @meta_exist = nil
         end
       end
 
-      def tag tag
-        # todo scan class
-        id = tag[/\#\w++(\-\w++)*/]
-        @curr_id = id
+      def meta tag=nil, opts=nil
+        if @meta_exist
+          raise 'contiguous meta data descriptors, should follow by an action'
+        end
+        if tag.nil? and opts.nil?
+          raise ArgumentError, 'expect tag or options'
+        end
+
+        if opts.nil? and tag.is_a?(Hash)
+          opts = tag
+          tag = nil
+        end
+
+        if tag
+          # todo scan class
+          id = tag[/\#\w++(\-\w++)*/]
+          @curr_id = id
+        end
+
+        if opts
+          # todo add opts: strong param, etag, cache, dot separated param, repeated param
+        end
+
+        @meta_exist = true
       end
 
       def get path, &blk
