@@ -5,7 +5,7 @@ module Nyara
   class Request
     # c-ext: self.alloc, receive_data
 
-    # c-ext attrs: http_method, scope, path, raw_query, headers, body
+    # c-ext attrs: http_method, scope, path, raw_query, header, body
 
     # method predicates
     # todo method simulation
@@ -17,13 +17,11 @@ module Nyara
       RUBY
     end
 
-    alias header headers
-
     # header delegates
     %w[content_length content_type referrer user_agent].each do |m|
       eval <<-RUBY
         def #{m}
-          headers["#{m.split('_').map(&:capitalize).join '-'}"]
+          header["#{m.split('_').map(&:capitalize).join '-'}"]
         end
       RUBY
     end
@@ -31,7 +29,7 @@ module Nyara
     # without port
     def host
       @host ||= begin
-        r = headers['Host']
+        r = header['Host']
         if r
           r.split(':', 2).first
         else
@@ -42,7 +40,7 @@ module Nyara
 
     def port
       @port ||= begin
-        r = headers['Host']
+        r = header['Host']
         if r
           r = r.split(':', 2).last
         end
@@ -51,15 +49,15 @@ module Nyara
     end
 
     def host_with_port
-      headers['Host']
+      header['Host']
     end
 
     def xhr?
-      headers["Requested-With"] == "XMLHttpRequest"
+      header["Requested-With"] == "XMLHttpRequest"
     end
 
-    def params
-      @params ||= begin
+    def param
+      @param ||= begin
         res = ParamHash.new
         if raw_query
           raw_query.split(/[&;] */n).each do |seg|
@@ -79,21 +77,12 @@ module Nyara
       end
     end
 
-    # rfc2109
-    def cookies
-      @cookies ||= begin
-        res = ParamHash.new
-        if data = headers['Cookie']
-          data.split(/[,;] */n).reverse_each do |seg|
-            Ext.parse_url_encoded_seg res, seg, false
-          end
-        end
-        res
-      end
+    def cookie
+      @cookie ||= Cookie.decode header
     end
 
     def session
-      @session ||= Session.decode cookies
+      @session ||= Session.decode cookie
     end
 
     # todo serialize the changed cookie

@@ -4,8 +4,7 @@
 typedef struct {
   http_parser hparser;
   multipart_parser* mparser;
-  VALUE headers;
-  VALUE params;
+  VALUE header;
   VALUE fiber;
   VALUE scope; // mapped prefix
   VALUE path;
@@ -51,7 +50,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
     if (query_i < len) {
       p->raw_query = rb_str_new(s + query_i, len - query_i);
     }
-    p->headers = rb_class_new_instance(0, NULL, nyara_header_hash_class);
+    p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
     return 0;
   } else {
     rb_funcall(p->self, id_not_found, 0);
@@ -91,7 +90,7 @@ static int on_header_value(http_parser* parser, const char* s, size_t len) {
   } else {
     nyara_headerlize(p->last_field);
     p->last_value = rb_str_new(s, len);
-    rb_hash_aset(p->headers, p->last_field, p->last_value);
+    rb_hash_aset(p->header, p->last_field, p->last_value);
     p->last_field = Qnil;
   }
   return 0;
@@ -119,8 +118,7 @@ static const http_parser_settings request_settings = {
 static void request_mark(void* pp) {
   Request* p = pp;
   if (p) {
-    rb_gc_mark_maybe(p->headers);
-    rb_gc_mark_maybe(p->params);
+    rb_gc_mark_maybe(p->header);
     rb_gc_mark_maybe(p->fiber);
     rb_gc_mark_maybe(p->scope);
     rb_gc_mark_maybe(p->path);
@@ -134,8 +132,7 @@ static VALUE request_alloc_func(VALUE klass) {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
   p->mparser = NULL;
-  p->headers = Qnil;
-  p->params = Qnil;
+  p->header = Qnil;
   p->fiber = Qnil;
   p->scope = Qnil;
   p->path = Qnil;
@@ -169,10 +166,10 @@ static VALUE request_http_method(VALUE self) {
   return rb_str_new2(http_method_str(p->hparser.method));
 }
 
-static VALUE request_headers(VALUE self) {
+static VALUE request_header(VALUE self) {
   Request* p;
   Data_Get_Struct(self, Request, p);
-  return p->headers;
+  return p->header;
 }
 
 static VALUE request_scope(VALUE self) {
@@ -202,7 +199,7 @@ void Init_request(VALUE nyara) {
   rb_define_singleton_method(request, "alloc", request_alloc, 2);
   rb_define_method(request, "receive_data", request_receive_data, 1);
   rb_define_method(request, "http_method", request_http_method, 0);
-  rb_define_method(request, "headers", request_headers, 0);
+  rb_define_method(request, "header", request_header, 0);
   rb_define_method(request, "scope", request_scope, 0);
   rb_define_method(request, "path", request_path, 0);
   rb_define_method(request, "raw_query", request_raw_query, 0);

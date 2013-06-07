@@ -104,15 +104,38 @@ module Nyara
       klass.extend ClassMethods
     end
 
-    def params
-      request.params
+    def header
+      request.header
     end
-    alias param params
+    alias headers header
 
-    def cookies
-      request.cookies
+    def param
+      request.param
     end
-    alias cookie cookies
+    alias params param
+
+    def cookie
+      request.cookie
+    end
+    alias cookies cookie
+
+    def set_cookie k, v=nil, opts
+      # todo default domain ?
+      opts = Hash[opts.map{|k,v| [k.to_sym,v]}]
+      Cookie.output_set_cookie response.extra_header, k, v, opts
+    end
+
+    def delete_cookie k
+      # todo domain ? path ?
+      set_cookie k, expires: Time.now, max_age: 0
+    end
+
+    def clear_cookie
+      cookie.each do |k, _|
+        delete_cookie k
+      end
+    end
+    alias clear_cookies clear_cookie
 
     def session
       request.session
