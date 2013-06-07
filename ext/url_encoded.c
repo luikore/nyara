@@ -93,14 +93,16 @@ static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) 
       if (nyara_rb_hash_has_key(output, key)) {
         output = rb_hash_aref(output, key);
         if (next_is_hash_key) {
-          if (TYPE(output != T_HASH)) {
+          if (TYPE(output) != T_HASH) {
+            kv_src = rb_funcall(kv_src, rb_intern("inspect"), 0);
             // note: StringValueCstr requires VALUE* as param, and can raise another error if there's nul in the string
             rb_raise(rb_eRuntimeError, 
               "error parsing param %.*s: segments[%ld] is not array index (expect to be empty)",
               (int)RSTRING_LEN(kv_src), RSTRING_PTR(kv_src), i);
           }
         } else {
-          if (TYPE(output != T_ARRAY)) {
+          if (TYPE(output) != T_ARRAY) {
+            kv_src = rb_funcall(kv_src, rb_intern("inspect"), 0);
             rb_raise(rb_eRuntimeError,
               "error parsing param %.*s: segments[%ld] is not hash key (expect to be non-empty)",
               (int)RSTRING_LEN(kv_src), RSTRING_PTR(kv_src), i);

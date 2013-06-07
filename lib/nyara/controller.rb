@@ -104,6 +104,20 @@ module Nyara
       klass.extend ClassMethods
     end
 
+    def params
+      request.params
+    end
+    alias param params
+
+    def cookies
+      request.cookies
+    end
+    alias cookie cookies
+
+    def session
+      request.session
+    end
+
     def status n
       response.status = n
     end

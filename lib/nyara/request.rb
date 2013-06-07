@@ -78,7 +78,6 @@ module Nyara
         res
       end
     end
-    alias param params
 
     # rfc2109
     def cookies
@@ -92,7 +91,6 @@ module Nyara
         res
       end
     end
-    alias cookie cookies
 
     def session
       @session ||= Session.decode cookies
