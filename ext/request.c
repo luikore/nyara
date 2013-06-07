@@ -4,11 +4,12 @@
 typedef struct {
   http_parser hparser;
   multipart_parser* mparser;
+  enum http_method method;
   VALUE header;
   VALUE fiber;
   VALUE scope; // mapped prefix
   VALUE path;
-  VALUE raw_query;
+  VALUE param;
   VALUE last_field;
   VALUE last_value;
   VALUE self;
@@ -19,6 +20,8 @@ typedef struct {
 
 static ID id_not_found;
 static VALUE response_class;
+static VALUE method_override_key;
+static VALUE nyara_http_methods;
 
 static VALUE fiber_func(VALUE _, VALUE args) {
   VALUE instance = rb_ary_pop(args);
@@ -27,14 +30,41 @@ static VALUE fiber_func(VALUE _, VALUE args) {
   return Qnil;
 }
 
-// XXX assume url is always sent as whole (tcp window is large!)
+static void _upcase_method(VALUE str) {
+  char* s = RSTRING_PTR(str);
+  long len = RSTRING_LEN(str);
+  for (long i = 0; i < len; i++) {
+    if (s[i] >= 'a' && s[i] <= 'z') {
+      s[i] = 'A' + (s[i] - 'a');
+    }
+  }
+}
+
+// fixme assume url is always sent as whole (tcp window is large!)
 static int on_url(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
+  p->method = parser->method;
 
   // matching raw path is bad idea, for example: %a0 and %A0 are different strings but same route
   p->path = rb_str_new2("");
   size_t query_i = nyara_parse_path(p->path, s, len);
-  volatile RouteResult result = nyara_lookup_route(parser->method, p->path);
+  p->param = rb_class_new_instance(0, NULL, nyara_param_hash_class);
+  if (query_i < len) {
+    nyara_parse_param(p->param, s + query_i, len - query_i);
+    // rewrite method if query contains _method=xxx
+    if (p->method == HTTP_POST) {
+      VALUE meth = rb_hash_aref(p->param, method_override_key);
+      if (TYPE(meth) == T_STRING) {
+        _upcase_method(meth);
+        VALUE meth_num = rb_hash_aref(nyara_http_methods, meth);
+        if (meth_num != Qnil) {
+          p->method = FIX2INT(meth_num);
+        }
+      }
+    }
+  }
+
+  volatile RouteResult result = nyara_lookup_route(p->method, p->path);
   if (RTEST(result.controller)) {
     {
       VALUE response_args[] = {rb_iv_get(p->self, "@signature")};
@@ -46,10 +76,6 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
     // result.args is on stack, no need to worry gc
     p->fiber = rb_fiber_new(fiber_func, result.args);
     p->scope = result.scope;
-
-    if (query_i < len) {
-      p->raw_query = rb_str_new(s + query_i, len - query_i);
-    }
     p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
     return 0;
   } else {
@@ -122,7 +148,7 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->fiber);
     rb_gc_mark_maybe(p->scope);
     rb_gc_mark_maybe(p->path);
-    rb_gc_mark_maybe(p->raw_query);
+    rb_gc_mark_maybe(p->param);
     rb_gc_mark_maybe(p->last_field);
     rb_gc_mark_maybe(p->last_value);
   }
@@ -136,7 +162,7 @@ static VALUE request_alloc_func(VALUE klass) {
   p->fiber = Qnil;
   p->scope = Qnil;
   p->path = Qnil;
-  p->raw_query = Qnil;
+  p->param = Qnil;
   p->last_field = Qnil;
   p->last_value = Qnil;
   p->self = Data_Wrap_Struct(klass, request_mark, xfree, p);
@@ -163,7 +189,7 @@ static VALUE request_receive_data(VALUE self, VALUE data) {
 static VALUE request_http_method(VALUE self) {
   Request* p;
   Data_Get_Struct(self, Request, p);
-  return rb_str_new2(http_method_str(p->hparser.method));
+  return rb_str_new2(http_method_str(p->method));
 }
 
 static VALUE request_header(VALUE self) {
@@ -184,14 +210,17 @@ static VALUE request_path(VALUE self) {
   return p->path;
 }
 
-static VALUE request_raw_query(VALUE self) {
+static VALUE request__param(VALUE self) {
   Request* p;
   Data_Get_Struct(self, Request, p);
-  return p->raw_query;
+  return p->param;
 }
 
 void Init_request(VALUE nyara) {
   id_not_found = rb_intern("not_found");
+  method_override_key = rb_str_new2("_method");
+  rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
+  nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
 
   // request
   VALUE request = rb_const_get(nyara, rb_intern("Request"));
@@ -202,7 +231,7 @@ void Init_request(VALUE nyara) {
   rb_define_method(request, "header", request_header, 0);
   rb_define_method(request, "scope", request_scope, 0);
   rb_define_method(request, "path", request_path, 0);
-  rb_define_method(request, "raw_query", request_raw_query, 0);
+  rb_define_method(request, "_param", request__param, 0);
 
   // response
   response_class = rb_define_class_under(nyara, "Response", rb_cObject);

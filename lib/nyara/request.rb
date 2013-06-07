@@ -5,7 +5,7 @@ module Nyara
   class Request
     # c-ext: self.alloc, receive_data
 
-    # c-ext attrs: http_method, scope, path, raw_query, header, body
+    # c-ext attrs: http_method, scope, path, _param, header, body
 
     # method predicates
     # todo method simulation
@@ -58,22 +58,14 @@ module Nyara
 
     def param
       @param ||= begin
-        res = ParamHash.new
-        if raw_query
-          raw_query.split(/[&;] */n).each do |seg|
-            Ext.parse_url_encoded_seg res, seg, true
-          end
-        end
         unless get?
           # todo validate content type of
           # application/x-www-form-urlencoded
           # multipart/form-data
           # todo wait for body
-          body.split(/[&;] */n).each do |seg|
-            Ext.parse_url_encoded_seg res, seg, true
-          end
+          Ext.parse_param _param, body
         end
-        res
+        _param
       end
     end
 

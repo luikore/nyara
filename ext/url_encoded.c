@@ -1,7 +1,7 @@
 // parse path / query / url-encoded body
 #include "nyara.h"
 
-static char parse_half_octet(char c) {
+static char _half_octet(char c) {
   // there's a faster way but not validating the range:
   //   #define hex2c(c) ((c | 32) % 39 - 9)
   if (c >= '0' && c <= '9') {
@@ -15,7 +15,7 @@ static char parse_half_octet(char c) {
   }
 }
 
-static size_t parse_url_seg(VALUE path, const char*s, size_t len, char stop_char) {
+static size_t _decode_url_seg(VALUE path, const char*s, size_t len, char stop_char) {
   const char* last_s = s;
   long last_len = 0;
 
@@ -33,12 +33,12 @@ static size_t parse_url_seg(VALUE path, const char*s, size_t len, char stop_char
         last_len++;
         continue;
       }
-      char r1 = parse_half_octet(s[i + 1]);
+      char r1 = _half_octet(s[i + 1]);
       if (r1 < 0) {
         last_len++;
         continue;
       }
-      char r2 = parse_half_octet(s[i + 2]);
+      char r2 = _half_octet(s[i + 2]);
       if (r2 < 0) {
         last_len++;
         continue;
@@ -69,11 +69,27 @@ static size_t parse_url_seg(VALUE path, const char*s, size_t len, char stop_char
 
 // return parsed len, s + return == start of query
 size_t nyara_parse_path(VALUE output, const char* s, size_t len) {
-  return parse_url_seg(output, s, len, '?');
+  return _decode_url_seg(output, s, len, '?');
+}
+
+static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
+  size_t parsed = nyara_parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
+  return ULONG2NUM(parsed);
+}
+
+static void _error(const char* msg, const char* s, long len, long segment_i) {
+  rb_raise(rb_eRuntimeError,
+    "error parsing \"%.*s\": segments[%ld] is %s",
+    (int)len, s, segment_i, msg);
+}
+
+static VALUE _new_child(long hash) {
+  return hash ? rb_class_new_instance(0, NULL, nyara_param_hash_class) : rb_ary_new();
 }
 
 // a, b, c = keys; h[a][b][c] = value
-static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) {
+// the last 2 args are for error report
+static void _aset_keys(VALUE output, VALUE keys, VALUE value, const char* kv_s, long kv_len) {
   VALUE* arr = RARRAY_PTR(keys);
   long len = RARRAY_LEN(keys);
   if (!len) {
@@ -94,27 +110,21 @@ static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) 
         output = rb_hash_aref(output, key);
         if (next_is_hash_key) {
           if (TYPE(output) != T_HASH) {
-            kv_src = rb_funcall(kv_src, rb_intern("inspect"), 0);
-            // note: StringValueCstr requires VALUE* as param, and can raise another error if there's nul in the string
-            rb_raise(rb_eRuntimeError, 
-              "error parsing param %.*s: segments[%ld] is not array index (expect to be empty)",
-              (int)RSTRING_LEN(kv_src), RSTRING_PTR(kv_src), i);
+            // note: StringValueCStr requires VALUE* as param, and can raise another error if there's nul in the string
+            _error("not array index (expect to be empty)", kv_s, kv_len, i);
           }
         } else {
           if (TYPE(output) != T_ARRAY) {
-            kv_src = rb_funcall(kv_src, rb_intern("inspect"), 0);
-            rb_raise(rb_eRuntimeError,
-              "error parsing param %.*s: segments[%ld] is not hash key (expect to be non-empty)",
-              (int)RSTRING_LEN(kv_src), RSTRING_PTR(kv_src), i);
+            _error("not hash key (expect to be non-empty)", kv_s, kv_len, i);
           }
         }
       } else {
-        volatile VALUE child = next_is_hash_key ? rb_class_new_instance(0, NULL, nyara_param_hash_class) : rb_ary_new();
+        volatile VALUE child = _new_child(next_is_hash_key);
         rb_hash_aset(output, key, child);
         output = child;
       }
     } else {
-      volatile VALUE child = next_is_hash_key ? rb_class_new_instance(0, NULL, nyara_param_hash_class) : rb_ary_new();
+      volatile VALUE child = _new_child(next_is_hash_key);
       rb_ary_push(output, child);
       output = child;
     }
@@ -130,17 +140,14 @@ static void hash_aset_keys(VALUE output, VALUE keys, VALUE value, VALUE kv_src) 
   }
 }
 
-static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nested_mode) {
-  // let ruby do the split job, it's too nasty in c
-  // (note if we parse_url_seg with '&' first, then there may be multiple '='s in one kv)
-
-  const char* s = RSTRING_PTR(kv);
-  long len = RSTRING_LEN(kv);
+static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int nested_mode) {
+  // (note if we _decode_url_seg with '&' first, then there may be multiple '='s in one kv)
+  const char* s = kv_s;
+  long len = kv_len;
   if (!len) {
-    return output;
+    return;
   }
 
-  int nested_mode = RTEST(v_nested_mode);
   volatile VALUE value = rb_str_new2("");
 
   // rule out the value part
@@ -149,7 +156,7 @@ static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE
     if (value_s) {
       value_s++;
       long value_len = s + len - value_s;
-      long parsed = parse_url_seg(value, value_s, value_len, '&');
+      long parsed = _decode_url_seg(value, value_s, value_len, '&');
       if (parsed != value_len) {
         rb_raise(rb_eArgError, "separator & in param segment");
       }
@@ -157,24 +164,24 @@ static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE
     }
     if (value_s == s) {
       rb_hash_aset(output, rb_str_new2(""), value);
-      return output;
+      return;
     }
   }
 
   volatile VALUE key = rb_str_new2("");
   if (nested_mode) {
     // todo fault-tolerant?
-    long parsed = parse_url_seg(key, s, len, '[');
+    long parsed = _decode_url_seg(key, s, len, '[');
     if (parsed == len) {
       rb_hash_aset(output, key, value);
-      return output;
+      return;
     }
     s += parsed;
     len -= parsed;
     volatile VALUE keys = rb_ary_new3(1, key);
     while (len) {
       key = rb_str_new2("");
-      parsed = parse_url_seg(key, s, len, ']');
+      parsed = _decode_url_seg(key, s, len, ']');
       rb_ary_push(keys, key);
       s += parsed;
       len -= parsed;
@@ -184,26 +191,55 @@ static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE
           len--;
         } else {
           rb_raise(rb_eRuntimeError, "malformed params: remaining chars in key but not starting with '['");
-          return output;
+          return;
         }
       }
     }
-    hash_aset_keys(output, keys, value, kv);
+    _aset_keys(output, keys, value, kv_s, kv_len);
   } else {
-    parse_url_seg(key, s, len, '=');
+    _decode_url_seg(key, s, len, '=');
     rb_hash_aset(output, key, value);
   }
 
+  return;
+}
+
+static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nested_mode) {
+  _url_encoded_seg(output, RSTRING_PTR(kv), RSTRING_LEN(kv), RTEST(v_nested_mode));
   return output;
 }
 
-static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
-  size_t parsed = nyara_parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
-  return ULONG2NUM(parsed);
+void nyara_parse_param(VALUE output, const char* s, size_t len) {
+  // split with /[&;] */
+  size_t last_i = 0;
+  size_t i = 0;
+  for (; i < len; i++) {
+    if (s[i] == '&' || s[i] == ';') {
+      // char* and len parse_seg
+      if (i > last_i) {
+        _url_encoded_seg(output, s + last_i, i - last_i, 1);
+      }
+      while(i + 1 < len && s[i + 1] == ' ') {
+        i++;
+      }
+      last_i = i + 1;
+    }
+  }
+  if (i > last_i) {
+    _url_encoded_seg(output, s + last_i, i - last_i, 1);
+  }
 }
+
+static VALUE ext_parse_param(VALUE self, VALUE output, VALUE s) {
+  nyara_parse_param(output, RSTRING_PTR(s), RSTRING_LEN(s));
+  return output;
+}
+
+// we don't parse cookie here, still needs an array so created objects are not reduced...
 
 void Init_url_encoded(VALUE ext) {
   rb_define_singleton_method(ext, "parse_url_encoded_seg", ext_parse_url_encoded_seg, 3);
+  rb_define_singleton_method(ext, "parse_param", ext_parse_param, 2);
   // for test
   rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);
 }

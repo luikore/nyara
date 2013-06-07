@@ -3,6 +3,7 @@
 #include <http_parser.h>
 #include "status_codes.inc"
 
+
 /* -- request & response class -- */
 void Init_request(VALUE nyara);
 
@@ -10,6 +11,7 @@ void Init_request(VALUE nyara);
 /* -- url encoded parse -- */
 void Init_url_encoded(VALUE ext);
 size_t nyara_parse_path(VALUE path, const char*s, size_t len);
+void nyara_parse_param(VALUE output, const char* s, size_t len);
 
 
 /* -- hashes -- */
