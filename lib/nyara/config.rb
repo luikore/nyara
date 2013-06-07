@@ -1,4 +1,5 @@
 module Nyara
+  # other options: session (see also Session)
   Config = ConfigHash.new
   class << Config
     def map prefix, controller
@@ -8,26 +9,30 @@ module Nyara
     def port n
       n = n.to_i
       assert n >= 0 && n <= 65535
-      Config[:port] = n
+      Config['port'] = n
     end
 
     def workers n
       n = n.to_i
       assert n > 0 && n < 1000
-      Config[:workers] = n
+      Config['workers'] = n
+    end
+
+    def env
+      self['env'].to_s
     end
 
     def development?
-      env = self[:env].to_s
-      env.empty? or env == 'development'
+      e = env
+      e.empty? or e == 'development'
     end
 
     def production?
-      self[:env].to_s == 'production'
+      env == 'production'
     end
 
     def test?
-      self[:env].to_s == 'test'
+      env == 'test'
     end
 
     alias set []=
@@ -49,5 +54,5 @@ def configure *xs, &blk
 end
 
 configure do
-  set :env, 'development'
+  set 'env', 'development'
 end

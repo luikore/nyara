@@ -94,6 +94,12 @@ module Nyara
     end
     alias cookie cookies
 
+    def session
+      @session ||= Session.decode cookies
+    end
+
+    # todo serialize the changed cookie
+
     def not_found
       puts "not found"
       send_data "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"

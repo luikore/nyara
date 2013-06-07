@@ -1,8 +1,10 @@
 # master require
 require "eventmachine"
-require "http/parser"
 require "fiber"
 require "cgi"
+require "openssl"
+require "json"
+require "base64"
 
 module Nyara
   class Request < EM::Connection; end
@@ -15,6 +17,7 @@ require_relative "config_hash"
 require_relative "controller"
 require_relative "request"
 require_relative "response"
+require_relative "session"
 require_relative "accepter"
 require_relative "config"
 require_relative "route"
