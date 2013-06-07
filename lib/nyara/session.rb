@@ -6,11 +6,12 @@ module Nyara
 
     CIPHER_BLOCK_SIZE = 256/8
 
-    # session is by default DSA + SHA384/SHA1 signed, sub config options are:
+    # session is by default DSA + SHA2/SHA1 signed, sub config options are:
     #
     # - name       (session entry name in cookie, default is 'spare_me_plz')
     # - key        (DSA private key string, in der or pem format, use random if not given)
     # - cipher_key (if exist, use aes-256-cbc to cipher the "sig&json", the first 256bit is sliced for iv)
+    #              (it's no need to set cipher_key if using https)
 
     # init from config
     def init
@@ -20,11 +21,11 @@ module Nyara
       if c['key']
         @dsa = OpenSSL::PKey::DSA.new c['key']
       else
-        @dsa = OpenSSL::PKey::DSA.generate 384
+        @dsa = OpenSSL::PKey::DSA.generate 256
       end
 
       # DSA can sign on any digest since 1.0.0
-      @dss = OpenSSL::VERSION >= '1.0.0' ? OpenSSL::Digest::SHA384 : OpenSSL::Digest::DSS1
+      @dss = OpenSSL::VERSION >= '1.0.0' ? OpenSSL::Digest::SHA256 : OpenSSL::Digest::DSS1
 
       @cipher_key = pad_256_bit c['cipher_key']
     end
@@ -73,18 +74,11 @@ module Nyara
 
     def decipher str
       str = Base64.urlsafe_decode64 str
-      return '' if str.bytesize % CIPHER_BLOCK_SIZE != 0
-
       iv = str.byteslice 0...CIPHER_BLOCK_SIZE
-      return '' if iv.bytesize < CIPHER_BLOCK_SIZE
-
       str = str.byteslice CIPHER_BLOCK_SIZE..-1
+      return '' if !str or str.empty?
       c = new_cipher false, iv
-      begin
-        c.update(str) << c.final
-      rescue OpenSSL::Cipher::CipherError
-        ''
-      end
+      c.update(str) << c.final rescue ''
     end
 
     def pad_256_bit s

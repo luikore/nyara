@@ -54,6 +54,13 @@ module Nyara
         r2 = Session.cipher message
         assert_not_equal r1, r2
       end
+
+      it "decipher returns blank str when message too short" do
+        r = Session.decipher Base64.urlsafe_encode64 'short one'
+        assert_empty r
+        r = Session.decipher Base64.urlsafe_encode64 's' * (256/8)
+        assert_empty r
+      end
     end
   end
 end
