@@ -27,8 +27,8 @@ static void set_nonblock(int fd) {
   }
 }
 
-static VALUE ext_send_data(VALUE self, VALUE vfd, VALUE data) {
-  int fd = FIX2INT(vfd);
+static VALUE ext_send_data(VALUE self, VALUE v_fd, VALUE data) {
+  int fd = FIX2INT(v_fd);
   char* buf = RSTRING_PTR(data);
   long len = RSTRING_LEN(data);
 
@@ -54,10 +54,15 @@ static VALUE ext_add(VALUE self, VALUE vfd) {
   return Qnil;
 }
 
-static VALUE ext_close(VALUE self, VALUE vfd) {
-  int fd = FIX2INT(vfd);
+void nyara_detach_fd(int fd) {
   DEL_E(fd, FILTER_READ);
   close(fd);
+}
+
+static VALUE ext_close(VALUE self, VALUE vfd) {
+  int fd = FIX2INT(vfd);
+  nyara_detach_fd(fd);
+  nyara_detach_request(fd);
   return Qnil;
 }
 
@@ -115,8 +120,7 @@ static VALUE ext_init_queue(VALUE self) {
   return Qnil;
 }
 
-static VALUE ext_run_queue(VALUE self, VALUE v_fd, VALUE proc) {
-  handler = proc;
+static VALUE ext_run_queue(VALUE self, VALUE v_fd) {
   int fd = FIX2INT(v_fd);
   set_nonblock(fd);
   ADD_E(fd, FILTER_READ, Qtrue);
@@ -141,6 +145,6 @@ void Init_event(VALUE ext) {
   rb_define_singleton_method(ext, "close", ext_close, 1);
   // rb_define_singleton_method(c, "add", add_q, 2);
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
-  rb_define_singleton_method(ext, "run_queue", ext_run_queue, 2);
+  rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
   rb_define_singleton_method(ext, "trap", ext_trap, 2);
 }

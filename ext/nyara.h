@@ -4,6 +4,11 @@
 #include "status_codes.inc"
 
 
+/* -- event -- */
+void Init_event(VALUE ext);
+void nyara_detach_fd(int fd);
+
+
 /* -- request & response class -- */
 void Init_request(VALUE nyara);
 void nyara_handle_request(int fd);

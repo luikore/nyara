@@ -3,8 +3,6 @@
 module Nyara
   # request and handler
   class Request
-    # c-ext: self.alloc, receive_data
-
     # c-ext attrs: http_method, scope, path, _param, header, body
 
     # method predicates

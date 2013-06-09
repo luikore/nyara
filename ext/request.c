@@ -1,5 +1,6 @@
 #include "nyara.h"
 #include <multipart_parser.h>
+#include <errno.h>
 
 typedef struct {
   http_parser hparser;
@@ -13,15 +14,21 @@ typedef struct {
   VALUE last_field;
   VALUE last_value;
   VALUE self;
+  int fd;
 } Request;
 
 // typedef int (*http_data_cb) (http_parser*, const char *at, size_t length);
 // typedef int (*http_cb) (http_parser*);
 
 static ID id_not_found;
+static VALUE request_class;
 static VALUE response_class;
 static VALUE method_override_key;
 static VALUE nyara_http_methods;
+
+static VALUE fd_request_map;
+#define MAX_RECEIVE_DATA 65536
+static char received_data[MAX_RECEIVE_DATA];
 
 static VALUE fiber_func(VALUE _, VALUE args) {
   VALUE instance = rb_ary_pop(args);
@@ -67,8 +74,8 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
   volatile RouteResult result = nyara_lookup_route(p->method, p->path);
   if (RTEST(result.controller)) {
     {
-      VALUE response_args[] = {rb_iv_get(p->self, "@signature")};
-      volatile VALUE response = rb_class_new_instance(1, response_args, response_class);
+      VALUE response_arg = INT2FIX(p->fd);
+      volatile VALUE response = rb_class_new_instance(1, &response_arg, response_class);
       VALUE instance_args[] = {p->self, response};
       VALUE instance = rb_class_new_instance(2, instance_args, result.controller);
       rb_ary_push(result.args, instance);
@@ -154,7 +161,7 @@ static void request_mark(void* pp) {
   }
 }
 
-static VALUE request_alloc_func(VALUE klass) {
+static Request* alloc_request() {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
   p->mparser = NULL;
@@ -165,25 +172,45 @@ static VALUE request_alloc_func(VALUE klass) {
   p->param = Qnil;
   p->last_field = Qnil;
   p->last_value = Qnil;
-  p->self = Data_Wrap_Struct(klass, request_mark, xfree, p);
-  return p->self;
+  p->fd = 0;
+  p->self = Data_Wrap_Struct(request_class, request_mark, xfree, p);
+  return p;
 }
 
-// hack to get around the stupid EM::Connection.new
-static VALUE request_alloc(VALUE klass, VALUE signature, VALUE io) {
-  VALUE self = request_alloc_func(klass);
-  rb_iv_set(self, "@signature", signature);
-  rb_iv_set(self, "@io", io);
-  return self;
+static VALUE request_alloc_func(VALUE klass) {
+  return alloc_request()->self;
 }
 
-static VALUE request_receive_data(VALUE self, VALUE data) {
+void nyara_detach_request(int fd) {
+  rb_hash_delete(fd_request_map, INT2FIX(fd));
+}
+
+void nyara_handle_request(int fd) {
   Request* p;
-  Data_Get_Struct(self, Request, p);
-  char* s = RSTRING_PTR(data);
-  long len = RSTRING_LEN(data);
-  http_parser_execute(&(p->hparser), &request_settings, s, len);
-  return Qnil;
+
+  {
+    VALUE v_fd = INT2FIX(fd);
+    VALUE request = rb_hash_aref(fd_request_map, v_fd);
+    if (request == Qnil) {
+      p = alloc_request();
+      p->fd = fd;
+      rb_hash_aset(fd_request_map, v_fd, p->self);
+    } else {
+      Data_Get_Struct(request, Request, p);
+    }
+  }
+
+  long len = read(fd, received_data, MAX_RECEIVE_DATA);
+  if (len < 0) {
+    if (errno != EAGAIN) {
+      // todo log the bug
+      nyara_detach_fd(fd);
+      nyara_detach_request(fd);
+    }
+  } else {
+    // note: when len == 0, means eof reached, that also informs http_parser the eof
+    http_parser_execute(&(p->hparser), &request_settings, received_data, len);
+  }
 }
 
 static VALUE request_http_method(VALUE self) {
@@ -221,17 +248,17 @@ void Init_request(VALUE nyara) {
   method_override_key = rb_str_new2("_method");
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
   nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
+  fd_request_map = rb_hash_new();
+  rb_gc_register_mark_object(fd_request_map);
 
   // request
-  VALUE request = rb_const_get(nyara, rb_intern("Request"));
-  rb_define_alloc_func(request, request_alloc_func);
-  rb_define_singleton_method(request, "alloc", request_alloc, 2);
-  rb_define_method(request, "receive_data", request_receive_data, 1);
-  rb_define_method(request, "http_method", request_http_method, 0);
-  rb_define_method(request, "header", request_header, 0);
-  rb_define_method(request, "scope", request_scope, 0);
-  rb_define_method(request, "path", request_path, 0);
-  rb_define_method(request, "_param", request__param, 0);
+  request_class = rb_define_class_under(nyara, "Request", rb_cObject);
+  rb_define_alloc_func(request_class, request_alloc_func);
+  rb_define_method(request_class, "http_method", request_http_method, 0);
+  rb_define_method(request_class, "header", request_header, 0);
+  rb_define_method(request_class, "scope", request_scope, 0);
+  rb_define_method(request_class, "path", request_path, 0);
+  rb_define_method(request_class, "_param", request__param, 0);
 
   // response
   response_class = rb_define_class_under(nyara, "Response", rb_cObject);

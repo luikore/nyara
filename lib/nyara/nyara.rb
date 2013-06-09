@@ -4,6 +4,7 @@ require "cgi"
 require "openssl"
 require "json"
 require "base64"
+require "socket"
 
 require_relative "../../ext/nyara"
 require_relative "param_hash"
@@ -14,7 +15,6 @@ require_relative "request"
 require_relative "response"
 require_relative "cookie"
 require_relative "session"
-require_relative "accepter"
 require_relative "config"
 require_relative "route"
 require_relative "route_entry"
@@ -40,27 +40,39 @@ module Nyara
       port = Config[:port] || 3000
       workers = Config[:workers] || 3
 
+
       puts "starting #{Config[:env]} server at 127.0.0.1:#{port}"
       case Config[:env].to_s
+
       when 'production'
         server = TCPServer.new '127.0.0.1', port
         server.listen 1000
+        trap :INT do
+          @workers.each do |w|
+            Process.kill :KILL, w
+          end
+        end
         GC.start
         # todo cpu count
-        workers.times do
+        @workers = workers.times.map do
           fork {
-            EM.run do
-              EM.watch(server, Accepter).notify_readable = true
-            end
+            Ext.init_queue
+            Ext.run_queue server.fileno
           }
         end
         Process.waitall
+
       when 'test'
         # don't
+
       else
-        EM.run do
-          EM.start_server '127.0.0.1', port, Request
+        trap :INT do
+          exit!
         end
+        server = TCPServer.new '127.0.0.1', port
+        server.listen 1000
+        Ext.init_queue
+        Ext.run_queue server.fileno
       end
     end
   end

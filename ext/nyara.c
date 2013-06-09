@@ -1,20 +1,22 @@
 #include "nyara.h"
 #include <ruby/io.h>
 #include <sys/socket.h>
+#include <sys/resource.h>
 
-static VALUE accepter_try_accept(VALUE self, VALUE io) {
-  rb_io_t *fptr;
-  GetOpenFile(io, fptr);
-  int fd = fptr->fd;
-  int client_fd = accept(fd, NULL, NULL);
-  if (client_fd < 0) {
-    // todo handle fd overflow
-    return Qnil;
+static void set_fd_limit(int nofiles) {
+  struct rlimit rlim;
+  getrlimit (RLIMIT_NOFILE, &rlim);
+  if (nofiles >= 0) {
+    rlim.rlim_cur = nofiles;
+    if ((unsigned int)nofiles > rlim.rlim_max)
+      rlim.rlim_max = nofiles;
+    setrlimit (RLIMIT_NOFILE, &rlim);
   }
-  return INT2FIX(client_fd);
 }
 
 void Init_nyara() {
+  set_fd_limit(20000);
+
   VALUE nyara = rb_define_module("Nyara");
 
   // utils: hashes
@@ -46,13 +48,10 @@ void Init_nyara() {
 
   // request
   Init_request(nyara);
-  
-  // accepter
-  VALUE accepter = rb_const_get(nyara, rb_intern("Accepter"));
-  rb_define_method(accepter, "try_accept", accepter_try_accept, 1);
 
   // ext & misc
   VALUE ext = rb_define_module_under(nyara, "Ext");
+  Init_event(ext);
   Init_route(nyara, ext);
   Init_url_encoded(ext);
 }
