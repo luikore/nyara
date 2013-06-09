@@ -12,7 +12,6 @@ void nyara_detach_fd(int fd);
 /* -- request & response class -- */
 void Init_request(VALUE nyara);
 void nyara_handle_request(int fd);
-void nyara_detach_request(int fd);
 
 
 /* -- url encoded parse -- */

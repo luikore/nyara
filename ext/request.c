@@ -74,8 +74,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
   volatile RouteResult result = nyara_lookup_route(p->method, p->path);
   if (RTEST(result.controller)) {
     {
-      VALUE response_arg = INT2FIX(p->fd);
-      volatile VALUE response = rb_class_new_instance(1, &response_arg, response_class);
+      volatile VALUE response = rb_class_new_instance(1, &p->self, response_class);
       VALUE instance_args[] = {p->self, response};
       VALUE instance = rb_class_new_instance(2, instance_args, result.controller);
       rb_ary_push(result.args, instance);
@@ -181,8 +180,13 @@ static VALUE request_alloc_func(VALUE klass) {
   return alloc_request()->self;
 }
 
-void nyara_detach_request(int fd) {
-  rb_hash_delete(fd_request_map, INT2FIX(fd));
+static VALUE request_close(VALUE self) {
+  Request* p;
+  Data_Get_Struct(self, Request, p);
+  nyara_detach_fd(p->fd);
+  rb_hash_delete(fd_request_map, INT2FIX(p->fd));
+  close(p->fd);
+  return self;
 }
 
 void nyara_handle_request(int fd) {
@@ -204,8 +208,7 @@ void nyara_handle_request(int fd) {
   if (len < 0) {
     if (errno != EAGAIN) {
       // todo log the bug
-      nyara_detach_fd(fd);
-      nyara_detach_request(fd);
+      request_close(p->self);
     }
   } else {
     // note: when len == 0, means eof reached, that also informs http_parser the eof
@@ -243,6 +246,28 @@ static VALUE request__param(VALUE self) {
   return p->param;
 }
 
+static VALUE request_send_data(VALUE self, VALUE data) {
+  Request* p;
+  Data_Get_Struct(self, Request, p);
+  char* buf = RSTRING_PTR(data);
+  long len = RSTRING_LEN(data);
+
+  while(len) {
+    long written = write(p->fd, buf, len);
+    if (written == 0)
+      return Qnil;
+    if (written == -1) {
+      if (errno == EWOULDBLOCK) {
+        // todo enqueue data
+      }
+      return Qnil;
+    }
+    buf += written;
+    len -= written;
+  }
+  return Qnil;
+}
+
 void Init_request(VALUE nyara) {
   id_not_found = rb_intern("not_found");
   method_override_key = rb_str_new2("_method");
@@ -259,6 +284,8 @@ void Init_request(VALUE nyara) {
   rb_define_method(request_class, "scope", request_scope, 0);
   rb_define_method(request_class, "path", request_path, 0);
   rb_define_method(request_class, "_param", request__param, 0);
+  rb_define_method(request_class, "close", request_close, 0);
+  rb_define_method(request_class, "send_data", request_send_data, 1);
 
   // response
   response_class = rb_define_class_under(nyara, "Response", rb_cObject);

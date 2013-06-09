@@ -1,17 +1,17 @@
 module Nyara
   class Response
-    def initialize fd
+    def initialize request
       @status = 200
       @header = HeaderHash.new
       @header._aset 'Connection', 'close'
       @header._aset 'Content-Type', 'text/plain; charset=UTF-8'
       @extra_header = []
-      @fd = fd
+      @request = request
     end
     attr_reader :status, :header, :extra_header
 
     def send_data data
-      Ext.send_data @fd, data.to_s
+      @request.send_data data.to_s
     end
 
     def render_header
@@ -20,11 +20,7 @@ module Nyara
         data << "#{k}: #{v}\r\n"
       end
       data << "\r\n"
-      Ext.send_data @fd, data.join
-    end
-
-    def close
-      Ext.close @fd
+      @request.send_data data.join
     end
   end
 end

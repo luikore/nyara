@@ -158,8 +158,8 @@ module Nyara
       r = response
       r.header['Content-Length'] = str.bytesize
       r.render_header
-      r.send_data str
-      r.close
+      request.send_data str
+      request.close
     end
   end
 end
