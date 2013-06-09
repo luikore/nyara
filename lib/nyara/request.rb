@@ -80,7 +80,7 @@ module Nyara
     def not_found
       puts "not found"
       send_data "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
-      close_connection_after_writing
+      close
     end
   end
 end

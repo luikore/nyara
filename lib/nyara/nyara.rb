@@ -23,14 +23,6 @@ module Nyara
   HTTP_STATUS_FIRST_LINES = Hash[HTTP_STATUS_CODES.map{|k,v|[k, "HTTP/1.1 #{k} #{v}\r\n".freeze]}].freeze
 
   class << self
-    def trap sig, &blk
-      raise ArgumentError, 'need a block' unless blk
-      sig = sig.to_s if sig.is_a?(Symbol)
-      sig = Signal.list[sig] if sig.is_a?(String)
-      raise ArgumentError, 'signal not supported' unless Signal.signame(sig)
-      Ext.trap sig, blk
-    end
-
     def config
       raise ArgumentError, 'block not accepted, did you mean Nyara::Config.config?' if block_given?
       Config
@@ -66,13 +58,13 @@ module Nyara
         # don't
 
       else
-        trap :INT do
-          exit!
+        t = Thread.new do
+          server = TCPServer.new '127.0.0.1', port
+          server.listen 1000
+          Ext.init_queue
+          Ext.run_queue server.fileno
         end
-        server = TCPServer.new '127.0.0.1', port
-        server.listen 1000
-        Ext.init_queue
-        Ext.run_queue server.fileno
+        t.join
       end
     end
   end

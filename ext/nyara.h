@@ -6,7 +6,6 @@
 
 /* -- event -- */
 void Init_event(VALUE ext);
-void nyara_detach_fd(int fd);
 
 
 /* -- request & response class -- */

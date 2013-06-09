@@ -160,6 +160,16 @@ static void request_mark(void* pp) {
   }
 }
 
+static void request_free(void* pp) {
+  Request* p = pp;
+  if (p) {
+    if (p->fd) {
+      close(p->fd);
+    }
+    xfree(p);
+  }
+}
+
 static Request* alloc_request() {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
@@ -172,7 +182,7 @@ static Request* alloc_request() {
   p->last_field = Qnil;
   p->last_value = Qnil;
   p->fd = 0;
-  p->self = Data_Wrap_Struct(request_class, request_mark, xfree, p);
+  p->self = Data_Wrap_Struct(request_class, request_mark, request_free, p);
   return p;
 }
 
@@ -183,9 +193,10 @@ static VALUE request_alloc_func(VALUE klass) {
 static VALUE request_close(VALUE self) {
   Request* p;
   Data_Get_Struct(self, Request, p);
-  nyara_detach_fd(p->fd);
+  // NOTE: upon closed (when no dupes), kqueue/epoll removes the fd from queue
   rb_hash_delete(fd_request_map, INT2FIX(p->fd));
   close(p->fd);
+  p->fd = 0;
   return self;
 }
 
@@ -249,6 +260,10 @@ static VALUE request__param(VALUE self) {
 static VALUE request_send_data(VALUE self, VALUE data) {
   Request* p;
   Data_Get_Struct(self, Request, p);
+  if (!p->fd) {
+    rb_raise(rb_eRuntimeError, "writing to already closed fd");
+  }
+
   char* buf = RSTRING_PTR(data);
   long len = RSTRING_LEN(data);
 
