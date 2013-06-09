@@ -1,5 +1,6 @@
 require "mkmf"
 
+# todo pass CC ?
 def build_prereq
   puts "building multipart-parser-c"
   dir = File.dirname __FILE__
@@ -11,7 +12,7 @@ def build_prereq
   puts "building http-parser"
   http_parser_dir = File.join dir, "http-parser"
   Dir.chdir http_parser_dir do
-    system "make libhttp_parser.o"
+    system "make", "libhttp_parser.o"
   end
 
   flags = " -I#{multipart_dir.shellescape} -I#{http_parser_dir.shellescape}"
@@ -25,8 +26,7 @@ def tweak_cflags
   mf_conf['CXXFLAGS'] << ' -stdlib=libc++ -std=c++11'
 
   $CFLAGS << ' $(xflags)'
-  puts 'To add extra CFLAGS:'
-  puts "  make xflags='-DNDEBUG -O0'"
+  puts "To add extra CFLAGS: make xflags='-DNDEBUG -O0'"
 end
 
 def modify_makefile
@@ -42,6 +42,11 @@ def modify_makefile
     f.puts makefile
   end
 end
+
+have_kqueue = (have_header("sys/event.h") and have_header("sys/queue.h"))
+have_epoll = have_func('epoll_create', 'sys/epoll.h')
+abort('no kqueue nor epoll') if !have_kqueue and !have_epoll
+$defs << "-D#{have_kqueue ? 'HAVE_KQUEUE' : 'HAVE_EPOLL'}"
 
 build_prereq
 tweak_cflags

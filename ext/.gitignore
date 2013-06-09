@@ -4,3 +4,4 @@ Makefile
 *.bundle
 *.so
 *.dll
+mkmf.log
