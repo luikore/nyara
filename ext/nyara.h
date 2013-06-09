@@ -3,6 +3,10 @@
 #include <http_parser.h>
 #include "status_codes.inc"
 
+#ifdef DEBUG
+#undef NDEBUG
+#endif
+
 
 /* -- event -- */
 void Init_event(VALUE ext);
