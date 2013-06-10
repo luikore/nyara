@@ -25,11 +25,12 @@ def tweak_cflags
   if mf_conf['CC'] =~ /clang/
     # enable c++11. this can not be installed on $CPPFLAGS, wtf??
     mf_conf['CXXFLAGS'] << ' -stdlib=libc++ -std=c++11'
+    $CFLAGS << ' $(xflags)'
   else
     mf_conf['CXXFLAGS'] << ' -std=c++11'
+    $CFLAGS << ' -fPIC -std=c99 -wdeclaration-after-statement $(xflags)'
   end
 
-  $CFLAGS << ' -std=c99 -wdeclaration-after-statement $(xflags)'
   $CPPFLAGS << ' $(xflags)'
   puts "To enable debug: make xflags='-DDEBUG -O0'"
 end
