@@ -1,6 +1,5 @@
 // parse path / query / url-encoded body
 #include "nyara.h"
-#include <string.h>
 
 static char _half_octet(char c) {
   // there's a faster way but not validating the range:
@@ -141,6 +140,15 @@ static void _aset_keys(VALUE output, VALUE keys, VALUE value, const char* kv_s, 
   }
 }
 
+static const char* _strnchr(const char* s, long len, char c) {
+  for (long i = 0; i < len; i++) {
+    if (s[i] == c) {
+      return s + i;
+    }
+  }
+  return NULL;
+}
+
 static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int nested_mode) {
   // (note if we _decode_url_seg with '&' first, then there may be multiple '='s in one kv)
   const char* s = kv_s;
@@ -153,7 +161,8 @@ static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int ne
 
   // rule out the value part
   {
-    const char* value_s = strnstr(s, "=", len);
+    // strnstr is not available on linux :(
+    const char* value_s = _strnchr(s, len, '=');
     if (value_s) {
       value_s++;
       long value_len = s + len - value_s;
@@ -163,6 +172,7 @@ static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int ne
       }
       len = value_s - s - 1;
     }
+    // starts with '='
     if (value_s == s) {
       rb_hash_aset(output, rb_str_new2(""), value);
       return;
