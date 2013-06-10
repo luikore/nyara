@@ -46,11 +46,8 @@ void Init_nyara() {
 # undef STATUS_DESC
   OBJ_FREEZE(status_map);
 
-  // request
-  Init_request(nyara);
-
-  // ext & misc
   VALUE ext = rb_define_module_under(nyara, "Ext");
+  Init_request(nyara, ext);
   Init_event(ext);
   Init_route(nyara, ext);
   Init_url_encoded(ext);

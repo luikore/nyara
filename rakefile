@@ -1,19 +1,16 @@
-desc "collect line stat"
-task :lines do
-  c = 0
-  Dir.glob('{**/*.rb,ext/*.{c,cc,h}}') do |f|
-    c += (File.read(f).count "\n")
-  end
-  puts "#{c} lines"
-end
+require "rake"
+
+Dir.chdir __dir__
 
 status_file = "ext/inc/status_codes.inc"
+version_file = "ext/inc/version.inc"
 
 desc "code generate"
-task :gen => [status_file]
+task :gen => [status_file, version_file]
 
-desc "generate http status code"
+desc "generate #{status_file}"
 file status_file do
+  puts "generating: #{status_file}"
   require "nokogiri"
   require "open-uri"
   f = File.open status_file, 'w'
@@ -26,4 +23,69 @@ file status_file do
   end
   f.puts "// end define"
   f.close
+end
+
+desc "generate #{version_file}"
+file version_file => 'nyara.gemspec' do
+  puts "generating: #{version_file}"
+  lines = File.readlines('nyara.gemspec')
+  version = nil
+  lines.each do |line|
+    if line =~ /s\.version =/
+      version = line[/\d+(\.\d+)*(\.pre)?/]
+      break
+    end
+  end
+  abort 'version not found' unless version
+  File.open version_file, 'w' do |f|
+    f.puts %Q{#define NYARA_VERSION "#{version}"}
+  end
+end
+
+desc "build ext"
+task :build do
+  Dir.chdir 'ext' do
+    sh 'make'
+  end
+end
+
+desc "test"
+task :test => :build do
+  sh 'rspec', '-c'
+end
+
+desc "build and test"
+task :default => :test
+
+desc "build and install gem"
+task :gem do
+  sh 'rm', '-f', '*.gem'
+  sh 'gem', 'build', 'nyara.gemspec'
+  gem_package = Dir.glob('*.gem').first
+  sh 'gem', 'install', '--no-rdoc', '--no-ri', gem_package
+end
+
+desc "clean"
+task :clean do
+  sh 'rm', '-f', '*.gem'
+  Dir.chdir 'ext' do
+    sh 'make', 'clean'
+  end
+end
+
+# -- utils --
+
+desc "collect line stat"
+task :lines do
+  c = 0
+  Dir.glob('{**/*.rb,ext/*.{c,cc,h}}') do |f|
+    c += (File.read(f).count "\n")
+  end
+  puts "#{c} lines"
+end
+
+desc "list Nyara::Ext methods"
+task :list_ext do
+  require_relative "lib/nyara/nyara"
+  puts Nyara::Ext.methods - Module.methods
 end

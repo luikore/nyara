@@ -13,7 +13,7 @@ void Init_event(VALUE ext);
 
 
 /* -- request & response class -- */
-void Init_request(VALUE nyara);
+void Init_request(VALUE nyara, VALUE ext);
 void nyara_handle_request(int fd);
 
 

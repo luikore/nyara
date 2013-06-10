@@ -173,7 +173,7 @@ static void request_free(void* pp) {
   }
 }
 
-static Request* alloc_request() {
+static Request* request_alloc() {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
   p->mparser = NULL;
@@ -190,7 +190,7 @@ static Request* alloc_request() {
 }
 
 static VALUE request_alloc_func(VALUE klass) {
-  return alloc_request()->self;
+  return request_alloc()->self;
 }
 
 static VALUE request_close(VALUE self) {
@@ -210,7 +210,7 @@ void nyara_handle_request(int fd) {
     VALUE v_fd = INT2FIX(fd);
     VALUE request = rb_hash_aref(fd_request_map, v_fd);
     if (request == Qnil) {
-      p = alloc_request();
+      p = request_alloc();
       p->fd = fd;
       rb_hash_aset(fd_request_map, v_fd, p->self);
     } else {
@@ -228,6 +228,12 @@ void nyara_handle_request(int fd) {
     // note: when len == 0, means eof reached, that also informs http_parser the eof
     http_parser_execute(&(p->hparser), &request_settings, received_data, len);
   }
+}
+
+// for test
+static VALUE ext_handle_request(VALUE v_fd) {
+  nyara_handle_request(FIX2INT(v_fd));
+  return Qnil;
 }
 
 static VALUE request_http_method(VALUE self) {
@@ -286,7 +292,7 @@ static VALUE request_send_data(VALUE self, VALUE data) {
   return Qnil;
 }
 
-void Init_request(VALUE nyara) {
+void Init_request(VALUE nyara, VALUE ext) {
   id_not_found = rb_intern("not_found");
   method_override_key = rb_str_new2("_method");
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
@@ -307,4 +313,7 @@ void Init_request(VALUE nyara) {
 
   // response
   response_class = rb_define_class_under(nyara, "Response", rb_cObject);
+
+  // ext
+  rb_define_singleton_method(ext, "handle_request", ext_handle_request, 1);
 }
