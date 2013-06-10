@@ -1,18 +1,22 @@
 #pragma once
 
 #include <sys/types.h>
-#include <sys/event.h>
 #include <sys/time.h>
+#ifdef HAVE_SYS_EVENT_H
+# include <sys/event.h>
+#else
+# include <sys/queue.h>
+#endif
 
-static void loop_body(int fd, VALUE udata);
+static void loop_body(int fd, int etype);
 
 #define MAX_E 1024
 static int qfd;
-static struct kevent kevents[MAX_E];
+static struct kevent qevents[MAX_E];
 
-static void ADD_E(int fd, VALUE udata) {
+static void ADD_E(int fd, uint64_t etype) {
   struct kevent e;
-  EV_SET(&e, fd, EVFILT_READ, EV_ADD, 0, 0, (void*)udata);
+  EV_SET(&e, fd, EVFILT_READ, EV_ADD, 0, 0, (void*)etype);
   // todo timeout
 # ifdef NDEBUG
   kevent(qfd, &e, 1, NULL, 0, NULL);
@@ -50,18 +54,18 @@ static void LOOP_E() {
   struct timespec ts = {0, 1000 * 1000 * 100};
   while (1) {
     // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
-    int sz = kevent(qfd, NULL, 0, kevents, MAX_E, &ts);
+    int sz = kevent(qfd, NULL, 0, qevents, MAX_E, &ts);
 
     for (int i = 0; i < sz; i++) {
-      switch (kevents[i].filter) {
+      switch (qevents[i].filter) {
         case EVFILT_READ: {
-          int fd = (int)kevents[i].ident;
+          int fd = (int)qevents[i].ident;
           // EV_EOF is set if the read side of the socket is shutdown
           // the event can keep flipping back to consume cpu if we don't remove it
-          if ((kevents[i].flags & EV_EOF)) {
+          if ((qevents[i].flags & EV_EOF)) {
             DEL_E(fd);
           } else {
-            loop_body(fd, (VALUE)kevents[i].udata);
+            loop_body(fd, (int)qevents[i].udata);
           }
           break;
         }

@@ -47,7 +47,7 @@ end
 have_kqueue = (have_header("sys/event.h") and have_header("sys/queue.h"))
 have_epoll = have_func('epoll_create', 'sys/epoll.h')
 abort('no kqueue nor epoll') if !have_kqueue and !have_epoll
-$defs << "-DNDEBUG -D#{have_kqueue ? 'HAVE_KQUEUE' : 'HAVE_EPOLL'}"
+$defs << "-DNDEBUG -D#{have_epoll ? 'HAVE_EPOLL' : 'HAVE_KQUEUE'}"
 
 build_prereq
 tweak_cflags

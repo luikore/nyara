@@ -272,7 +272,7 @@ static VALUE request_send_data(VALUE self, VALUE data) {
     if (written == 0)
       return Qnil;
     if (written == -1) {
-      if (errno == EWOULDBLOCK) {
+      if (errno == EWOULDBLOCK || errno == EAGAIN) {
         // todo enqueue data
       }
       return Qnil;
