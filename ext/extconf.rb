@@ -22,10 +22,14 @@ end
 
 def tweak_cflags
   mf_conf = RbConfig::MAKEFILE_CONFIG
-  # enable c++11. this can not be installed on $CPPFLAGS, wtf??
-  mf_conf['CXXFLAGS'] << ' -stdlib=libc++ -std=c++11'
+  if mf_conf['CC'] =~ /clang/
+    # enable c++11. this can not be installed on $CPPFLAGS, wtf??
+    mf_conf['CXXFLAGS'] << ' -stdlib=libc++ -std=c++11'
+  else
+    mf_conf['CXXFLAGS'] << ' -std=c++11'
+  end
 
-  $CFLAGS << ' $(xflags)'
+  $CFLAGS << ' -std=c99 -wdeclaration-after-statement $(xflags)'
   $CPPFLAGS << ' $(xflags)'
   puts "To enable debug: make xflags='-DDEBUG -O0'"
 end

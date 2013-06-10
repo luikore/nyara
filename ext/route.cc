@@ -112,18 +112,17 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
            ONIG_OPTION_NONE, ONIG_ENCODING_ASCII, ONIG_SYNTAX_RUBY, &err_info);
 
   std::vector<ID> _conv;
-  RouteEntry e = {
-    .is_sub = is_sub,
-    .prefix = prefix,
-    .prefix_len = prefix_len,
-    .suffix_re = suffix_re,
-    .suffix = suffix,
-    .suffix_len = suffix_len,
-    .controller = rb_iv_get(v_e, "@controller"),
-    .id = rb_iv_get(v_e, "@id"),
-    .conv = _conv,
-    .scope = rb_iv_get(v_e, "@scope")
-  };
+  RouteEntry e;
+  e.is_sub = is_sub;
+  e.prefix = prefix;
+  e.prefix_len = prefix_len;
+  e.suffix_re = suffix_re;
+  e.suffix = suffix;
+  e.suffix_len = suffix_len;
+  e.controller = rb_iv_get(v_e, "@controller");
+  e.id = rb_iv_get(v_e, "@id");
+  e.conv = _conv;
+  e.scope = rb_iv_get(v_e, "@scope");
 
   // conv
   VALUE v_conv = rb_iv_get(v_e, "@conv");
