@@ -6,9 +6,7 @@ module Nyara
     def decode header
       res = ParamHash.new
       if data = header['Cookie']
-        data.split(/[,;] */n).reverse_each do |seg|
-          Ext.parse_url_encoded_seg res, seg, false
-        end
+        Ext.parse_cookie res, data
       end
       res
     end

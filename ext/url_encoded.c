@@ -252,8 +252,8 @@ static VALUE ext_parse_param(VALUE self, VALUE output, VALUE s) {
   return output;
 }
 
-// trim tailing space
 static VALUE _cookie_seg_str_new(const char* s, long len) {
+  // trim tailing space
   for (; len > 0; len--) {
     if (s[len - 1] != ' ') {
       break;

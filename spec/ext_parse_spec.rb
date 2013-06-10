@@ -2,6 +2,7 @@ require_relative "spec_helper"
 
 module Nyara
   describe Ext, "parse" do
+    # note: this method is only used in C code
     context "#parse_url_encoded_seg" do
       [false, true].each do |nested|
         context (nested ? 'nested mode' : 'flat mode') do
@@ -111,7 +112,7 @@ module Nyara
     context ".parse_cookie" do
       it "parses complex cookie" do
         history = CGI.escape '历史'
-        cookie = "pgv_pvi; pgv_si=; pgv_pvi=som; sid=1d6c75f0 ; PLHistory=<#{history}>;"
+        cookie = "pgv_pvi; pgv_si= ; pgv_pvi=som; sid=1d6c75f0 ; PLHistory=<#{history}>;"
         h = Ext.parse_cookie ParamHash.new, cookie
         assert_equal '1d6c75f0', h['sid']
         assert_equal '', h['pgv_si']
