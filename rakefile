@@ -16,7 +16,7 @@ desc "generate http status code"
 file status_file do
   require "nokogiri"
   require "open-uri"
-  f = File.open 'ext/status_code.inc', 'w'
+  f = File.open 'ext/status_codes.inc', 'w'
   f.puts "#define HTTP_STATUS_CODES(XX)\\"
   Nokogiri::XML(open("http://www.iana.org/assignments/http-status-codes/http-status-codes.xml")).css("record").each do |r|
     value = r.css('value').text
