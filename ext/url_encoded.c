@@ -1,5 +1,6 @@
 // parse path / query / url-encoded body
 #include "nyara.h"
+#include <string.h>
 
 static char _half_octet(char c) {
   // there's a faster way but not validating the range:
