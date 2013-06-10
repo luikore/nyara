@@ -54,13 +54,26 @@ module Nyara
       header["Requested-With"] == "XMLHttpRequest"
     end
 
+    FORM_METHODS = %w[
+      POST
+      PUT
+      DELETE
+      PATCH
+    ]
+
+    FORM_MEDIA_TYPES = %w[
+      application/x-www-form-urlencoded
+      multipart/form-data
+    ]
+
+    def form?
+      FORM_METHODS.include?(http_method) and
+      FORM_MEDIA_TYPES.include?(header['Content-Type'])
+    end
+
     def param
       @param ||= begin
-        unless get?
-          # todo validate content type of
-          # application/x-www-form-urlencoded
-          # multipart/form-data
-          # todo wait for body
+        if form?
           Ext.parse_param _param, body
         end
         _param

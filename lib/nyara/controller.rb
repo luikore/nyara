@@ -146,7 +146,7 @@ module Nyara
     end
 
     def send_data data
-      response.send_data data
+      request.send_data data.to_s
     end
 
     def render_header
