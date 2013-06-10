@@ -4,7 +4,7 @@ extern "C" {
 #include <ruby/re.h>
 #include <vector>
 #include <map>
-#include "str_intern.h"
+#include "inc/str_intern.h"
 
 struct RouteEntry {
   // note on order: scope is supposed to be the last, but when searching, is_sub is checked first

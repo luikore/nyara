@@ -1,6 +1,9 @@
 #include "nyara.h"
 #include <multipart_parser.h>
 #include <errno.h>
+#ifndef write
+#include <unistd.h>
+#endif
 
 typedef struct {
   http_parser hparser;
@@ -33,7 +36,7 @@ static char received_data[MAX_RECEIVE_DATA];
 static VALUE fiber_func(VALUE _, VALUE args) {
   VALUE instance = rb_ary_pop(args);
   VALUE meth = rb_ary_pop(args);
-  rb_funcallv(instance, SYM2ID(meth), (int)RARRAY_LEN(args), RARRAY_PTR(args));
+  rb_apply(instance, SYM2ID(meth), args);
   return Qnil;
 }
 

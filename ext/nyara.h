@@ -1,7 +1,7 @@
 #pragma once
 #include <ruby.h>
 #include <http_parser.h>
-#include "status_codes.inc"
+#include "inc/status_codes.inc"
 
 #ifdef DEBUG
 #undef NDEBUG

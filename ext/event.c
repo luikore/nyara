@@ -13,9 +13,9 @@ static void loop_body(int fd, int etype);
 static int qfd;
 
 #ifdef HAVE_KQUEUE
-#include "kqueue.h"
+#include "inc/kqueue.h"
 #elif HAVE_EPOLL
-#include "epoll.h"
+#include "inc/epoll.h"
 #endif
 
 static void set_nonblock(int fd) {

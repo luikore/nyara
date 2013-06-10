@@ -7,7 +7,7 @@ task :lines do
   puts "#{c} lines"
 end
 
-status_file = "ext/status_code.inc"
+status_file = "ext/inc/status_codes.inc"
 
 desc "code generate"
 task :gen => [status_file]
@@ -16,7 +16,7 @@ desc "generate http status code"
 file status_file do
   require "nokogiri"
   require "open-uri"
-  f = File.open 'ext/status_codes.inc', 'w'
+  f = File.open status_file, 'w'
   f.puts "#define HTTP_STATUS_CODES(XX)\\"
   Nokogiri::XML(open("http://www.iana.org/assignments/http-status-codes/http-status-codes.xml")).css("record").each do |r|
     value = r.css('value').text
