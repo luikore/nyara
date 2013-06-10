@@ -107,5 +107,32 @@ module Nyara
         Ext.parse_path @output, input
       end
     end
+
+    context ".parse_cookie" do
+      it "parses complex cookie" do
+        history = CGI.escape '历史'
+        cookie = "pgv_pvi; pgv_si=; pgv_pvi=som; sid=1d6c75f0 ; PLHistory=<#{history}>;"
+        h = Ext.parse_cookie ParamHash.new, cookie
+        assert_equal '1d6c75f0', h['sid']
+        assert_equal '', h['pgv_si']
+        assert_equal '', h['pgv_pvi'] # left orverrides right
+        assert_equal '<历史>', h['PLHistory']
+      end
+
+      it "parses empty cookie" do
+        cookie = ''
+        h = Ext.parse_cookie ParamHash.new, cookie
+        assert_empty h
+      end
+    end
+
+    context ".parse_param" do
+      it "parses param with non-utf-8 chars" do
+        bad_s = CGI.escape "\xE2"
+        # p "\xE2".scrub ''
+        h = Ext.parse_param ParamHash.new, bad_s
+        assert_equal "", h["\xE2"]
+      end
+    end
   end
 end

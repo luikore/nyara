@@ -1,5 +1,8 @@
 // parse path / query / url-encoded body
 #include "nyara.h"
+#include <ruby/encoding.h>
+
+static rb_encoding* u8_encoding;
 
 static char _half_octet(char c) {
   // there's a faster way but not validating the range:
@@ -149,6 +152,10 @@ static const char* _strnchr(const char* s, long len, char c) {
   return NULL;
 }
 
+static inline VALUE _new_blank_str() {
+  return rb_enc_str_new("", 0, u8_encoding);
+}
+
 static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int nested_mode) {
   // (note if we _decode_url_seg with '&' first, then there may be multiple '='s in one kv)
   const char* s = kv_s;
@@ -157,7 +164,7 @@ static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int ne
     return;
   }
 
-  volatile VALUE value = rb_str_new2("");
+  volatile VALUE value = _new_blank_str();
 
   // rule out the value part
   {
@@ -174,12 +181,12 @@ static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int ne
     }
     // starts with '='
     if (value_s == s) {
-      rb_hash_aset(output, rb_str_new2(""), value);
+      rb_hash_aset(output, _new_blank_str(), value);
       return;
     }
   }
 
-  volatile VALUE key = rb_str_new2("");
+  volatile VALUE key = _new_blank_str();
   if (nested_mode) {
     // todo fault-tolerant?
     long parsed = _decode_url_seg(key, s, len, '[');
@@ -191,7 +198,7 @@ static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int ne
     len -= parsed;
     volatile VALUE keys = rb_ary_new3(1, key);
     while (len) {
-      key = rb_str_new2("");
+      key = _new_blank_str();
       parsed = _decode_url_seg(key, s, len, ']');
       rb_ary_push(keys, key);
       s += parsed;
@@ -226,7 +233,6 @@ void nyara_parse_param(VALUE output, const char* s, size_t len) {
   size_t i = 0;
   for (; i < len; i++) {
     if (s[i] == '&' || s[i] == ';') {
-      // char* and len parse_seg
       if (i > last_i) {
         _url_encoded_seg(output, s + last_i, i - last_i, 1);
       }
@@ -246,11 +252,53 @@ static VALUE ext_parse_param(VALUE self, VALUE output, VALUE s) {
   return output;
 }
 
-// we don't parse cookie here, still needs an array so created objects are not reduced...
+// trim tailing space
+static VALUE _cookie_seg_str_new(const char* s, long len) {
+  for (; len > 0; len--) {
+    if (s[len - 1] != ' ') {
+      break;
+    }
+  }
+  return rb_enc_str_new(s, len, u8_encoding);
+}
+
+static VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str) {
+  volatile VALUE arr = rb_ary_new();
+  const char* s = RSTRING_PTR(str);
+  size_t len = RSTRING_LEN(str);
+
+  // split with / *[,;] */
+  size_t last_i = 0;
+  size_t i = 0;
+  for (; i < len; i++) {
+    if (s[i] == ',' || s[i] == ';') {
+      // char* and len parse_seg
+      if (i > last_i) {
+        rb_ary_push(arr, _cookie_seg_str_new(s + last_i, i - last_i));
+      }
+      while(i + 1 < len && s[i + 1] == ' ') {
+        i++;
+      }
+      last_i = i + 1;
+    }
+  }
+  if (i > last_i) {
+    rb_ary_push(arr, _cookie_seg_str_new(s + last_i, i - last_i));
+  }
+
+  VALUE* arr_p = RARRAY_PTR(arr);
+  for (long j = RARRAY_LEN(arr) - 1; j >= 0; j--) {
+    _url_encoded_seg(output, RSTRING_PTR(arr_p[j]), RSTRING_LEN(arr_p[j]), 0);
+  }
+  return output;
+}
 
 void Init_url_encoded(VALUE ext) {
-  rb_define_singleton_method(ext, "parse_url_encoded_seg", ext_parse_url_encoded_seg, 3);
+  u8_encoding = rb_utf8_encoding();
+
   rb_define_singleton_method(ext, "parse_param", ext_parse_param, 2);
+  rb_define_singleton_method(ext, "parse_cookie", ext_parse_cookie, 2);
   // for test
+  rb_define_singleton_method(ext, "parse_url_encoded_seg", ext_parse_url_encoded_seg, 3);
   rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);
 }
