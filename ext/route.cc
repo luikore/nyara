@@ -2,6 +2,7 @@ extern "C" {
 #include "nyara.h"
 }
 #include <ruby/re.h>
+#include <ruby/encoding.h>
 #include <vector>
 #include <map>
 #include "inc/str_intern.h"
@@ -13,7 +14,9 @@ struct RouteEntry {
   long prefix_len;
   regex_t *suffix_re;
   VALUE controller;
-  VALUE id; // symbol, doesn't need mark
+  VALUE id; // symbol
+  VALUE accept_exts;  // {ext => true}
+  VALUE accept_mimes; // [[m1, m2, ext]]
   std::vector<ID> conv;
   VALUE scope;
   char* suffix; // only for inspect
@@ -40,6 +43,8 @@ typedef std::vector<RouteEntry> RouteEntries;
 static std::map<enum http_method, RouteEntries*> route_map;
 static OnigRegion region; // we can reuse the region without worrying thread safety
 static ID id_to_s;
+static rb_encoding* u8_enc;
+static VALUE str_html;
 static VALUE nyara_http_methods;
 
 static bool start_with(const char* a, long a_len, const char* b, long b_len) {
@@ -137,6 +142,10 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
     e.conv.push_back(conv_id);
   }
 
+  // accept
+  e.accept_exts = rb_iv_get(v_e, "@accept_exts");
+  e.accept_mimes = rb_iv_get(v_e, "@accept_mimes");
+
   route_entries->push_back(e);
   return Qnil;
 }
@@ -180,7 +189,7 @@ static VALUE build_args(const char* suffix, std::vector<ID>& conv) {
     const char* capture_ptr = suffix + region.beg[j+1];
     long capture_len = region.end[j+1] - region.beg[j+1];
     if (conv[j] == id_to_s) {
-      rb_ary_push(args, rb_str_new(capture_ptr, capture_len));
+      rb_ary_push(args, rb_enc_str_new(capture_ptr, capture_len, u8_enc));
     } else if (capture_len == 0) {
       rb_ary_push(args, Qnil);
     } else {
@@ -196,9 +205,23 @@ static VALUE build_args(const char* suffix, std::vector<ID>& conv) {
   return args;
 }
 
+static VALUE extract_ext(const char* s, long len) {
+  if (s[0] != '.') {
+    return Qnil;
+  }
+  s++;
+  len--;
+  for (long i = 0; i < len; i++) {
+    if (!isalnum(s[i])) {
+      return Qnil;
+    }
+  }
+  return rb_str_new(s, len);
+}
+
 extern "C"
 RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
-  RouteResult r = {Qnil, Qnil, Qnil};
+  RouteResult r = {Qnil, Qnil, Qnil, Qnil};
   auto map_iter = route_map.find(method_num);
   if (map_iter == route_map.end()) {
     return r;
@@ -209,7 +232,8 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
   long len = RSTRING_LEN(vpath);
   // must iterate all
   bool last_matched = false;
-  for (auto i = route_entries->begin(); i != route_entries->end(); ++i) {
+  auto i = route_entries->begin();
+  for (; i != route_entries->end(); ++i) {
     bool matched;
     if (i->is_sub && last_matched) { // save a bit compare
       matched = last_matched;
@@ -217,23 +241,53 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
       matched = start_with(path, len, i->prefix, i->prefix_len);
     }
     last_matched = matched;
-    if (matched) {
+
+    if (/* prefix */ matched) {
       const char* suffix = path + i->prefix_len;
       long suffix_len = len - i->prefix_len;
-      if (suffix_len == 0) {
+      if (i->suffix_len == 0) {
+        if (suffix_len) {
+          r.ext = extract_ext(suffix, suffix_len);
+          if (r.ext == Qnil) {
+            break;
+          }
+        }
         r.args = rb_ary_new3(1, i->id);
         r.controller = i->controller;
-        r.scope = i->scope;
         break;
       } else {
         long matched_len = onig_match(i->suffix_re, (const UChar*)suffix, (const UChar*)(suffix + suffix_len),
                                       (const UChar*)suffix, &region, 0);
         if (matched_len > 0) {
+          if (matched_len < suffix_len) {
+            r.ext = extract_ext(suffix + matched_len, suffix_len);
+            if (r.ext == Qnil) {
+              break;
+            }
+          }
           r.args = build_args(suffix, i->conv);
           rb_ary_push(r.args, i->id);
           r.controller = i->controller;
-          r.scope = i->scope;
           break;
+        }
+      }
+    }
+  }
+
+  if (r.controller != Qnil) {
+    r.scope = i->scope;
+
+    if (r.ext == Qnil) {
+      if (i->accept_exts == Qnil) {
+        r.ext = str_html;
+      } else {
+        // NOTE maybe rejected
+        r.ext = i->accept_mimes;
+      }
+    } else {
+      if (i->accept_exts != Qnil) {
+        if (!RTEST(rb_hash_aref(i->accept_exts, r.ext))) {
+          r.controller = Qnil; // reject if ext mismatch
         }
       }
     }
@@ -248,6 +302,7 @@ static VALUE ext_lookup_route(VALUE self, VALUE method, VALUE path) {
   rb_ary_push(a, r.scope);
   rb_ary_push(a, r.controller);
   rb_ary_push(a, r.args);
+  rb_ary_push(a, r.ext);
   return a;
 }
 
@@ -255,6 +310,10 @@ extern "C"
 void Init_route(VALUE nyara, VALUE ext) {
   nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
   id_to_s = rb_intern("to_s");
+  u8_enc = rb_utf8_encoding();
+  str_html = rb_str_new2("html");
+  OBJ_FREEZE(str_html);
+  rb_gc_register_mark_object(str_html);
   onig_region_init(&region);
 
   rb_define_singleton_method(ext, "register_route", RUBY_METHOD_FUNC(ext_register_route), 1);

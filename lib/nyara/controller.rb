@@ -2,16 +2,25 @@ module Nyara
   Controller = Struct.new :request, :response
   class Controller
     module ClassMethods
-      def on method, path, &blk
-        @actions ||= []
+      def http method, path, &blk
+        @route_entries ||= []
         @used_ids = {}
-        @actions << [method, path, @curr_id, blk]
+
+        action = RouteEntry.new
+        action.http_method = HTTP_METHODS[method]
+        action.path = path
+        action.set_accept_exts @accept
+        action.id = @curr_id.to_sym if @curr_id
+        action.blk = blk
+        @route_entries << action
+
         if @curr_id
           raise ArgumentError, "action id #{@curr_id} already in use" if @used_ids[@curr_id]
           @used_ids[@curr_id] = true
           @curr_id = nil
           @meta_exist = nil
         end
+        @accept = nil
       end
 
       # set controller name, useful in path helper
@@ -40,62 +49,61 @@ module Nyara
         end
 
         if opts
-          # todo add opts: strong param, etag, cache, dot separated param, repeated param
+          # todo add opts: strong param, etag, cache-control
+          @accept = opts[:accept]
         end
 
         @meta_exist = true
       end
 
       def get path, &blk
-        on 'GET', path, &blk
+        http 'GET', path, &blk
       end
 
       def post path, &blk
-        on 'POST', path, &blk
+        http 'POST', path, &blk
       end
 
       def put path, &blk
-        on 'PUT', path, &blk
+        http 'PUT', path, &blk
       end
 
       def delete path, &blk
-        on 'DELETE', path, &blk
+        http 'DELETE', path, &blk
       end
 
       def patch path, &blk
-        on 'PATCH', path, &blk
+        http 'PATCH', path, &blk
       end
 
       # todo generate options response for a url
       # see http://tools.ietf.org/html/rfc5789
       def options path, &blk
-        on 'OPTIONS', path, &blk
+        http 'OPTIONS', path, &blk
       end
 
-      # [[method, path, id]]
-      def preprocess_actions
-        raise "#{self}: no action defined" unless @actions
+      # todo http method: trace ?
 
-        @curr_id = '#0'
+      # define methods
+      def preprocess_actions
+        raise "#{self}: no action defined" unless @route_entries
+
+        curr_id = :'#0'
         next_id = proc{
-          while @used_ids[@curr_id]
-            @curr_id = @curr_id.succ
+          while @used_ids[curr_id]
+            curr_id = curr_id.succ
           end
-          @used_ids[@curr_id] = true
-          @curr_id
+          @used_ids[curr_id] = true
+          curr_id
         }
         next_id[]
 
-        @actions.map do |action|
-          method, path, id, blk = action
-          unless id
-            id = next_id[]
-            action[2] = id
-          end
+        @route_entries.each do |e|
+          e.id ||= next_id[]
           # todo path helper
-          define_method id, &blk
-          [method, path, id]
+          define_method e.id, &e.blk
         end
+        @route_entries
       end
     end
 

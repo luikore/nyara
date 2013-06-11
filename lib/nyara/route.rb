@@ -21,6 +21,7 @@ module Nyara
       end
       Ext.clear_route
       process(a).each do |entry|
+        entry.validate
         Ext.register_route entry
       end
     end
@@ -52,23 +53,18 @@ module Nyara
 
     def process preprocessed
       entries = []
-      preprocessed.each do |(scope, controller, actions)|
-        actions.each do |(method, relative_path, id)|
-          path = scope.sub /\/?$/, relative_path
+      preprocessed.each do |(scope, controller, route_entries)|
+        route_entries.each do |e|
+          e = e.dup # in case there is controller used in more than 1 maps
+          path = scope.sub /\/?$/, e.path
           if path.empty?
             path = '/'
           end
-          prefix, suffix = analyse_path path
-          suffix, conv = compile_re suffix
-          entries << RouteEntry.new{
-            @http_method = HTTP_METHODS[method]
-            @scope = scope
-            @prefix = prefix
-            @suffix = suffix
-            @controller = controller
-            @id = id.to_sym
-            @conv = conv
-          }
+          e.prefix, suffix = analyse_path path
+          e.suffix, e.conv = compile_re suffix
+          e.scope = scope
+          e.controller = controller
+          entries << e
         end
       end
       entries.sort_by! &:prefix

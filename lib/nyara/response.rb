@@ -3,8 +3,13 @@ module Nyara
     def initialize request
       @status = 200
       @header = HeaderHash.new
-      @header._aset 'Connection', 'close'
+      # @header._aset 'Connection', 'close'
       @header._aset 'Content-Type', 'text/plain; charset=UTF-8'
+      @header._aset 'X-XSS-Protection', '1; mode=block'
+      @header._aset 'X-Content-Type-Options', 'nosniff'
+      @header._aset 'X-Frame-Options', 'SAMEORIGIN'
+      # todo
+      # date, etag, cache-control
       @extra_header = []
       @request = request
     end

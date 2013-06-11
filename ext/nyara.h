@@ -23,6 +23,10 @@ size_t nyara_parse_path(VALUE path, const char*s, size_t len);
 void nyara_parse_param(VALUE output, const char* s, size_t len);
 
 
+/* -- mime parse and match -- */
+void Init_mime(VALUE ext);
+
+
 /* -- hashes -- */
 void Init_hashes(VALUE nyara);
 
@@ -41,6 +45,7 @@ typedef struct {
   VALUE controller;
   VALUE args;
   VALUE scope;
+  VALUE ext; // maybe string or map
 } RouteResult;
 
 extern void Init_route(VALUE nyara, VALUE ext);

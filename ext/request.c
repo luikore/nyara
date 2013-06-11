@@ -16,6 +16,7 @@ typedef struct {
   VALUE param;
   VALUE last_field;
   VALUE last_value;
+  VALUE ext; // may be string or hash
   VALUE self;
   int fd;
 } Request;
@@ -24,9 +25,11 @@ typedef struct {
 // typedef int (*http_cb) (http_parser*);
 
 static ID id_not_found;
+static ID id_match_mime;
 static VALUE request_class;
 static VALUE response_class;
 static VALUE method_override_key;
+static VALUE str_accept;
 static VALUE nyara_http_methods;
 
 static VALUE fd_request_map;
@@ -86,6 +89,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
     p->fiber = rb_fiber_new(fiber_func, result.args);
     p->scope = result.scope;
     p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
+    p->ext = result.ext;
     return 0;
   } else {
     rb_funcall(p->self, id_not_found, 0);
@@ -135,6 +139,18 @@ static int on_headers_complete(http_parser* parser) {
   Request* p = (Request*)parser;
   p->last_field = Qnil;
   p->last_value = Qnil;
+
+  if (TYPE(p->ext) != T_STRING) {
+    VALUE accept = rb_hash_aref(p->header, str_accept);
+    if (RTEST(accept)) {
+      p->ext = rb_funcall(p->self, id_match_mime, 2, accept, p->ext);
+    }
+    if (p->ext == Qnil) {
+      rb_funcall(p->self, id_not_found, 0);
+      return 1;
+    }
+  }
+
   // todo resume fiber here
   return 0;
 }
@@ -160,6 +176,7 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->param);
     rb_gc_mark_maybe(p->last_field);
     rb_gc_mark_maybe(p->last_value);
+    rb_gc_mark_maybe(p->ext);
   }
 }
 
@@ -184,6 +201,7 @@ static Request* request_alloc() {
   p->param = Qnil;
   p->last_field = Qnil;
   p->last_value = Qnil;
+  p->ext = Qnil;
   p->fd = 0;
   p->self = Data_Wrap_Struct(request_class, request_mark, request_free, p);
   return p;
@@ -294,10 +312,13 @@ static VALUE request_send_data(VALUE self, VALUE data) {
 
 void Init_request(VALUE nyara, VALUE ext) {
   id_not_found = rb_intern("not_found");
+  id_match_mime = rb_intern("match_mime");
   method_override_key = rb_str_new2("_method");
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
   nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
   fd_request_map = rb_hash_new();
+  rb_gc_register_mark_object(fd_request_map);
+  str_accept = rb_str_new2("Accept");
   rb_gc_register_mark_object(fd_request_map);
 
   // request
@@ -314,6 +335,6 @@ void Init_request(VALUE nyara, VALUE ext) {
   // response
   response_class = rb_define_class_under(nyara, "Response", rb_cObject);
 
-  // ext
+  // ext, for test
   rb_define_singleton_method(ext, "handle_request", ext_handle_request, 1);
 }
