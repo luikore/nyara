@@ -4,14 +4,37 @@ module Nyara
   describe Route do
     # fixme: ugly code
     it "#process" do
-      actions1 = [
-        %w[GET /hello/%f #hello_f],
-        %w[POST /%s/%u-%d #post]
+      entries1 = [
+        RouteEntry.new{
+          @http_method = 'GET',
+          @path = '/hello/%f',
+          @id = :'#hello_f'
+        },
+        RouteEntry.new{
+          @http_method = 'POST',
+          @path = '/%s/%u-%d',
+          @id = :'#post'
+        }
       ]
+      entries2 = [
+        RouteEntry.new{
+          @http_method = 'GET',
+          @path = '/',
+          @id = :'#hel'
+        }
+      ]
+      entries3 = [
+        RouteEntry.new{
+          @http_method = 'GET',
+          @path = '/%s',
+          @id = :'#ello_s'
+        }
+      ]
+
       preprocessed_rules = [
-        ['/', 'Stub1', actions1],
-        ['/hel', 'Stub2', [%w[GET / #hel]]],
-        ['/ello', 'Stub3', [%w[GET /%s #ello_s]]]
+        ['/', 'Stub1', entries1],
+        ['/hel', 'Stub2', entries2],
+        ['/ello', 'Stub3', entries3]
       ]
 
       rules = Route.process preprocessed_rules
