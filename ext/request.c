@@ -1,4 +1,5 @@
 #include "nyara.h"
+#include <ruby/encoding.h>
 #include <multipart_parser.h>
 #include <errno.h>
 #ifndef write
@@ -26,6 +27,7 @@ typedef struct {
 // typedef int (*http_cb) (http_parser*);
 
 static ID id_not_found;
+static rb_encoding* u8_encoding;
 static VALUE request_class;
 static VALUE response_class;
 static VALUE method_override_key;
@@ -59,12 +61,13 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
   p->method = parser->method;
 
   // matching raw path is bad idea, for example: %a0 and %A0 are different strings but same route
-  p->path = rb_str_new2("");
+  p->path = rb_enc_str_new("", 0, u8_encoding);
   size_t query_i = nyara_parse_path(p->path, s, len);
   p->param = rb_class_new_instance(0, NULL, nyara_param_hash_class);
   if (query_i < len) {
     nyara_parse_param(p->param, s + query_i, len - query_i);
-    // rewrite method if query contains _method=xxx
+
+    // do method override with _method=xxx in query
     if (p->method == HTTP_POST) {
       VALUE meth = rb_hash_aref(p->param, method_override_key);
       if (TYPE(meth) == T_STRING) {
@@ -318,6 +321,7 @@ static VALUE request_send_data(VALUE self, VALUE data) {
 
 void Init_request(VALUE nyara, VALUE ext) {
   id_not_found = rb_intern("not_found");
+  u8_encoding = rb_utf8_encoding();
   method_override_key = rb_str_new2("_method");
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
   nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
