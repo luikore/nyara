@@ -1,13 +1,15 @@
 module Nyara
   class Response
+    BASE_HEADER = HeaderHash.new
+    BASE_HEADER['Content-Type'] = 'text/html; charset=UTF-8'
+    BASE_HEADER['X-XSS-Protection'] = '1; mode=block'
+    BASE_HEADER['X-Content-Type-Options'] = 'nosniff'
+    BASE_HEADER['X-Frame-Options'] = 'SAMEORIGIN'
+    # BASE_HEADER['Connection'] = 'close'
+
     def initialize request
       @status = 200
-      @header = HeaderHash.new
-      # @header._aset 'Connection', 'close'
-      @header._aset 'Content-Type', 'text/plain; charset=UTF-8'
-      @header._aset 'X-XSS-Protection', '1; mode=block'
-      @header._aset 'X-Content-Type-Options', 'nosniff'
-      @header._aset 'X-Frame-Options', 'SAMEORIGIN'
+      @header = BASE_HEADER.dup
       # todo
       # date, etag, cache-control
       @extra_header = []
