@@ -138,19 +138,7 @@ module Nyara
 
     # todo serialize the changed cookie
 
-    # todo rename and move these 2 into Ext
-
-    def match_mime accept_str, mimes
-      accept_str.split(';').each do |m1|
-        m2 = Ext.extract_mime_seg! m1
-        if m2
-          mimes.each do |(v1, v2, ext)|
-            return ext if Ext.mime_match? v1, v2, m1, m2
-          end
-        end
-      end
-      nil
-    end
+    # todo rename and move it into Ext
 
     def not_found
       puts "not found"

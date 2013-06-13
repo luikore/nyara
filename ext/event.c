@@ -52,6 +52,9 @@ static void loop_body(int fd, int etype) {
     }
     case ETYPE_CONNECT: {
       // todo
+      // NOTE
+      // fd and connection are 1:1, there can more more than 1 fds on a same file / address
+      // so it's streight forward to using fd as query index
     }
   }
 }

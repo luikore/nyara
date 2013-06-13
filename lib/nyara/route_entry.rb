@@ -22,6 +22,7 @@ module Nyara
           @accept_exts[e] = true
           if MIME_TYPES[e]
             v1, v2 = MIME_TYPES[e].split('/')
+            raise "bad mime type: #{MIME_TYPES[e].inspect}" if v1.nil? or v2.nil?
             @accept_mimes << [v1, v2, e]
           end
         end

@@ -25,6 +25,7 @@ void nyara_parse_param(VALUE output, const char* s, size_t len);
 
 /* -- mime parse and match -- */
 void Init_mime(VALUE ext);
+VALUE ext_mime_match(VALUE self, VALUE request_accept, VALUE accept_mimes);
 
 
 /* -- hashes -- */

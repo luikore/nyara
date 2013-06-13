@@ -16,7 +16,8 @@ typedef struct {
   VALUE param;
   VALUE last_field;
   VALUE last_value;
-  VALUE ext; // may be string or hash
+  // string if determined by url, or hash if need further check with header[Accept]
+  VALUE ext;
   VALUE self;
   int fd;
 } Request;
@@ -25,7 +26,6 @@ typedef struct {
 // typedef int (*http_cb) (http_parser*);
 
 static ID id_not_found;
-static ID id_match_mime;
 static VALUE request_class;
 static VALUE response_class;
 static VALUE method_override_key;
@@ -143,7 +143,7 @@ static int on_headers_complete(http_parser* parser) {
   if (TYPE(p->ext) != T_STRING) {
     VALUE accept = rb_hash_aref(p->header, str_accept);
     if (RTEST(accept)) {
-      p->ext = rb_funcall(p->self, id_match_mime, 2, accept, p->ext);
+      p->ext = ext_mime_match(Qnil, accept, p->ext);
     }
     if (p->ext == Qnil) {
       rb_funcall(p->self, id_not_found, 0);
@@ -284,6 +284,12 @@ static VALUE request__param(VALUE self) {
   return p->param;
 }
 
+static VALUE request_accept(VALUE self) {
+  Request* p;
+  Data_Get_Struct(self, Request, p);
+  return p->ext;
+}
+
 static VALUE request_send_data(VALUE self, VALUE data) {
   Request* p;
   Data_Get_Struct(self, Request, p);
@@ -312,7 +318,6 @@ static VALUE request_send_data(VALUE self, VALUE data) {
 
 void Init_request(VALUE nyara, VALUE ext) {
   id_not_found = rb_intern("not_found");
-  id_match_mime = rb_intern("match_mime");
   method_override_key = rb_str_new2("_method");
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
   nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
@@ -329,6 +334,7 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "scope", request_scope, 0);
   rb_define_method(request_class, "path", request_path, 0);
   rb_define_method(request_class, "_param", request__param, 0);
+  rb_define_method(request_class, "accept", request_accept, 0);
   rb_define_method(request_class, "close", request_close, 0);
   rb_define_method(request_class, "send_data", request_send_data, 1);
 
