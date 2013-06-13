@@ -8,8 +8,17 @@
 static regex_t* scan_re;
 static OnigRegion* scan_region;
 
+static const char* _strnchr(const char* s, long len, char c) {
+  for (long i = 0; i < len; i++) {
+    if (s[i] == c) {
+      return s + i;
+    }
+  }
+  return NULL;
+}
+
 static bool mime_match_seg(const char* m1_ptr, long m1_len, VALUE v1, VALUE v2) {
-  char* m2_ptr = strchr(m1_ptr, '/');
+  const char* m2_ptr = _strnchr(m1_ptr, m1_len, '/');
   long m2_len;
   if (m2_ptr) {
     m2_ptr++;
