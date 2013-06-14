@@ -33,11 +33,11 @@ module Nyara
       workers = Config[:workers] || 3
 
 
-      puts "starting #{Config[:env]} server at 127.0.0.1:#{port}"
+      puts "starting #{Config[:env]} server at 0.0.0.0:#{port}"
       case Config[:env].to_s
 
       when 'production'
-        server = TCPServer.new '127.0.0.1', port
+        server = TCPServer.new '0.0.0.0', port
         server.listen 1000
         trap :INT do
           @workers.each do |w|
@@ -59,7 +59,7 @@ module Nyara
 
       else
         t = Thread.new do
-          server = TCPServer.new '127.0.0.1', port
+          server = TCPServer.new '0.0.0.0', port
           server.listen 1000
           Ext.init_queue
           Ext.run_queue server.fileno
