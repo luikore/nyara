@@ -12,11 +12,26 @@ module Nyara
     end
 
     def compile
-      # todo, get controller class if it is string
-      a = @controllers.map do |(scope, c)|
+      visited_controllers = {}
+
+      @str2controller ||= {}
+      @str2controller.merge! @reg_str2controller
+
+      a = @controllers.map do |scope, c|
+        str = nil
+
         if c.is_a?(String)
-          c = str2controller c
+          str = c
+          c = compute_str2controller c
+          @str2controller[str] = c
         end
+        if visited_controllers[c]
+          raise "controller #{c.inspect} was mapped to different prefix: #{visited_controllers[c].inspect}"
+        end
+
+        visited_controllers[c] = scope
+        c.scope_prefix = scope.sub /\/\z/, ''
+
         [scope, c, c.preprocess_actions]
       end
       Ext.clear_route
@@ -29,27 +44,32 @@ module Nyara
     def clear
       # gc mark fail if wrong order?
       Ext.clear_route
-      @controllers = []
+      @controllers = {}
+      @str2controller = {}
     end
 
+    # for runtime query
     def str2controller str
-      if @str2controller_map
-        if c = @str2controller_map[str]
-          return c
-        end
+      @str2controller[str]
+    end
+
+    Route.instance_variable_set :@reg_str2controller, {}
+    # register mapping, permanent
+    def register_str2controller str, controller
+      @reg_str2controller[str] = controller
+    end
+
+    # private
+
+    def compute_str2controller str
+      if c = @reg_str2controller[str]
+        return c
       end
       str = str.gsub /(?<=\b|_)[a-z]/, &:upcase
       str.gsub! '_', ''
       str << 'Controller'
       Module.const_get str
     end
-
-    def register_str2controller str, controller
-      @str2controller_map ||= {}
-      @str2controller_map[str] = controller
-    end
-
-    # private
 
     def process preprocessed
       entries = []

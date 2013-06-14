@@ -24,7 +24,7 @@ module Nyara
       end
 
       # set controller name, useful in path helper
-      def name n
+      def set_name n
         Route.register_str2controller n, self
         @name = n
       end
@@ -98,18 +98,63 @@ module Nyara
         }
         next_id[]
 
+        @path_templates = {} # str_id => path
         @route_entries.each do |e|
           e.id ||= next_id[]
           # todo path helper
           define_method e.id, &e.blk
+          @path_templates[e.id.to_s] = e.path
         end
         @route_entries
+      end
+
+      # end with not '/'
+      attr_accessor :scope_prefix
+
+      # id starts with '#'
+      def path_template id
+        @scope_prefix + @path_templates[id]
       end
     end
 
     def self.inherited klass
       # klass will also have this inherited method
+      # todo check class name
       klass.extend ClassMethods
+    end
+
+    def path_for id, *args
+      if id.start_with?('#')
+        klass = self.class
+      else
+        name, id = id.split(/(?=\#)/, 2)
+        klass = Route.str2controller name
+      end
+
+      if args.last.is_a?(Hash)
+        opts = args.pop
+      end
+
+      r = klass.path_template(id) % args
+
+      if opts
+        r << ".#{opts[:format]}" if opts[:format]
+        query = opts.map do |k, v|
+          next if k == :format
+          "#{CGI.escape k.to_s}=#{CGI.escape v}"
+        end
+        query.compact!
+        r << '?' << query.join('&') unless query.empty?
+      end
+      r
+    end
+
+    # NOTE: host can include port
+    def url_for id, *args, scheme: nil, host: Config['host'], **opts
+      scheme = scheme ? scheme.sub(/\:?$/, '://') : '//'
+      host ||= 'localhost'
+      path = path_for id, *args, opts
+      scheme << host << path
     end
 
     def header

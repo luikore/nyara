@@ -1,5 +1,6 @@
 module Nyara
   # other options: session (see also Session)
+  # host
   Config = ConfigHash.new
   class << Config
     def map prefix, controller
