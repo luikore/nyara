@@ -25,6 +25,29 @@ module Nyara
       assert_equal 1, h.size
       assert_equal ['Content-Type', 'text/plain'], h.to_a.first
     end
+
+    class HaHash < HeaderHash
+    end
+
+    it "#reverse_merge! raises error if other is not HeaderHash" do
+      h = HeaderHash.new
+      h.reverse_merge! HaHash.new # :)
+      assert_raise ArgumentError do
+        h.reverse_merge!({})
+      end
+    end
+
+    it "#reverse_merge!" do
+      h = HeaderHash.new
+      g = HeaderHash.new
+      h['a'] = 'h'
+      g['a'] = 'g'
+      g['b'] = 'b'
+      h.reverse_merge! g
+      assert_equal 2, h.size
+      assert_equal 'h', h['a']
+      assert_equal 'b', h['b']
+    end
   end
 
   describe ConfigHash do

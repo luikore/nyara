@@ -91,6 +91,23 @@ static VALUE header_hash_aset(VALUE self, VALUE key, VALUE value) {
   return rb_hash_aset(self, key, value);
 }
 
+int header_hash_merge_func(VALUE k, VALUE v, VALUE self_st) {
+  st_table* t = (st_table*)self_st;
+  if (!st_is_member(t, k)) {
+    st_insert(t, (st_data_t)k, (st_data_t)v);
+  }
+  return ST_CONTINUE;
+}
+
+static VALUE header_hash_reverse_merge_bang(VALUE self, VALUE other) {
+  if (!rb_obj_is_kind_of(other, nyara_header_hash_class)) {
+    rb_raise(rb_eArgError, "need a Nyara::HeaderHash");
+  }
+  st_table* t = rb_hash_tbl(self);
+  rb_hash_foreach(other, header_hash_merge_func, (VALUE)t);
+  return self;
+}
+
 void Init_hashes(VALUE nyara) {
   id_to_s = rb_intern("to_s");
 
@@ -105,6 +122,7 @@ void Init_hashes(VALUE nyara) {
   rb_define_method(nyara_header_hash_class, "[]", header_hash_aref, 1);
   rb_define_method(nyara_header_hash_class, "key?", header_hash_key_p, 1);
   rb_define_method(nyara_header_hash_class, "[]=", header_hash_aset, 2);
+  rb_define_method(nyara_header_hash_class, "reverse_merge!", header_hash_reverse_merge_bang, 1);
 
   // for internal use
   rb_define_method(nyara_header_hash_class, "_aset", rb_hash_aset, 2);
