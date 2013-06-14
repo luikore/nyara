@@ -180,7 +180,7 @@ static int on_headers_complete(http_parser* parser) {
   return 0;
 }
 
-static const http_parser_settings request_settings = {
+static http_parser_settings request_settings = {
   .on_message_begin = NULL,
   .on_url = on_url,
   .on_status_complete = NULL,
@@ -387,11 +387,38 @@ static VALUE ext_send_chunk(VALUE _, VALUE self, VALUE str) {
   return Qnil;
 }
 
-// for test: creates a request with a fd
-static VALUE ext_new_request_with_fd(VALUE _, VALUE v_fd) {
+// for test: find or create a request with a fd
+static VALUE ext_handle_request(VALUE _, VALUE v_fd) {
   int fd = FIX2INT(v_fd);
   nyara_handle_request(fd);
   return rb_hash_aref(fd_request_map, v_fd);
+}
+
+// set internal attrs in the request object
+static VALUE ext_set_request_attrs(VALUE _, VALUE self, VALUE attrs) {
+#define ATTR(key) rb_hash_aref(attrs, ID2SYM(rb_intern(key)))
+  P;
+  p->method                      = NUM2INT(ATTR("method_num"));
+  p->path                        = ATTR("path");
+  p->param                       = ATTR("param");
+  p->fiber                       = ATTR("fiber");
+  p->scope                       = ATTR("scope");
+  p->header                      = ATTR("header");
+  p->ext                         = ATTR("ext");
+  p->response_header             = ATTR("response_header");
+  p->response_header_extra_lines = ATTR("response_header_extra_lines");
+  return self;
+#undef ATTR
+}
+
+// skip on_url so we can focus on testing request
+static VALUE ext_set_skip_on_url(VALUE _, VALUE pred) {
+  if (RTEST(pred)) {
+    request_settings.on_url = NULL;
+  } else {
+    request_settings.on_url = on_url;
+  }
+  return Qnil;
 }
 
 void Init_request(VALUE nyara, VALUE ext) {
@@ -429,5 +456,7 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_singleton_method(ext, "send_data", ext_send_data, 2);
   rb_define_singleton_method(ext, "send_chunk", ext_send_chunk, 2);
   // for test
-  rb_define_singleton_method(ext, "new_request_with_fd", ext_new_request_with_fd, 1);
+  rb_define_singleton_method(ext, "handle_request", ext_handle_request, 1);
+  rb_define_singleton_method(ext, "set_request_attrs", ext_set_request_attrs, 2);
+  rb_define_singleton_method(ext, "set_skip_on_url", ext_set_skip_on_url, 1);
 }

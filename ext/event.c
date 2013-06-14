@@ -29,7 +29,7 @@ static void set_nonblock(int fd) {
   }
 }
 
-static VALUE ext_add(VALUE self, VALUE vfd) {
+static VALUE ext_add(VALUE _, VALUE vfd) {
   int fd = FIX2INT(vfd);
   ADD_E(fd, ETYPE_CONNECT);
   return Qnil;
@@ -59,12 +59,12 @@ static void loop_body(int fd, int etype) {
   }
 }
 
-static VALUE ext_init_queue(VALUE self) {
+static VALUE ext_init_queue(VALUE _) {
   INIT_E();
   return Qnil;
 }
 
-static VALUE ext_run_queue(VALUE self, VALUE v_fd) {
+static VALUE ext_run_queue(VALUE _, VALUE v_fd) {
   int fd = FIX2INT(v_fd);
   set_nonblock(fd);
   ADD_E(fd, ETYPE_ACCEPT);
@@ -73,8 +73,17 @@ static VALUE ext_run_queue(VALUE self, VALUE v_fd) {
   return Qnil;
 }
 
+static VALUE ext_set_nonblock(VALUE _, VALUE v_fd) {
+  int fd = FIX2INT(v_fd);
+  set_nonblock(fd);
+  return Qnil;
+}
+
 void Init_event(VALUE ext) {
   // rb_define_singleton_method(c, "add", add_q, 2);
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
+
+  // for test
+  rb_define_singleton_method(ext, "set_nonblock", ext_set_nonblock, 1);
 }
