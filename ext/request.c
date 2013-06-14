@@ -396,19 +396,30 @@ static VALUE ext_handle_request(VALUE _, VALUE v_fd) {
 
 // set internal attrs in the request object
 static VALUE ext_set_request_attrs(VALUE _, VALUE self, VALUE attrs) {
-#define ATTR(key) rb_hash_aref(attrs, ID2SYM(rb_intern(key)))
+# define ATTR(key) rb_hash_aref(attrs, ID2SYM(rb_intern(key)))
+# define HEADER_HASH_NEW rb_class_new_instance(0, NULL, nyara_header_hash_class)
   P;
-  p->method                      = NUM2INT(ATTR("method_num"));
-  p->path                        = ATTR("path");
-  p->param                       = ATTR("param");
-  p->fiber                       = ATTR("fiber");
-  p->scope                       = ATTR("scope");
-  p->header                      = ATTR("header");
-  p->ext                         = ATTR("ext");
-  p->response_header             = ATTR("response_header");
-  p->response_header_extra_lines = ATTR("response_header_extra_lines");
+
+  if (ATTR("method_num") == Qnil) {
+    rb_raise(rb_eArgError, "bad method_num");
+  }
+
+  p->method          = NUM2INT(ATTR("method_num"));
+  p->path            = ATTR("path");
+  p->param           = ATTR("param");
+  p->fiber           = ATTR("fiber");
+  p->scope           = ATTR("scope");
+  p->header          = RTEST(ATTR("header")) ? ATTR("header") : HEADER_HASH_NEW;
+  p->ext             = ATTR("ext");
+  p->response_header = RTEST(ATTR("response_header")) ? ATTR("response_header") : HEADER_HASH_NEW;
+  if (RTEST(ATTR("response_header_extra_lines"))) {
+    p->response_header_extra_lines = ATTR("response_header_extra_lines");
+  } else {
+    p->response_header_extra_lines = rb_ary_new();
+  }
   return self;
-#undef ATTR
+# undef HEADER_HASH_NEW
+# undef ATTR
 }
 
 // skip on_url so we can focus on testing request
