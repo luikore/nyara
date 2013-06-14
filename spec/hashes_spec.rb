@@ -25,13 +25,6 @@ module Nyara
       assert_equal 1, h.size
       assert_equal ['Content-Type', 'text/plain'], h.to_a.first
     end
-
-    it "forbids setting Content-Length" do
-      h = HeaderHash.new
-      assert_raise ArgumentError do
-        h['Content-length'] = 3
-      end
-    end
   end
 
   describe ConfigHash do

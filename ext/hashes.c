@@ -84,9 +84,6 @@ static VALUE header_hash_key_p(VALUE self, VALUE key) {
 ID id_to_s;
 static VALUE header_hash_aset(VALUE self, VALUE key, VALUE value) {
   key = header_hash_tidy_key(key);
-  if (strncmp(RSTRING_PTR(key), "Content-Length", RSTRING_LEN(key)) == 0) {
-    rb_raise(rb_eArgError, "nyara uses chunked Content-Encoding, setting Content-Length is not allowed. You can use add_header(string) if really need to set this field.");
-  }
   if (TYPE(value) != T_STRING) {
     value = rb_funcall(value, id_to_s, 0);
   }
