@@ -13,7 +13,6 @@ require_relative "config_hash"
 require_relative "mime_types"
 require_relative "controller"
 require_relative "request"
-require_relative "response"
 require_relative "cookie"
 require_relative "session"
 require_relative "config"
@@ -22,6 +21,16 @@ require_relative "route_entry"
 
 module Nyara
   HTTP_STATUS_FIRST_LINES = Hash[HTTP_STATUS_CODES.map{|k,v|[k, "HTTP/1.1 #{k} #{v}\r\n".freeze]}].freeze
+
+  # base header response for 200
+  # caveat: these entries can not be deleted
+  OK_RESP_HEADER = HeaderHash.new
+  OK_RESP_HEADER['Content-Type'] = 'text/html; charset=UTF-8'
+  OK_RESP_HEADER['Cache-Control'] = 'no-cache'
+  OK_RESP_HEADER['Transfer-Encoding'] = 'chunked'
+  OK_RESP_HEADER['X-XSS-Protection'] = '1; mode=block'
+  OK_RESP_HEADER['X-Content-Type-Options'] = 'nosniff'
+  OK_RESP_HEADER['X-Frame-Options'] = 'SAMEORIGIN'
 
   class << self
     def config

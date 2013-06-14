@@ -3,10 +3,10 @@
 module Nyara
   # request and handler
   class Request
-    # c-ext attrs: http_method, scope, path, _param, header, body
+    # c-ext: http_method, scope, path, _param, accept, header
+    # todo: body, move all underline methods into Ext
 
     # method predicates
-    # todo method simulation
     %w[get post put delete options patch].each do |m|
       eval <<-RUBY
         def #{m}?
@@ -72,14 +72,6 @@ module Nyara
       header["Requested-With"] == "XMLHttpRequest"
     end
 
-    # accept precedence:
-    #   if the first matching item in 'Accept' header is ambiguous, use the first configured
-    #   else use item
-    def accept
-      raise 'need to config :accept option with `meta` before using this' unless _accept
-      _accept
-    end
-
     def accept_language
       if a = header['Accept-Language']
         a.split ','
@@ -111,10 +103,11 @@ module Nyara
 
     def param
       @param ||= begin
+        query_param = Ext.request_param self
         if form?
-          Ext.parse_param _param, body
+          Ext.parse_param query_param, body
         end
-        _param
+        query_param
       end
     end
 
@@ -126,10 +119,26 @@ module Nyara
       @session ||= Session.decode cookie
     end
 
+    # response
+
+    def status= n
+      raise ArgumentError, "unsupported status: #{s}" unless HTTP_STATUS_FIRST_LINES[s]
+      Ext.set_status self, n
+    end
+
+    def response_header
+      @response_header ||= begin
+        h = HeaderHash.new
+        if accept != 'html'
+          h._aset 'Content-Type', "#{MIME_TYPES[accept]}; charset=UTF-8"
+        end
+        h
+      end
+    end
+
     # todo serialize the changed cookie
 
     # todo rename and move it into Ext
-
     def not_found
       puts "not found"
       send_data "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"

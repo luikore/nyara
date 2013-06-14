@@ -1,5 +1,5 @@
 module Nyara
-  Controller = Struct.new :request, :response
+  Controller = Struct.new :request
   class Controller
     module ClassMethods
       def http method, path, &blk
@@ -118,11 +118,13 @@ module Nyara
     alias headers header
 
     def set_header k, v
-      response.header[k] = v
+      request.response_header[k] = v
     end
 
-    def add_header s
-      response.add_header s
+    def add_header_line h
+      raise 'can not modify sent header' if request.response_header.frozen?
+      h = h.sub /(?<![\r\n])\z/, "\r\n"
+      request.response_header_extra_lines << s
     end
 
     def param
@@ -138,7 +140,7 @@ module Nyara
     def set_cookie k, v=nil, opts
       # todo default domain ?
       opts = Hash[opts.map{|k,v| [k.to_sym,v]}]
-      Cookie.output_set_cookie response.extra_header, k, v, opts
+      Cookie.output_set_cookie response.response_header_extra_lines, k, v, opts
     end
 
     def delete_cookie k
@@ -158,24 +160,56 @@ module Nyara
     end
 
     def status n
-      response.status = n
+      request.status = n
+    end
+
+    def send_header
+      r = request
+
+      Ext.send_data r, HTTP_STATUS_FIRST_LINES[r.status]
+
+      header = r.response_header
+      if r.status == 200
+        header.reverse_merge! OK_RESP_HEADER
+        if r.accept
+          header._aset 'Content-Type', "#{MIME_TYPES[r.accept]}; charset=UTF-8"
+        end
+      end
+      data = header.map do |k, v|
+        "#{k}: #{v}\r\n"
+      end
+      data.concat r.response_header_extra_lines
+      data << "\r\n"
+      Ext.send_data r, data.join
+
+      # forbid further modification
+      header.freeze
+    end
+
+    def send_raw_data data
+      Ext.send_data request, data.to_s
     end
 
     def send_data data
-      response.send_data data
+      send_header unless request.response_header.frozen?
+      Ext.send_chunk request, data.to_s
     end
 
-    def render_header
-      response.render_header
-    end
+    def render view=nil, string: nil, file: nil
+      if view
+        raise ArgumentError, "too many args, need only one: view | string: str | file: file" if string or file
+      elsif string
+        raise ArgumentError, "too many args, need only one: view | string: str | file: file" if file
+        string = string.to_s
+      else
+        raise ArgumentError, "require arg: view | string: str | file: file" unless file
+        string = File.read file
+        # todo x-sendfile
+      end
 
-    def render_string str
-      str = str.to_s
-      r = response
-      r.header['Content-Length'] = str.bytesize
-      r.render_header
-      r.send_data str
-      r.close
+      send_header unless request.response_header.frozen?
+      Ext.send_chunk request, string
+      Fiber.yield :term_close
     end
   end
 end

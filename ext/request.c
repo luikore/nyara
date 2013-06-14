@@ -21,15 +21,20 @@ typedef struct {
   VALUE ext;
   VALUE self;
   int fd;
+
+  // response
+  int status;
+  VALUE response_header;
+  VALUE response_header_extra_lines;
 } Request;
 
 // typedef int (*http_data_cb) (http_parser*, const char *at, size_t length);
 // typedef int (*http_cb) (http_parser*);
 
 static ID id_not_found;
+static VALUE str_html;
 static rb_encoding* u8_encoding;
 static VALUE request_class;
-static VALUE response_class;
 static VALUE method_override_key;
 static VALUE str_accept;
 static VALUE nyara_http_methods;
@@ -53,6 +58,11 @@ static void _upcase_method(VALUE str) {
       s[i] = 'A' + (s[i] - 'a');
     }
   }
+}
+
+static inline void _close_fd(int fd) {
+  rb_hash_delete(fd_request_map, INT2FIX(fd));
+  close(fd);
 }
 
 // fixme assume url is always sent as whole (tcp window is large!)
@@ -83,9 +93,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
   volatile RouteResult result = nyara_lookup_route(p->method, p->path);
   if (RTEST(result.controller)) {
     {
-      volatile VALUE response = rb_class_new_instance(1, &p->self, response_class);
-      VALUE instance_args[] = {p->self, response};
-      VALUE instance = rb_class_new_instance(2, instance_args, result.controller);
+      VALUE instance = rb_class_new_instance(1, &(p->self), result.controller);
       rb_ary_push(result.args, instance);
     }
     // result.args is on stack, no need to worry gc
@@ -93,6 +101,8 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
     p->scope = result.scope;
     p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
     p->ext = result.ext;
+    // response_header init requires full header info
+    p->response_header_extra_lines = rb_ary_new();
     return 0;
   } else {
     rb_funcall(p->self, id_not_found, 0);
@@ -105,7 +115,18 @@ static int on_message_complete(http_parser* parser) {
   if (p->fiber == Qnil) {
     return 1;
   } else {
-    rb_fiber_resume(p->fiber, 0, NULL);
+    VALUE state = rb_fiber_resume(p->fiber, 0, NULL);
+    if (state == Qnil) { // terminated (todo check raise error)
+      if (p->status == 200) {
+        write(p->fd, "0\r\n\r\n", 5);
+      }
+      _close_fd(p->fd);
+      p->fd = 0;
+    } else if (SYM2ID(state) == rb_intern("term_close")) {
+      write(p->fd, "0\r\n\r\n", 5);
+      _close_fd(p->fd);
+      p->fd = 0;
+    }
     return 0;
   }
 }
@@ -154,7 +175,6 @@ static int on_headers_complete(http_parser* parser) {
     }
   }
 
-  // todo resume fiber here
   return 0;
 }
 
@@ -180,6 +200,8 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->last_field);
     rb_gc_mark_maybe(p->last_value);
     rb_gc_mark_maybe(p->ext);
+    rb_gc_mark_maybe(p->response_header);
+    rb_gc_mark_maybe(p->response_header_extra_lines);
   }
 }
 
@@ -187,7 +209,7 @@ static void request_free(void* pp) {
   Request* p = pp;
   if (p) {
     if (p->fd) {
-      close(p->fd);
+      _close_fd(p->fd);
     }
     xfree(p);
   }
@@ -206,6 +228,9 @@ static Request* request_alloc() {
   p->last_value = Qnil;
   p->ext = Qnil;
   p->fd = 0;
+  p->status = 200;
+  p->response_header = Qnil;
+  p->response_header_extra_lines = Qnil;
   p->self = Data_Wrap_Struct(request_class, request_mark, request_free, p);
   return p;
 }
@@ -234,8 +259,7 @@ void nyara_handle_request(int fd) {
     if (errno != EAGAIN) {
       // todo log the bug
       if (p->fd) {
-        rb_hash_delete(fd_request_map, p->fd);
-        close(p->fd);
+        _close_fd(p->fd);
         p->fd = 0;
       }
     }
@@ -245,56 +269,67 @@ void nyara_handle_request(int fd) {
   }
 }
 
-// for test
-static VALUE ext_handle_request(VALUE v_fd) {
-  nyara_handle_request(FIX2INT(v_fd));
-  return Qnil;
-}
+#define P \
+  Request* p;\
+  Data_Get_Struct(self, Request, p);
 
 static VALUE request_http_method(VALUE self) {
-  Request* p;
-  Data_Get_Struct(self, Request, p);
+  P;
   return rb_str_new2(http_method_str(p->method));
 }
 
 static VALUE request_header(VALUE self) {
-  Request* p;
-  Data_Get_Struct(self, Request, p);
+  P;
   return p->header;
 }
 
 static VALUE request_scope(VALUE self) {
-  Request* p;
-  Data_Get_Struct(self, Request, p);
+  P;
   return p->scope;
 }
 
 static VALUE request_path(VALUE self) {
-  Request* p;
-  Data_Get_Struct(self, Request, p);
+  P;
   return p->path;
 }
 
-static VALUE request__param(VALUE self) {
-  Request* p;
-  Data_Get_Struct(self, Request, p);
+static VALUE request_accept(VALUE _, VALUE self) {
+  P;
+  return p->ext == Qnil ? str_html : p->ext;
+}
+
+static VALUE request_status(VALUE self) {
+  P;
+  return INT2FIX(p->status);
+}
+
+static VALUE request_response_header(VALUE self) {
+  P;
+  // 'Content-Type', "#{MIME_TYPES[accept]}; charset=UTF-8"
+  if (p->response_header == Qnil) {
+    
+  }
+  return p->response_header;
+}
+
+static VALUE request_response_header_extra_lines(VALUE self) {
+  P;
+  return p->response_header_extra_lines;
+}
+
+static VALUE ext_request_set_status(VALUE _, VALUE self, VALUE n) {
+  P;
+  p->status = NUM2INT(n);
+  return n;
+}
+
+static VALUE ext_request_param(VALUE _, VALUE self) {
+  P;
   return p->param;
 }
 
-static VALUE request__accept(VALUE self) {
-  Request* p;
-  Data_Get_Struct(self, Request, p);
-  return p->ext;
-}
-
-static VALUE response__send_data(VALUE self, VALUE data) {
-  VALUE request = rb_iv_get(self, "@request");
-  Request* p;
-  Data_Get_Struct(request, Request, p);
-  if (!p->fd) {
-    rb_raise(rb_eRuntimeError, "writing to already closed fd");
-  }
-
+static VALUE ext_send_data(VALUE _, VALUE self, VALUE data) {
+  P;
   char* buf = RSTRING_PTR(data);
   long len = RSTRING_LEN(data);
 
@@ -304,7 +339,7 @@ static VALUE response__send_data(VALUE self, VALUE data) {
       return Qnil;
     if (written == -1) {
       if (errno == EWOULDBLOCK || errno == EAGAIN) {
-        // todo enqueue data
+        // todo enqueue data and set state
       }
       return Qnil;
     }
@@ -314,19 +349,31 @@ static VALUE response__send_data(VALUE self, VALUE data) {
   return Qnil;
 }
 
-static VALUE response_close(VALUE self) {
-  VALUE request = rb_iv_get(self, "@request");
-  Request* p;
-  Data_Get_Struct(request, Request, p);
-  // NOTE: upon closed (when no dupes), kqueue/epoll removes the fd from queue
-  rb_hash_delete(fd_request_map, INT2FIX(p->fd));
-  close(p->fd);
-  p->fd = 0;
-  return self;
+static VALUE ext_send_chunk(VALUE _, VALUE self, VALUE str) {
+  long len = RSTRING_LEN(str);
+  if (!len) {
+    return Qnil;
+  }
+  // todo len overflow?
+  P;
+  long res = dprintf(p->fd, "%lx\r\n%.*s\r\n", len, (int)len, RSTRING_PTR(str));
+  if (res < 0) {
+    rb_raise(rb_eRuntimeError, "%s", strerror(errno));
+  }
+  return Qnil;
+}
+
+// for test
+static VALUE ext_handle_request(VALUE v_fd) {
+  nyara_handle_request(FIX2INT(v_fd));
+  return Qnil;
 }
 
 void Init_request(VALUE nyara, VALUE ext) {
   id_not_found = rb_intern("not_found");
+  str_html = rb_str_new2("html");
+  OBJ_FREEZE(str_html);
+  rb_gc_register_mark_object(str_html);
   u8_encoding = rb_utf8_encoding();
   method_override_key = rb_str_new2("_method");
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
@@ -343,14 +390,17 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "header", request_header, 0);
   rb_define_method(request_class, "scope", request_scope, 0);
   rb_define_method(request_class, "path", request_path, 0);
-  rb_define_method(request_class, "_param", request__param, 0);
-  rb_define_method(request_class, "_accept", request__accept, 0);
+  rb_define_method(request_class, "accept", request_accept, 0);
 
-  // response
-  response_class = rb_define_class_under(nyara, "Response", rb_cObject);
-  rb_define_method(response_class, "_send_data", response__send_data, 1);
-  rb_define_method(response_class, "close", response_close, 0);
+  rb_define_method(request_class, "status", request_status, 0);
+  rb_define_method(request_class, "response_header", request_response_header, 0);
+  rb_define_method(request_class, "response_header_extra_lines", request_response_header_extra_lines, 0);
 
-  // ext, for test
+  // hide internal methods in ext
+  rb_define_singleton_method(ext, "request_set_status", ext_request_set_status, 2);
+  rb_define_singleton_method(ext, "request_param", ext_request_param, 1);
+  rb_define_singleton_method(ext, "send_data", ext_send_data, 2);
+  rb_define_singleton_method(ext, "send_chunk", ext_send_chunk, 2);
+  // for test
   rb_define_singleton_method(ext, "handle_request", ext_handle_request, 1);
 }
