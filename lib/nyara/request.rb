@@ -72,22 +72,12 @@ module Nyara
       header["Requested-With"] == "XMLHttpRequest"
     end
 
-    # computed accept, only available when configured with accept
     # accept precedence:
     #   if the first matching item in 'Accept' header is ambiguous, use the first configured
     #   else use item
     def accept
-      if mime_of(type) == extension_mime
-        return true
-      end
-
-      mime = MIME_TYPES[type]
-      @accept_mime_types ||= begin
-        header['Accept'].split(',').map do |ty|
-          ty.split(';').first
-        end
-      end
-      @accept_mime_types
+      raise 'need to config :accept option with `meta` before using this' unless _accept
+      _accept
     end
 
     def accept_language
@@ -113,7 +103,7 @@ module Nyara
     def form?
       if type = header['Content-Type']
         FORM_METHODS.include?(http_method) and
-        FORM_MEDIA_TYPES.include?(header['Content-Type'])
+        FORM_MEDIA_TYPES.include?(type)
       else
         post?
       end

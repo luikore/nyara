@@ -214,16 +214,6 @@ static VALUE request_alloc_func(VALUE klass) {
   return request_alloc()->self;
 }
 
-static VALUE request_close(VALUE self) {
-  Request* p;
-  Data_Get_Struct(self, Request, p);
-  // NOTE: upon closed (when no dupes), kqueue/epoll removes the fd from queue
-  rb_hash_delete(fd_request_map, INT2FIX(p->fd));
-  close(p->fd);
-  p->fd = 0;
-  return self;
-}
-
 void nyara_handle_request(int fd) {
   Request* p;
 
@@ -243,7 +233,11 @@ void nyara_handle_request(int fd) {
   if (len < 0) {
     if (errno != EAGAIN) {
       // todo log the bug
-      request_close(p->self);
+      if (p->fd) {
+        rb_hash_delete(fd_request_map, p->fd);
+        close(p->fd);
+        p->fd = 0;
+      }
     }
   } else {
     // note: when len == 0, means eof reached, that also informs http_parser the eof
@@ -287,15 +281,16 @@ static VALUE request__param(VALUE self) {
   return p->param;
 }
 
-static VALUE request_accept(VALUE self) {
+static VALUE request__accept(VALUE self) {
   Request* p;
   Data_Get_Struct(self, Request, p);
   return p->ext;
 }
 
-static VALUE request_send_data(VALUE self, VALUE data) {
+static VALUE response__send_data(VALUE self, VALUE data) {
+  VALUE request = rb_iv_get(self, "@request");
   Request* p;
-  Data_Get_Struct(self, Request, p);
+  Data_Get_Struct(request, Request, p);
   if (!p->fd) {
     rb_raise(rb_eRuntimeError, "writing to already closed fd");
   }
@@ -319,6 +314,17 @@ static VALUE request_send_data(VALUE self, VALUE data) {
   return Qnil;
 }
 
+static VALUE response_close(VALUE self) {
+  VALUE request = rb_iv_get(self, "@request");
+  Request* p;
+  Data_Get_Struct(request, Request, p);
+  // NOTE: upon closed (when no dupes), kqueue/epoll removes the fd from queue
+  rb_hash_delete(fd_request_map, INT2FIX(p->fd));
+  close(p->fd);
+  p->fd = 0;
+  return self;
+}
+
 void Init_request(VALUE nyara, VALUE ext) {
   id_not_found = rb_intern("not_found");
   u8_encoding = rb_utf8_encoding();
@@ -338,12 +344,12 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "scope", request_scope, 0);
   rb_define_method(request_class, "path", request_path, 0);
   rb_define_method(request_class, "_param", request__param, 0);
-  rb_define_method(request_class, "accept", request_accept, 0);
-  rb_define_method(request_class, "close", request_close, 0);
-  rb_define_method(request_class, "send_data", request_send_data, 1);
+  rb_define_method(request_class, "_accept", request__accept, 0);
 
   // response
   response_class = rb_define_class_under(nyara, "Response", rb_cObject);
+  rb_define_method(response_class, "_send_data", response__send_data, 1);
+  rb_define_method(response_class, "close", response_close, 0);
 
   // ext, for test
   rb_define_singleton_method(ext, "handle_request", ext_handle_request, 1);

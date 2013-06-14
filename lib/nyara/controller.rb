@@ -117,6 +117,14 @@ module Nyara
     end
     alias headers header
 
+    def set_header k, v
+      response.header[k] = v
+    end
+
+    def add_header s
+      response.add_header s
+    end
+
     def param
       request.param
     end
@@ -154,7 +162,7 @@ module Nyara
     end
 
     def send_data data
-      request.send_data data.to_s
+      response.send_data data
     end
 
     def render_header
@@ -166,8 +174,8 @@ module Nyara
       r = response
       r.header['Content-Length'] = str.bytesize
       r.render_header
-      request.send_data str
-      request.close
+      r.send_data str
+      r.close
     end
   end
 end
