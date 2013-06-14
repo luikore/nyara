@@ -3,7 +3,8 @@
 module Nyara
   # request and handler
   class Request
-    # c-ext: http_method, scope, path, _param, accept, header
+    # c-ext: http_method, scope, path, accept, header
+    #        status, response_content_type, response_header, response_header_extra_lines
     # todo: body, move all underline methods into Ext
 
     # method predicates
@@ -124,16 +125,6 @@ module Nyara
     def status= n
       raise ArgumentError, "unsupported status: #{s}" unless HTTP_STATUS_FIRST_LINES[s]
       Ext.set_status self, n
-    end
-
-    def response_header
-      @response_header ||= begin
-        h = HeaderHash.new
-        if accept != 'html'
-          h._aset 'Content-Type', "#{MIME_TYPES[accept]}; charset=UTF-8"
-        end
-        h
-      end
     end
 
     # todo serialize the changed cookie

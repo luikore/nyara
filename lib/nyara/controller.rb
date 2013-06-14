@@ -163,6 +163,12 @@ module Nyara
       request.status = n
     end
 
+    def content_type ty, charset='UTF-8'
+      mime_ty = MIME_TYPES[ty.to_s]
+      raise ArgumentError, "bad content type: #{ty.inspect}" unless mime_ty
+      r.response_content_type = "#{mime_ty}; charset=#{charset}"
+    end
+
     def send_header
       r = request
 
@@ -175,6 +181,11 @@ module Nyara
           header._aset 'Content-Type', "#{MIME_TYPES[r.accept]}; charset=UTF-8"
         end
       end
+      # override accept if there's a custom one
+      if r.response_content_type
+        header._aset 'Content-Type', r.response_content_type
+      end
+
       data = header.map do |k, v|
         "#{k}: #{v}\r\n"
       end

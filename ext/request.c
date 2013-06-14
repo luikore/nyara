@@ -24,6 +24,7 @@ typedef struct {
 
   // response
   int status;
+  VALUE response_content_type;
   VALUE response_header;
   VALUE response_header_extra_lines;
 } Request;
@@ -101,7 +102,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
     p->scope = result.scope;
     p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
     p->ext = result.ext;
-    // response_header init requires full header info
+    p->response_header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
     p->response_header_extra_lines = rb_ary_new();
     return 0;
   } else {
@@ -200,6 +201,7 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->last_field);
     rb_gc_mark_maybe(p->last_value);
     rb_gc_mark_maybe(p->ext);
+    rb_gc_mark_maybe(p->response_content_type);
     rb_gc_mark_maybe(p->response_header);
     rb_gc_mark_maybe(p->response_header_extra_lines);
   }
@@ -229,6 +231,7 @@ static Request* request_alloc() {
   p->ext = Qnil;
   p->fd = 0;
   p->status = 200;
+  p->response_content_type = Qnil;
   p->response_header = Qnil;
   p->response_header_extra_lines = Qnil;
   p->self = Data_Wrap_Struct(request_class, request_mark, request_free, p);
@@ -303,12 +306,19 @@ static VALUE request_status(VALUE self) {
   return INT2FIX(p->status);
 }
 
+static VALUE request_response_content_type(VALUE self) {
+  P;
+  return p->response_content_type;
+}
+
+static VALUE request_response_content_type_eq(VALUE self, VALUE ct) {
+  P;
+  p->response_content_type = ct;
+  return self;
+}
+
 static VALUE request_response_header(VALUE self) {
   P;
-  // 'Content-Type', "#{MIME_TYPES[accept]}; charset=UTF-8"
-  if (p->response_header == Qnil) {
-    
-  }
   return p->response_header;
 }
 
@@ -393,6 +403,8 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "accept", request_accept, 0);
 
   rb_define_method(request_class, "status", request_status, 0);
+  rb_define_method(request_class, "response_content_type", request_response_content_type, 0);
+  rb_define_method(request_class, "response_content_type_eq", request_response_content_type_eq, 1);
   rb_define_method(request_class, "response_header", request_response_header, 0);
   rb_define_method(request_class, "response_header_extra_lines", request_response_header_extra_lines, 0);
 
