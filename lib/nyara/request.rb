@@ -7,6 +7,10 @@ module Nyara
     #        status, response_content_type, response_header, response_header_extra_lines
     # todo: body, move all underline methods into Ext
 
+    class << self
+      undef new
+    end
+
     # method predicates
     %w[get post put delete options patch].each do |m|
       eval <<-RUBY

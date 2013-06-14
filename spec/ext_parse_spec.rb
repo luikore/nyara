@@ -130,7 +130,6 @@ module Nyara
     context ".parse_param" do
       it "parses param with non-utf-8 chars" do
         bad_s = CGI.escape "\xE2"
-        # p "\xE2".scrub ''
         h = Ext.parse_param ParamHash.new, bad_s
         assert_equal "", h["\xE2"]
       end

@@ -2,6 +2,7 @@
 #include <ruby/encoding.h>
 #include <multipart_parser.h>
 #include <errno.h>
+#include <stdbool.h>
 #ifndef write
 #include <unistd.h>
 #endif
@@ -242,8 +243,16 @@ static VALUE request_alloc_func(VALUE klass) {
   return request_alloc()->self;
 }
 
+/* client entrance
+invoke order:
+- find/create request
+- http_parser_execute
+- on_url
+- on_message_complete
+*/
 void nyara_handle_request(int fd) {
-  Request* p;
+  Request* p = NULL;
+  bool first_time = false;
 
   {
     VALUE v_fd = INT2FIX(fd);
@@ -252,6 +261,7 @@ void nyara_handle_request(int fd) {
       p = request_alloc();
       p->fd = fd;
       rb_hash_aset(fd_request_map, v_fd, p->self);
+      first_time = true;
     } else {
       Data_Get_Struct(request, Request, p);
     }
@@ -267,6 +277,10 @@ void nyara_handle_request(int fd) {
       }
     }
   } else {
+    if (first_time && !len) {
+      // todo log this exception
+      return;
+    }
     // note: when len == 0, means eof reached, that also informs http_parser the eof
     http_parser_execute(&(p->hparser), &request_settings, received_data, len);
   }
@@ -373,10 +387,11 @@ static VALUE ext_send_chunk(VALUE _, VALUE self, VALUE str) {
   return Qnil;
 }
 
-// for test
-static VALUE ext_handle_request(VALUE v_fd) {
-  nyara_handle_request(FIX2INT(v_fd));
-  return Qnil;
+// for test: creates a request with a fd
+static VALUE ext_new_request_with_fd(VALUE _, VALUE v_fd) {
+  int fd = FIX2INT(v_fd);
+  nyara_handle_request(fd);
+  return rb_hash_aref(fd_request_map, v_fd);
 }
 
 void Init_request(VALUE nyara, VALUE ext) {
@@ -414,5 +429,5 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_singleton_method(ext, "send_data", ext_send_data, 2);
   rb_define_singleton_method(ext, "send_chunk", ext_send_chunk, 2);
   // for test
-  rb_define_singleton_method(ext, "handle_request", ext_handle_request, 1);
+  rb_define_singleton_method(ext, "new_request_with_fd", ext_new_request_with_fd, 1);
 }

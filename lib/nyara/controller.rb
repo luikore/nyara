@@ -175,15 +175,16 @@ module Nyara
       Ext.send_data r, HTTP_STATUS_FIRST_LINES[r.status]
 
       header = r.response_header
+      content_type = r.response_content_type
       if r.status == 200
         header.reverse_merge! OK_RESP_HEADER
-        if r.accept
+        if !content_type and !header._aref('Content-Type')
           header._aset 'Content-Type', "#{MIME_TYPES[r.accept]}; charset=UTF-8"
         end
       end
       # override accept if there's a custom one
-      if r.response_content_type
-        header._aset 'Content-Type', r.response_content_type
+      if content_type
+        header._aset 'Content-Type', content_type
       end
 
       data = header.map do |k, v|
