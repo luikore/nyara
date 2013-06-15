@@ -23,12 +23,6 @@ module Nyara
         @accept = nil
       end
 
-      # set controller name, useful in path helper
-      def set_name n
-        Route.register_str2controller n, self
-        @name = n
-      end
-
       def meta tag=nil, opts=nil
         if @meta_exist
           raise 'contiguous meta data descriptors, should follow by an action'
@@ -84,7 +78,12 @@ module Nyara
 
       # todo http method: trace ?
 
-      # define methods
+      # used in path helper
+      def set_name n
+        @controller_name = n
+      end
+      attr_reader :controller_name
+
       def preprocess_actions
         raise "#{self}: no action defined" unless @route_entries
 
@@ -98,22 +97,11 @@ module Nyara
         }
         next_id[]
 
-        @path_templates = {} # str_id => path
         @route_entries.each do |e|
           e.id ||= next_id[]
-          # todo path helper
           define_method e.id, &e.blk
-          @path_templates[e.id.to_s] = e.path
         end
         @route_entries
-      end
-
-      # end with not '/'
-      attr_accessor :scope_prefix
-
-      # id starts with '#'
-      def path_template id
-        @scope_prefix + @path_templates[id]
       end
     end
 
@@ -124,18 +112,11 @@ module Nyara
     end
 
     def path_for id, *args
-      if id.start_with?('#')
-        klass = self.class
-      else
-        name, id = id.split(/(?=\#)/, 2)
-        klass = Route.str2controller name
-      end
-
       if args.last.is_a?(Hash)
         opts = args.pop
       end
 
-      r = klass.path_template(id) % args
+      r = Route.path_template(self.class, id) % args
 
       if opts
         r << ".#{opts[:format]}" if opts[:format]

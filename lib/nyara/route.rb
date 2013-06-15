@@ -12,28 +12,36 @@ module Nyara
     end
 
     def compile
-      visited_controllers = {}
-
-      @str2controller ||= {}
-      @str2controller.merge! @reg_str2controller
+      global_path_templates = {} # "name#id" => path
+      @path_templates = {}       # klass => {any_id => path}
 
       a = @controllers.map do |scope, c|
-        str = nil
-
         if c.is_a?(String)
-          str = c
-          c = compute_str2controller c
-          @str2controller[str] = c
+          c = name2const c
         end
-        if visited_controllers[c]
-          raise "controller #{c.inspect} was mapped to different prefix: #{visited_controllers[c].inspect}"
+        name = c.controller_name || const2name(c)
+        raise "#{c.inspect} is not a Nyara::Controller" unless Controller > c
+
+        if @path_templates[c]
+          raise "controller #{c.inspect} was already mapped"
         end
 
-        visited_controllers[c] = scope
-        c.scope_prefix = scope.sub /\/\z/, ''
+        route_entries = c.preprocess_actions
+        @path_templates[c] = {}
+        route_entries.each do |e|
+          id = e.id.to_s
+          path = File.join scope, e.path
+          global_path_templates[name + id] = path
+          @path_templates[c][id] = path
+        end
 
-        [scope, c, c.preprocess_actions]
+        [scope, c, route_entries]
       end
+
+      @path_templates.keys.each do |c|
+        @path_templates[c] = global_path_templates.merge @path_templates[c]
+      end
+
       Ext.clear_route
       process(a).each do |entry|
         entry.validate
@@ -41,34 +49,31 @@ module Nyara
       end
     end
 
+    def path_template klass, id
+      @path_templates[klass][id]
+    end
+
     def clear
       # gc mark fail if wrong order?
       Ext.clear_route
       @controllers = {}
-      @str2controller = {}
-    end
-
-    # for runtime query
-    def str2controller str
-      @str2controller[str]
-    end
-
-    Route.instance_variable_set :@reg_str2controller, {}
-    # register mapping, permanent
-    def register_str2controller str, controller
-      @reg_str2controller[str] = controller
+      @path_templates = {}
     end
 
     # private
 
-    def compute_str2controller str
-      if c = @reg_str2controller[str]
-        return c
-      end
-      str = str.gsub /(?<=\b|_)[a-z]/, &:upcase
-      str.gsub! '_', ''
-      str << 'Controller'
-      Module.const_get str
+    def const2name c
+      name = c.to_s.sub /Controller$/, ''
+      name.gsub!(/(?<!\b)[A-Z]/){|s| "_#{s.downcase}" }
+      name.gsub!(/[A-Z]/, &:downcase)
+      name
+    end
+
+    def name2const name
+      name = name.gsub /(?<=\b|_)[a-z]/, &:upcase
+      name.gsub! '_', ''
+      name << 'Controller'
+      Module.const_get name
     end
 
     def process preprocessed
