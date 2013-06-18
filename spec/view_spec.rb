@@ -8,7 +8,7 @@ class RenderableMock
   end
   attr_reader :result
 
-  def send_data data
+  def send_chunk data
     @result << data
   end
 end

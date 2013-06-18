@@ -272,7 +272,7 @@ RUBY
 
     def render
       @rest_layouts = @layouts.dup
-      @instance.send_data _render
+      @instance.send_chunk _render
       Fiber.yield :term_close
     end
 
@@ -301,7 +301,7 @@ RUBY
       r = @fiber.resume
       Fiber.yield r if r
       unless @out.empty?
-        @instance.send_data @out.join
+        @instance.send_chunk @out.join
         @out.clear
       end
     end
@@ -310,7 +310,7 @@ RUBY
       while @fiber.alive?
         resume
       end
-      @instance.send_data @rest_result
+      @instance.send_chunk @rest_result
       Fiber.yield :term_close
     end
   end

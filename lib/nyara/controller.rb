@@ -289,7 +289,7 @@ module Nyara
 
     # Resume action after +seconds+
     def wait seconds
-      Fiber.yield seconds.to_f
+      Fiber.yield seconds.to_f # todo
     end
 
     # One shot render, and terminate the action.
