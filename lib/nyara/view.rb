@@ -237,16 +237,6 @@ RUBY
         end
 
         @layouts = [[meth, ext]]
-        unless layout.is_a?(Array)
-          layout = layout ? [layout] : []
-        end
-        layout.each do |l|
-          pair = View.template(l)
-          # see notes on View
-          raise "can not use #{meth} as layout" unless ENGINE_STREAM_FRIENDLY[pair[1]]
-          @layouts << pair
-        end
-
       else
         raise ArgumentError, "too many options, expected only 1: #{opts.inspect}" if opts.size > 1
         ext, template = opts.first
@@ -258,6 +248,16 @@ RUBY
 
         @layouts = [meth]
         @in = template
+      end
+
+      unless layout.is_a?(Array)
+        layout = layout ? [layout] : []
+      end
+      layout.each do |l|
+        pair = View.template(l)
+        # see notes on View
+        raise "can not use #{meth} as layout" unless ENGINE_STREAM_FRIENDLY[pair[1]]
+        @layouts << pair
       end
 
       @locals = locals

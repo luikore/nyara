@@ -61,6 +61,11 @@ module Nyara
           render nil, 'invalid_layout', nil, {}
         end
       end
+
+      it "allows tilt page with stream-friendly layout" do
+        render nil, 'layout', nil, {liquid: 'page'}
+        assert_equal "<html>page</html>\n", @instance.result
+      end
     end
   end
 end
