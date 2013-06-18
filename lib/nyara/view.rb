@@ -13,7 +13,7 @@ module Nyara
   # This adds a bit limitations to the layouts.
   # Consider this case (+friend+ fills into View#out, while +enemy+ doesn't):
   #
-  #      friend layout { enemy layout { friend page } }
+  #   friend layout { enemy layout { friend page } }
   #
   # Friend layout and friend page shares one buffer, but enemy layout just concats +buffer.join+ before we flush friend layout.
   # So the simple solution is: templates other than stream-friendly ones are not allowed to be a layout.
