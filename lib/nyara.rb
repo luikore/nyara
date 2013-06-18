@@ -3,6 +3,7 @@ require_relative "nyara/nyara"
 
 at_exit do
   Nyara::Route.compile
+  Nyara::View.init
   Nyara.start_server
 end
 

@@ -2,7 +2,7 @@ module Nyara
   # other options:
   # - session (see also Session)
   # - host
-  # - view
+  # - views
   # - public
   Config = ConfigHash.new
   class << Config
@@ -59,6 +59,6 @@ end
 
 configure do
   set 'env', 'development'
-  set 'view', 'view'
+  set 'views', 'views'
   set 'public', 'public'
 end

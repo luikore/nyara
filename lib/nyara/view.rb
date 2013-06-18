@@ -35,8 +35,8 @@ module Nyara
     end
 
     class << self
-      def init root
-        @root = root
+      def init
+        @root = Config['views']
         @meth2ext = {} # meth => ext (without dot)
         @meth2sig = {}
       end

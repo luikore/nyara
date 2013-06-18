@@ -16,7 +16,8 @@ end
 module Nyara
   describe [View, Renderable] do
     before :all do
-      View.init __dir__ + '/views'
+      Config['views'] = __dir__ + '/views'
+      View.init
     end
 
     def render *xs
