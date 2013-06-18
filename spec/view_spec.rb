@@ -57,8 +57,11 @@ module Nyara
       end
 
       it "forbids tilt layout" do
-        assert_raise ArgumentError do
-          render nil, 'invalid_layout', nil, {}
+        assert_raise RuntimeError do
+          render nil, 'invalid_layout', nil, {liquid: 'page'}
+        end
+        assert_raise RuntimeError do
+          render 'show', ['invalid_layout'], nil, {}
         end
       end
 
