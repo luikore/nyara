@@ -6,6 +6,7 @@ require "pry"
 require "slim"
 require "erb"
 require "haml"
+require "liquid"
 
 RSpec.configure do |config|
   config.expect_with :stdlib

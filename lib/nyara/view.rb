@@ -76,6 +76,7 @@ module Nyara
 
         if src
           sig = @meth2sig[meth].map{|k| "#{k}: nil" }.join ','
+          sig = '_={}' if sig.empty?
           Renderable.class_eval <<-RUBY, path, 1
             def render #{sig}
               #{src}
@@ -88,7 +89,7 @@ module Nyara
             Tilt.new path rescue return
           end
           # partly precompiled
-          Renderable.send :define_method, meth do |locals, &p|
+          Renderable.send :define_method, meth do |locals=nil, &p|
             t.render self, locals, &p
           end
         end
@@ -99,13 +100,13 @@ module Nyara
       # define inline render method and add Content-Type mapping
       def register_engine ext, default_content_type, stream_friendly=false
         # todo figure out fname and line
-        meth = "!:#{ext}"
+        meth = engine2meth ext
         file = "file".inspect
         line = 1
 
         if stream_friendly
           Renderable.class_eval <<-RUBY
-            def render locals
+            def render locals={}
               @_nyara_locals = locals
               src = locals.map{|k, _| "\#{k} = @_nyara_locals[:\#{k}];" }.join
               src << View.precompile(#{ext.inspect}){ @_nyara_view.in }
@@ -116,8 +117,8 @@ module Nyara
           ENGINE_STREAM_FRIENDLY[ext] = true
         else
           Renderable.class_eval <<-RUBY
-            def render _nyara_locals
-              Tilt[#{ext.inspect}].new(#{file}, #{line}){ @_nyara_view.in }.render self, _nyara_locals
+            def render locals=nil
+              Tilt[#{ext.inspect}].new(#{file}, #{line}){ @_nyara_view.in }.render self, locals
             end
             alias :#{meth.inspect} render
           RUBY
@@ -127,10 +128,6 @@ module Nyara
 
       # returns +[meth, ext_without_dot]+
       def template path, locals={}
-        meth = path2meth path
-        ext = @meth2ext[meth]
-        return [meth, ext] if ext
-
         if File.extname(path).empty?
           @ext_list ||= Tilt.mappings.keys.delete_if(&:empty?).join ','
           Dir.chdir @root do
@@ -141,6 +138,10 @@ module Nyara
             path = paths.first
           end
         end
+
+        meth = path2meth path
+        ext = @meth2ext[meth]
+        return [meth, ext] if ext
 
         @meth2sig[meth] = locals.keys
         ext = on_update path
@@ -192,6 +193,7 @@ module Nyara
 
       def haml_src template
         e = Haml::Engine.new template
+        # todo trim mode
         <<-RUBY
 _hamlout = Haml::Buffer.new(nil, encoding: 'utf-8')
 _hamlout.buffer = @_nyara_view.out
@@ -201,10 +203,11 @@ RUBY
       end
 
       def path2meth path
-        # no ext in method name, so we can always do the conversion
-        ext = File.extname path
-        path_without_ext = ext.empty? ? path : path[0...-ext.size]
-        "!!#{path_without_ext}"
+        "!!#{path}"
+      end
+
+      def engine2meth engine
+        "!:#{engine}"
       end
     end
 
@@ -224,10 +227,10 @@ RUBY
     register_engine 'less', 'text/stylesheet'
 
     # If view_path not given, find template source in opts
-    def initialize view_path, layout, locals, instance, opts
+    def initialize instance, view_path, layout, locals, opts
       if view_path
         raise ArgumentError, "unkown options: #{opts.inspect}" unless opts.empty?
-        meth, ext = View.template(view_path, locals)
+        meth, ext = View.template(view_path, locals || {})
 
         unless @deduced_content_type = ENGINE_DEFAULT_CONTENT_TYPES[ext]
           raise ArgumentError, "unkown template engine: #{ext.inspect}"
@@ -245,10 +248,9 @@ RUBY
         end
 
       else
-        # only accept opts like { erb: "<p>hello</p>" }
-        raise ArgumentError, "too many options" if opts.size > 1
+        raise ArgumentError, "too many options, expected only 1: #{opts.inspect}" if opts.size > 1
         ext, template = opts.first
-        meth = "!:#{ext}"
+        meth = View.engine2meth ext
 
         unless @deduced_content_type = ENGINE_DEFAULT_CONTENT_TYPES[ext]
           raise ArgumentError, "unkown template engine: #{ext.inspect}"
@@ -266,14 +268,15 @@ RUBY
     attr_reader :deduced_content_type, :in, :out
 
     def render
+      @rest_layouts = @layouts.dup
       @instance.send_data _render
       Fiber.yield :term_close
     end
 
     # :nodoc:
     def _render
-      t, _ = @layouts.pop
-      if @layouts.empty?
+      t, _ = @rest_layouts.pop
+      if @rest_layouts.empty?
         @instance.send t, @locals
       else
         @instance.send t do
@@ -283,6 +286,7 @@ RUBY
     end
 
     def stream
+      @rest_layouts = @layouts.dup
       @fiber = Fiber.new do
         _render
       end

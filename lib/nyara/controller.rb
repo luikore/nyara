@@ -304,7 +304,7 @@ module Nyara
     #
     # For steam rendering, see #stream
     def render view_path=nil, layout: self.class.default_layout, locals: nil, **opts
-      view = View.new view_path, layout, locals, self, opts
+      view = View.new self, view_path, layout, locals, opts
       unless request.response_header.frozen?
         send_header view.deduced_content_type
       end
@@ -321,7 +321,7 @@ module Nyara
     #   view.resume # sends "2"
     #   view.end    # sends "34" and closes connection
     def stream view_path=nil, layout: self.class.default_layout, locals: nil, **opts
-      view = View.new view_path, layout, locals, self, opts
+      view = View.new self, view_path, layout, locals, opts
       unless request.response_header.frozen?
         send_header view.deduced_content_type
       end
