@@ -3,6 +3,9 @@ require 'rspec/core'
 require 'rspec/mocks'
 require 'rspec/autorun'
 require "pry"
+require "slim"
+require "erb"
+require "haml"
 
 RSpec.configure do |config|
   config.expect_with :stdlib

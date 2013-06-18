@@ -1,7 +1,12 @@
 module Nyara
+  # Contain render methods
+  module Renderable
+  end
+
   Controller = Struct.new :request
   class Controller
     module ClassMethods
+      # Connect HTTP +method+, +path+ with +blk+ action
       def http method, path, &blk
         @route_entries ||= []
         @used_ids = {}
@@ -23,6 +28,7 @@ module Nyara
         @accept = nil
       end
 
+      # Set meta data for next action
       def meta tag=nil, opts=nil
         if @meta_exist
           raise 'contiguous meta data descriptors, should follow by an action'
@@ -50,40 +56,55 @@ module Nyara
         @meta_exist = true
       end
 
+      # HTTP GET
       def get path, &blk
         http 'GET', path, &blk
       end
 
+      # HTTP POST
       def post path, &blk
         http 'POST', path, &blk
       end
 
+      # HTTP PUT
       def put path, &blk
         http 'PUT', path, &blk
       end
 
+      # HTTP DELETE
       def delete path, &blk
         http 'DELETE', path, &blk
       end
 
+      # HTTP PATCH
       def patch path, &blk
         http 'PATCH', path, &blk
       end
 
+      # HTTP OPTIONS
       # todo generate options response for a url
       # see http://tools.ietf.org/html/rfc5789
       def options path, &blk
         http 'OPTIONS', path, &blk
       end
 
+      # ---
       # todo http method: trace ?
+      # +++
 
-      # used in path helper
+      # Set default layout
+      def layout l
+        @default_layout = l
+      end
+      attr_reader :default_layout
+
+      # Set controller name, so you can use a shorter name to reference the controller in path helper
       def set_name n
         @controller_name = n
       end
       attr_reader :controller_name
 
+      # :nodoc:
       def preprocess_actions
         raise "#{self}: no action defined" unless @route_entries
 
@@ -105,12 +126,19 @@ module Nyara
       end
     end
 
+    include Renderable
+
+    # :nodoc:
     def self.inherited klass
       # klass will also have this inherited method
       # todo check class name
       klass.extend ClassMethods
+      [:@route_entries, :@usred_ids, :@default_layout].each do |iv|
+        klass.instance_variable_set iv, klass.superclass.instance_variable_get(iv)
+      end
     end
 
+    # Path helper
     def path_for id, *args
       if args.last.is_a?(Hash)
         opts = args.pop
@@ -130,6 +158,7 @@ module Nyara
       r
     end
 
+    # Url helper
     # NOTE: host can include port
     def url_for id, *args, scheme: nil, host: Config['host'], **opts
       scheme = scheme ? scheme.sub(/\:?$/, '://') : '//'
@@ -152,6 +181,8 @@ module Nyara
       h = h.sub /(?<![\r\n])\z/, "\r\n"
       request.response_header_extra_lines << s
     end
+
+    # todo args helper
 
     def param
       request.param
@@ -185,33 +216,32 @@ module Nyara
       request.session
     end
 
+    # Set response status
     def status n
       request.status = n
     end
 
-    def content_type ty, charset='UTF-8'
+    # Set response Content-Type, if there's no +charset+ in +ty+, and +ty+ is not text, adds default charset
+    def content_type ty
       mime_ty = MIME_TYPES[ty.to_s]
       raise ArgumentError, "bad content type: #{ty.inspect}" unless mime_ty
-      r.response_content_type = "#{mime_ty}; charset=#{charset}"
+      r.response_content_type = mime_ty
     end
 
-    def send_header
+    # Send respones first line and header data, and freeze +header+ to forbid further changes
+    def send_header template_deduced_content_type=nil
       r = request
+      header = r.response_header
 
       Ext.send_data r, HTTP_STATUS_FIRST_LINES[r.status]
 
-      header = r.response_header
-      content_type = r.response_content_type
-      if r.status == 200
-        header.reverse_merge! OK_RESP_HEADER
-        if !content_type and !header._aref('Content-Type')
-          header._aset 'Content-Type', "#{MIME_TYPES[r.accept]}; charset=UTF-8"
-        end
-      end
-      # override accept if there's a custom one
-      if content_type
-        header._aset 'Content-Type', content_type
-      end
+      header._ast_content_type \
+        r.response_content_type ||
+        header.aref_content_type ||
+        (r.accept and MIME_TYPES[r.accept]) ||
+        template_deduced_content_type
+
+      header.reverse_merge! OK_RESP_HEADER
 
       data = header.map do |k, v|
         "#{k}: #{v}\r\n"
@@ -224,30 +254,78 @@ module Nyara
       header.freeze
     end
 
-    def send_raw_data data
+    # Send raw data, that is, not wrapped in chunked encoding<br>
+    # NOTE: often you should call send_header before doing this.
+    def send_data data
       Ext.send_data request, data.to_s
     end
 
-    def send_data data
+    # Send a data chunk, it can send_header first if header is not sent.
+    # 
+    # :call-seq:
+    #
+    #   send_chunk 'hello world!'
+    def send_chunk data
       send_header unless request.response_header.frozen?
       Ext.send_chunk request, data.to_s
     end
+    alias send_string send_chunk
 
-    def render view=nil, string: nil, file: nil
-      if view
-        raise ArgumentError, "too many args, need only one: view | string: str | file: file" if string or file
-      elsif string
-        raise ArgumentError, "too many args, need only one: view | string: str | file: file" if file
-        string = string.to_s
+    # Send file
+    def send_file file
+      if behind_proxy? # todo
+        header['X-Sendfile'] = file # todo escape name?
+        # todo content type and disposition
+        header['Content-Type'] = determine_ct_by_file_name
+        send_header unless request.response_header.frozen?
       else
-        raise ArgumentError, "require arg: view | string: str | file: file" unless file
-        string = File.read file
-        # todo x-sendfile
+        data = File.binread file
+        header['Content-Type'] = determine_ct_by_file_name
+        send_header unless request.response_header.frozen?
+        send_data data
       end
+      Fiber.yield :term_close # is it right? content type changed
+    end
 
-      send_header unless request.response_header.frozen?
-      Ext.send_chunk request, string
-      Fiber.yield :term_close
+    # Resume action after +seconds+
+    def wait seconds
+      Fiber.yield seconds.to_f
+    end
+
+    # One shot render, and terminate the action.
+    #
+    # :call-seq:
+    #
+    #   # render a template, engine determined by extension
+    #   render 'user/index', locals: {}
+    #
+    #   # with template source, set content type to +text/html+ if not given
+    #   render erb: "<%= 1 + 1 %>"
+    #
+    # For steam rendering, see #stream
+    def render view_path=nil, layout: self.class.default_layout, locals: nil, **opts
+      view = View.new view_path, layout, locals, self, opts
+      unless request.response_header.frozen?
+        send_header view.deduced_content_type
+      end
+      view.render
+    end
+
+    # Stream rendering
+    #
+    # :call-seq:
+    #
+    #   view = stream erb: "<% 5.times do |i| %>i<% Fiber.yield %><% end %>"
+    #   view.resume # sends "0"
+    #   view.resume # sends "1"
+    #   view.resume # sends "2"
+    #   view.end    # sends "34" and closes connection
+    def stream view_path=nil, layout: self.class.default_layout, locals: nil, **opts
+      view = View.new view_path, layout, locals, self, opts
+      unless request.response_header.frozen?
+        send_header view.deduced_content_type
+      end
+      view.stream
     end
   end
 end

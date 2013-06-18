@@ -1,6 +1,9 @@
 module Nyara
-  # other options: session (see also Session)
-  # host
+  # other options:
+  # - session (see also Session)
+  # - host
+  # - view
+  # - public
   Config = ConfigHash.new
   class << Config
     def map prefix, controller
@@ -56,4 +59,6 @@ end
 
 configure do
   set 'env', 'development'
+  set 'view', 'view'
+  set 'public', 'public'
 end
