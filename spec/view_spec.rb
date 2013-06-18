@@ -70,5 +70,17 @@ module Nyara
         assert_equal "<html>page</html>\n", @instance.result
       end
     end
+
+    it "stream render" do
+      @instance = RenderableMock.new
+      view = View.new @instance, nil, 'layout', nil, {erb: '<% 3.times do |i| %><%= i %><% Fiber.yield %><% end %>'}
+      v = view.stream
+      v.resume
+      assert_equal "<html>0", @instance.result
+      v.resume
+      assert_equal "<html>01", @instance.result
+      Fiber.new{ v.end }.resume
+      assert_equal "<html>012</html>\n", @instance.result
+    end
   end
 end

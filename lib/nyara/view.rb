@@ -107,7 +107,7 @@ module Nyara
         line = 1
 
         if stream_friendly
-          Renderable.class_eval <<-RUBY
+          Renderable.class_eval <<-RUBY, __FILE__, __LINE__ + 1
             def render locals={}
               @_nyara_locals = locals
               src = locals.map{|k, _| "\#{k} = @_nyara_locals[:\#{k}];" }.join
@@ -118,7 +118,7 @@ module Nyara
           RUBY
           ENGINE_STREAM_FRIENDLY[ext] = true
         else
-          Renderable.class_eval <<-RUBY
+          Renderable.class_eval <<-RUBY, __FILE__, __LINE__ + 1
             def render locals=nil
               Tilt[#{ext.inspect}].new(#{file}, #{line}){ @_nyara_view.in }.render self, locals
             end
@@ -230,9 +230,10 @@ RUBY
 
     # If view_path not given, find template source in opts
     def initialize instance, view_path, layout, locals, opts
+      locals ||= {}
       if view_path
         raise ArgumentError, "unkown options: #{opts.inspect}" unless opts.empty?
-        meth, ext = View.template(view_path, locals || {})
+        meth, ext = View.template(view_path, locals)
 
         unless @deduced_content_type = ENGINE_DEFAULT_CONTENT_TYPES[ext]
           raise ArgumentError, "unkown template engine: #{ext.inspect}"
@@ -290,7 +291,8 @@ RUBY
     def stream
       @rest_layouts = @layouts.dup
       @fiber = Fiber.new do
-        _render
+        @rest_result = _render
+        nil
       end
       self
     end
@@ -308,6 +310,7 @@ RUBY
       while @fiber.alive?
         resume
       end
+      @instance.send_data @rest_result
       Fiber.yield :term_close
     end
   end

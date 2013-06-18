@@ -67,7 +67,7 @@ module Nyara
     # private
 
     def cipher str
-      iv = rand(36**CIPHER_BLOCK_SIZE).to_s(36)
+      iv = rand(36**CIPHER_BLOCK_SIZE).to_s(36).ljust CIPHER_BLOCK_SIZE
       c = new_cipher true, iv
       Base64.urlsafe_encode64(iv.dup << c.update(str) << c.final)
     end
