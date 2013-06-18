@@ -235,7 +235,7 @@ module Nyara
 
       Ext.send_data r, HTTP_STATUS_FIRST_LINES[r.status]
 
-      header._ast_content_type \
+      header.aset_content_type \
         r.response_content_type ||
         header.aref_content_type ||
         (r.accept and MIME_TYPES[r.accept]) ||
