@@ -14,26 +14,13 @@ module Nyara
     end
 
     it "#mime_match works with wildcards" do
-      a = Ext.mime_match '*', [%w'text html html']
+      a = Ext.mime_match %w'*', [%w'text html html']
       assert_equal 'html', a
 
-      a = Ext.mime_match 'text/*', [%w'some text txt', %w'text html html']
+      a = Ext.mime_match %w'application/javascript text/*', [%w'some text txt', %w'text html html']
       assert_equal 'html', a
 
-      a = Ext.mime_match 'text/*', [%w'some text txt']
-      assert_nil a
-    end
-
-    it "#mime_match ignores encodings" do
-      accept = 'application/javascript ; charset=UTF-8, text/*'
-
-      a = Ext.mime_match accept, [%w'application javascript js']
-      assert_equal 'js', a
-
-      a = Ext.mime_match accept, [%w'text javascript js']
-      assert_equal 'js', a
-
-      a = Ext.mime_match accept, [['javascript', '', 'js']]
+      a = Ext.mime_match %w'text/*', [%w'some text txt']
       assert_nil a
     end
   end

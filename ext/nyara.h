@@ -26,11 +26,12 @@ void nyara_parse_param(VALUE output, const char* s, size_t len);
 
 /* -- accept parse -- */
 void Init_accept(VALUE ext);
+VALUE ext_parse_accept_value(VALUE _, VALUE str);
 
 
 /* -- mime parse and match -- */
 void Init_mime(VALUE ext);
-VALUE ext_mime_match(VALUE self, VALUE request_accept, VALUE accept_mimes);
+VALUE ext_mime_match(VALUE _, VALUE request_accept, VALUE accept_mimes);
 
 
 /* -- hashes -- */

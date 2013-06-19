@@ -168,6 +168,8 @@ static int on_headers_complete(http_parser* parser) {
   if (TYPE(p->ext) != T_STRING) {
     VALUE accept = rb_hash_aref(p->header, str_accept);
     if (RTEST(accept)) {
+      accept = ext_parse_accept_value(Qnil, accept);
+      rb_iv_set(p->self, "@accept", accept);
       p->ext = ext_mime_match(Qnil, accept, p->ext);
     }
     if (p->ext == Qnil) {

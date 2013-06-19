@@ -1,11 +1,7 @@
 #include "nyara.h"
-#include <ruby/re.h>
 #include <string.h>
 #include <ctype.h>
 #include "inc/str_intern.h"
-
-static regex_t* scan_re;
-static OnigRegion* scan_region;
 
 static const char* _strnchr(const char* s, long len, char c) {
   for (long i = 0; i < len; i++) {
@@ -82,43 +78,29 @@ static VALUE ext_mime_match_seg(VALUE self, VALUE m, VALUE v1, VALUE v2) {
 
 // returns matched ext or nil
 VALUE ext_mime_match(VALUE self, VALUE request_accept, VALUE accept_mimes) {
+  Check_Type(request_accept, T_ARRAY);
   Check_Type(accept_mimes, T_ARRAY);
 
-  const UChar* s = (const UChar*)RSTRING_PTR(request_accept);
-  long len = RSTRING_LEN(request_accept);
+  VALUE* accepts = RARRAY_PTR(request_accept);
+  long accepts_len = RARRAY_LEN(request_accept);
   VALUE* values = RARRAY_PTR(accept_mimes);
   long values_len = RARRAY_LEN(accept_mimes);
 
-  while (len > 0) {
-    long res = onig_search(scan_re, s, s + len, s, s + len, scan_region, 0);
-    if (res < 0) {
-      break;
-    }
-    char* match_s = (char*)(s + scan_region->beg[1]);
-    long match_len = scan_region->end[1] - scan_region->beg[1];
-
+  for (long j = 0; j < accepts_len; j++) {
+    char* s = RSTRING_PTR(accepts[j]);
+    long len = RSTRING_LEN(accepts[j]);
     for (long i = 0; i < values_len; i++) {
       Check_Type(values[i], T_ARRAY);
       VALUE* arr = RARRAY_PTR(values[i]);
-      VALUE v1 = arr[0];
-      VALUE v2 = arr[1];
-      if (mime_match_seg(match_s, match_len, v1, v2)) {
+      if (mime_match_seg(s, len, arr[0], arr[1])) {
         return arr[2];
       }
     }
-
-    s += scan_region->end[0];
-    len -= scan_region->end[0];
   }
   return Qnil;
 }
 
 void Init_mime(VALUE ext) {
-  OnigErrorInfo err_info;
-  const char* scan_pattern = "([0-9a-z+\\-\\./*]+)"  "(?:\\s*;[^,]+)?";
-  onig_new(&scan_re, (const UChar*)scan_pattern, (const UChar*)(scan_pattern + strlen(scan_pattern)),
-           ONIG_OPTION_NONE, ONIG_ENCODING_ASCII, ONIG_SYNTAX_RUBY, &err_info);
-  scan_region = onig_region_new();
   rb_define_singleton_method(ext, "mime_match", ext_mime_match, 2);
   // for test
   rb_define_singleton_method(ext, "mime_match_seg", ext_mime_match_seg, 3);
