@@ -14,7 +14,7 @@ module Nyara
       a = Ext.parse_accept_value "text/plain; q=0.0, text/html"
       assert_equal(%w'text/html', a)
 
-      a = Ext.parse_accept_value "text/plain; q=-3, *"
+      a = Ext.parse_accept_value "*, text/plain; q=-3"
       assert_equal(%w'*', a)
 
       a = Ext.parse_accept_value "text/plain; q=0, text/*"
