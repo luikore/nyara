@@ -457,7 +457,7 @@ void Init_request(VALUE nyara, VALUE ext) {
 
   rb_define_method(request_class, "status", request_status, 0);
   rb_define_method(request_class, "response_content_type", request_response_content_type, 0);
-  rb_define_method(request_class, "response_content_type_eq", request_response_content_type_eq, 1);
+  rb_define_method(request_class, "response_content_type=", request_response_content_type_eq, 1);
   rb_define_method(request_class, "response_header", request_response_header, 0);
   rb_define_method(request_class, "response_header_extra_lines", request_response_header_extra_lines, 0);
 

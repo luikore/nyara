@@ -124,13 +124,6 @@ module Nyara
       @session ||= Session.decode cookie
     end
 
-    # response
-
-    def status= n
-      raise ArgumentError, "unsupported status: #{s}" unless HTTP_STATUS_FIRST_LINES[s]
-      Ext.set_status self, n
-    end
-
     # todo serialize the changed cookie
 
     # todo rename and move it into Ext

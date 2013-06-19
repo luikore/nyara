@@ -218,14 +218,15 @@ module Nyara
 
     # Set response status
     def status n
-      request.status = n
+      raise ArgumentError, "unsupported status: #{n}" unless HTTP_STATUS_FIRST_LINES[n]
+      Ext.request_set_status request, n
     end
 
     # Set response Content-Type, if there's no +charset+ in +ty+, and +ty+ is not text, adds default charset
     def content_type ty
       mime_ty = MIME_TYPES[ty.to_s]
       raise ArgumentError, "bad content type: #{ty.inspect}" unless mime_ty
-      r.response_content_type = mime_ty
+      request.response_content_type = mime_ty
     end
 
     # Send respones first line and header data, and freeze +header+ to forbid further changes
