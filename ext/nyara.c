@@ -47,6 +47,7 @@ void Init_nyara() {
   OBJ_FREEZE(status_map);
 
   VALUE ext = rb_define_module_under(nyara, "Ext");
+  Init_accept(ext);
   Init_mime(ext);
   Init_request(nyara, ext);
   Init_event(ext);

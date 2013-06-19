@@ -1,5 +1,8 @@
 #pragma once
 #include <ruby.h>
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 #include <http_parser.h>
 #include "inc/status_codes.inc"
 
@@ -21,6 +24,10 @@ void nyara_handle_request(int fd);
 void Init_url_encoded(VALUE ext);
 size_t nyara_parse_path(VALUE path, const char*s, size_t len);
 void nyara_parse_param(VALUE output, const char* s, size_t len);
+
+
+/* -- accept parse -- */
+void Init_accept(VALUE ext);
 
 
 /* -- mime parse and match -- */

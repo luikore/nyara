@@ -1,8 +1,7 @@
-#include <ruby.h>
+#include "nyara.h"
 #include <ruby/re.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdbool.h>
 #include "inc/str_intern.h"
 
 static regex_t* scan_re;

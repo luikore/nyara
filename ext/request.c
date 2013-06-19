@@ -2,7 +2,6 @@
 #include <ruby/encoding.h>
 #include <multipart_parser.h>
 #include <errno.h>
-#include <stdbool.h>
 #ifndef write
 #include <unistd.h>
 #endif
