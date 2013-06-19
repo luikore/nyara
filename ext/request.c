@@ -311,7 +311,7 @@ static VALUE request_path(VALUE self) {
   return p->path;
 }
 
-static VALUE request_accept(VALUE _, VALUE self) {
+static VALUE request_matched_accept(VALUE _, VALUE self) {
   P;
   return p->ext == Qnil ? str_html : p->ext;
 }
@@ -454,7 +454,7 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "header", request_header, 0);
   rb_define_method(request_class, "scope", request_scope, 0);
   rb_define_method(request_class, "path", request_path, 0);
-  rb_define_method(request_class, "accept", request_accept, 0);
+  rb_define_method(request_class, "matched_accept", request_matched_accept, 0);
 
   rb_define_method(request_class, "status", request_status, 0);
   rb_define_method(request_class, "response_content_type", request_response_content_type, 0);

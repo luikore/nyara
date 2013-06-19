@@ -167,6 +167,10 @@ module Nyara
       scheme << host << path
     end
 
+    def matched_accept
+      request.matched_accept
+    end
+
     def header
       request.header
     end
