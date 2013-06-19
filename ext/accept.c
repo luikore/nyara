@@ -4,8 +4,46 @@
 #include <ctype.h>
 #include "inc/str_intern.h"
 
-// only Accept allows level
+// standard:
 //   http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
+// about +q+:
+//   http://www.gethifi.com/blog/browser-rest-http-accept-headers
+// +level+ is a waste of time:
+//   http://stackoverflow.com/questions/13890996/http-accept-level
+
+// sorted data structure
+typedef struct {
+  double* qs;
+  long len;
+  long cap;
+} QArray;
+
+static QArray qarray_new() {
+  QArray qa = {ALLOC_N(double, 10), 0, 10};
+  return qa;
+}
+
+// return inserted pos
+static long qarray_insert(QArray* qa, double v) {
+  if (qa->len == qa->cap) {
+    qa->cap *= 2;
+    REALLOC_N(qa->qs, double, qa->cap);
+  }
+  long i = 0;
+  for (; i < qa->len; i++) {
+    if (qa->qs[i] < v) {
+      memmove(qa->qs + i + 1, qa->qs + i, sizeof(double) * (qa->len - i));
+      break;
+    }
+  }
+  qa->qs[i] = v;
+  qa->len++;
+  return i;
+}
+
+static void qarray_delete(QArray* qa) {
+  xfree(qa->qs);
+}
 
 static VALUE trim_space(VALUE str) {
   long olen = RSTRING_LEN(str);
@@ -43,41 +81,49 @@ static const char* find_q(const char* s, long len) {
 }
 
 // parse a segment, and +out[value] = q+
-void parse_seg(VALUE out, const char* s, long len) {
+static void parse_seg(const char* s, long len, VALUE out, QArray* qa) {
+  double qval = 1;
   const char* q = find_q(s, len);
   if (q) {
     if (q == s) {
       return;
     }
-    double qval = strtod(q + 3, NULL);
-    if (qval > 1) {
+    char* str_end = (char*)q + 3;
+    qval = strtod(q + 3, &str_end);
+    if (str_end == q + 3 || isnan(qval) || qval > 3) {
       qval = 1;
-    } else if (qval < 0) {
-      qval = 0;
+    } else if (qval <= 0) {
+      return;
     }
-    rb_hash_aset(out, rb_str_new(s, q - s), DBL2NUM(qval));
-  } else {
-    rb_hash_aset(out, rb_str_new(s, len), INT2FIX(1));
+    len = q - s;
   }
+  long pos = qarray_insert(qa, qval);
+  rb_ary_push(out, Qnil); // just to increase cap
+  VALUE* out_ptr = RARRAY_PTR(out);
+  long out_len = RARRAY_LEN(out); // note this len is +1
+  memmove(out_ptr + pos + 1, out_ptr + pos, sizeof(VALUE) * (out_len - pos - 1));
+  rb_ary_store(out, pos, rb_str_new(s, len));
 }
 
-VALUE parse_accept_value(VALUE _, VALUE str) {
+static VALUE ext_parse_accept_value(VALUE _, VALUE str) {
   str = trim_space(str);
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
-  volatile VALUE out = rb_hash_new();
+  volatile VALUE out = rb_ary_new();
+  QArray qa = qarray_new();
   while (len > 0) {
     long seg_len = find_seg(s, len);
     if (seg_len == 0) {
       break;
     }
-    parse_seg(out, s, seg_len);
+    parse_seg(s, seg_len, out, &qa);
     s += seg_len + 1;
     len -= seg_len + 1;
   }
+  qarray_delete(&qa);
   return out;
 }
 
 void Init_accept(VALUE ext) {
-  rb_define_singleton_method(ext, "parse_accept_value", parse_accept_value, 1);
+  rb_define_singleton_method(ext, "parse_accept_value", ext_parse_accept_value, 1);
 }

@@ -1,8 +1,6 @@
 #pragma once
 #include <ruby.h>
-#ifndef __cplusplus
 #include <stdbool.h>
-#endif
 #include <http_parser.h>
 #include "inc/status_codes.inc"
 
