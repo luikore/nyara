@@ -289,7 +289,7 @@ module Nyara
     end
 
     # Resume action after +seconds+
-    def wait seconds
+    def sleep seconds
       Fiber.yield seconds.to_f # todo
     end
 
