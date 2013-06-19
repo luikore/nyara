@@ -20,6 +20,7 @@ require_relative "config"
 require_relative "route"
 require_relative "route_entry"
 require_relative "view"
+require_relative "cpu_counter"
 
 module Nyara
   HTTP_STATUS_FIRST_LINES = Hash[HTTP_STATUS_CODES.map{|k,v|[k, "HTTP/1.1 #{k} #{v}\r\n".freeze]}].freeze
@@ -42,8 +43,7 @@ module Nyara
 
     def start_server
       port = Config[:port] || 3000
-      workers = Config[:workers] || 3
-
+      workers = Config[:workers] || (CpuCounter.count - 1)
 
       puts "starting #{Config[:env]} server at 0.0.0.0:#{port}"
       case Config[:env].to_s
@@ -57,7 +57,6 @@ module Nyara
           end
         end
         GC.start
-        # todo cpu count
         @workers = workers.times.map do
           fork {
             Ext.init_queue
