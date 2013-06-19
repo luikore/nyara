@@ -106,6 +106,10 @@ static void parse_seg(const char* s, long len, VALUE out, QArray* qa) {
 }
 
 VALUE ext_parse_accept_value(VALUE _, VALUE str) {
+  if (str == Qnil) {
+    return rb_ary_new();
+  }
+
   str = trim_space(str);
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);

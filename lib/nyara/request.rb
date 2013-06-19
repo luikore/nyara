@@ -86,11 +86,11 @@ module Nyara
     end
 
     def accept_charset
-      @accept_charset ||= Ext.parse_accept_encoding header['Accept-Charset']
+      @accept_charset ||= Ext.parse_accept_value header['Accept-Charset']
     end
 
     def accept_encoding
-      @accept_encoding ||= Ext.parse_accept_encoding header['Accept-Encoding']
+      @accept_encoding ||= Ext.parse_accept_value header['Accept-Encoding']
     end
 
     FORM_METHODS = %w[
