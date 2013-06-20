@@ -8,10 +8,12 @@ Not Yet Another Ruby Async web framework and server. Not on rack nor rack-compat
 
 # Getting started
 
+Requires Ruby 2.0+, BSD/Linux/Mac OS X.
+
 Install
 
 ```bash
-gem ins nyara
+gem ins --pre nyara
 ```
 
 Edit a file, name it `nyahaha.rb` for example
@@ -23,7 +25,7 @@ get '/' do
 end
 ```
 
-And nya it!
+And start server
 
 ```bash
 ruby nyahaha.rb

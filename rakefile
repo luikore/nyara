@@ -104,8 +104,10 @@ desc "build and test"
 task :default => :test
 
 desc "build and install gem"
-task :gem do
-  sh 'rm', '-f', '*.gem'
+task :gem => 'gen' do
+  Dir.glob('*.gem') do |f|
+    sh 'rm', f
+  end
   sh 'gem', 'build', 'nyara.gemspec'
   gem_package = Dir.glob('*.gem').first
   sh 'gem', 'install', '--no-rdoc', '--no-ri', gem_package
