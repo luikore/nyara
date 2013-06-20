@@ -20,8 +20,8 @@ void nyara_handle_request(int fd);
 
 /* -- url encoded parse -- */
 void Init_url_encoded(VALUE ext);
-size_t nyara_parse_path(VALUE path, const char*s, size_t len);
-void nyara_parse_param(VALUE output, const char* s, size_t len);
+long nyara_parse_path(VALUE path, const char*s, long len);
+void nyara_parse_param(VALUE output, const char* s, long len);
 
 
 /* -- accept parse -- */
@@ -52,8 +52,8 @@ typedef struct {
   VALUE controller;
   VALUE args;
   VALUE scope;
-  VALUE ext; // maybe string or map
+  VALUE format; // string, path extension or matched ext in config
 } RouteResult;
 
 extern void Init_route(VALUE nyara, VALUE ext);
-extern RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath);
+extern RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, VALUE accept_arr);

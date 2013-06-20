@@ -2,14 +2,6 @@ require_relative "spec_helper"
 
 module Nyara
   describe Request do
-    before :all do
-      Ext.set_skip_on_url true
-    end
-
-    after :all do
-      Ext.set_skip_on_url false
-    end
-
     before :each do
       @server, @client = Socket.pair :UNIX, :STREAM, 0
       Ext.set_nonblock @server.fileno
@@ -18,10 +10,10 @@ module Nyara
       @request_attrs = {
         method_num: HTTP_METHODS['GET'],
         path: '/',
-        param: HeaderHash.new.tap{|h| h['id'] = 1 },
+        query: HeaderHash.new.tap{|h| h['id'] = 1 },
         fiber: nil,
         scope: '/',
-        ext: nil
+        format: 'html'
       }
       set_request_attrs
     end

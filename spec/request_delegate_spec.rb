@@ -5,14 +5,6 @@ module Nyara
     class DelegateController < Controller
     end
 
-    before :all do
-      Ext.set_skip_on_url true
-    end
-
-    after :all do
-      Ext.set_skip_on_url false
-    end
-
     before :each do
       @client, @server = Socket.pair :UNIX, :STREAM
       Ext.set_nonblock @server.fileno
@@ -20,7 +12,7 @@ module Nyara
       Ext.set_request_attrs @request, {
         method_num: HTTP_METHODS['GET'],
         path: '/search',
-        param: ParamHash.new.tap{|h| h['q'] = 'nyara' },
+        query: ParamHash.new.tap{|h| h['q'] = 'nyara' },
         fiber: Fiber.new{},
         scope: '/scope',
         header: HeaderHash.new.tap{|h| h['Accept'] = 'en-US' }

@@ -14,7 +14,7 @@ module Nyara
         action = RouteEntry.new
         action.http_method = HTTP_METHODS[method]
         action.path = path
-        action.set_accept_exts @accept
+        action.set_accept_exts @formats
         action.id = @curr_id.to_sym if @curr_id
         action.blk = blk
         @route_entries << action
@@ -25,7 +25,7 @@ module Nyara
           @curr_id = nil
           @meta_exist = nil
         end
-        @accept = nil
+        @formats = nil
       end
 
       # Set meta data for next action
@@ -50,7 +50,7 @@ module Nyara
 
         if opts
           # todo add opts: strong param, etag, cache-control
-          @accept = opts[:accept]
+          @formats = opts[:formats]
         end
 
         @meta_exist = true
@@ -167,8 +167,8 @@ module Nyara
       scheme << host << path
     end
 
-    def matched_accept
-      request.matched_accept
+    def format
+      request.format
     end
 
     def header

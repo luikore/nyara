@@ -11,14 +11,15 @@ typedef struct {
   multipart_parser* mparser;
   enum http_method method;
   VALUE header;
+  VALUE accept; // mime array sorted with q
+  VALUE format; // string ext without dot
   VALUE fiber;
   VALUE scope; // mapped prefix
+  VALUE path_with_query;
   VALUE path;
-  VALUE param;
+  VALUE query;
   VALUE last_field;
   VALUE last_value;
-  // string if determined by url, or hash if need further check with header[Accept]
-  VALUE ext;
   VALUE self;
   int fd;
 
@@ -44,7 +45,7 @@ static VALUE fd_request_map;
 #define MAX_RECEIVE_DATA 65536
 static char received_data[MAX_RECEIVE_DATA];
 
-static VALUE fiber_func(VALUE _, VALUE args) {
+static VALUE _fiber_func(VALUE _, VALUE args) {
   VALUE instance = rb_ary_pop(args);
   VALUE meth = rb_ary_pop(args);
   rb_apply(instance, SYM2ID(meth), args);
@@ -66,49 +67,16 @@ static inline void _close_fd(int fd) {
   close(fd);
 }
 
-// fixme assume url is always sent as whole (tcp window is large!)
 static int on_url(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
   p->method = parser->method;
 
-  // matching raw path is bad idea, for example: %a0 and %A0 are different strings but same route
-  p->path = rb_enc_str_new("", 0, u8_encoding);
-  size_t query_i = nyara_parse_path(p->path, s, len);
-  p->param = rb_class_new_instance(0, NULL, nyara_param_hash_class);
-  if (query_i < len) {
-    nyara_parse_param(p->param, s + query_i, len - query_i);
-
-    // do method override with _method=xxx in query
-    if (p->method == HTTP_POST) {
-      VALUE meth = rb_hash_aref(p->param, method_override_key);
-      if (TYPE(meth) == T_STRING) {
-        _upcase_method(meth);
-        VALUE meth_num = rb_hash_aref(nyara_http_methods, meth);
-        if (meth_num != Qnil) {
-          p->method = FIX2INT(meth_num);
-        }
-      }
-    }
-  }
-
-  volatile RouteResult result = nyara_lookup_route(p->method, p->path);
-  if (RTEST(result.controller)) {
-    {
-      VALUE instance = rb_class_new_instance(1, &(p->self), result.controller);
-      rb_ary_push(result.args, instance);
-    }
-    // result.args is on stack, no need to worry gc
-    p->fiber = rb_fiber_new(fiber_func, result.args);
-    p->scope = result.scope;
-    p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
-    p->ext = result.ext;
-    p->response_header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
-    p->response_header_extra_lines = rb_ary_new();
-    return 0;
+  if (p->path_with_query == Qnil) {
+    p->path_with_query = rb_str_new(s, len);
   } else {
-    rb_funcall(p->self, id_not_found, 0);
-    return 1;
+    rb_str_cat(p->path_with_query, s, len);
   }
+  return 0;
 }
 
 static int on_message_complete(http_parser* parser) {
@@ -160,25 +128,48 @@ static int on_header_value(http_parser* parser, const char* s, size_t len) {
   return 0;
 }
 
+// may override POST by _method in query
+static void _parse_path_and_query(Request* p) {
+  char* s = RSTRING_PTR(p->path_with_query);
+  long len = RSTRING_LEN(p->path_with_query);
+  long query_i = nyara_parse_path(p->path, s, len);
+  if (query_i < len) {
+    nyara_parse_param(p->query, s + query_i, len - query_i);
+
+    // do method override with _method=xxx in query
+    if (p->method == HTTP_POST) {
+      VALUE meth = rb_hash_aref(p->query, method_override_key);
+      if (TYPE(meth) == T_STRING) {
+        _upcase_method(meth);
+        VALUE meth_num = rb_hash_aref(nyara_http_methods, meth);
+        if (meth_num != Qnil) {
+          p->method = FIX2INT(meth_num);
+        }
+      }
+    }
+  }
+}
+
 static int on_headers_complete(http_parser* parser) {
   Request* p = (Request*)parser;
   p->last_field = Qnil;
   p->last_value = Qnil;
 
-  if (TYPE(p->ext) != T_STRING) {
-    VALUE accept = rb_hash_aref(p->header, str_accept);
-    if (RTEST(accept)) {
-      accept = ext_parse_accept_value(Qnil, accept);
-      rb_iv_set(p->self, "@accept", accept);
-      p->ext = ext_mime_match(Qnil, accept, p->ext);
-    }
-    if (p->ext == Qnil) {
-      rb_funcall(p->self, id_not_found, 0);
-      return 1;
-    }
+  _parse_path_and_query(p);
+  p->accept = ext_parse_accept_value(Qnil, rb_hash_aref(p->header, str_accept));
+  volatile RouteResult result = nyara_lookup_route(p->method, p->path, p->accept);
+  if (RTEST(result.controller)) {
+    rb_ary_push(result.args, rb_class_new_instance(1, &(p->self), result.controller));
+    // result.args is on stack, no need to worry gc
+    p->fiber = rb_fiber_new(_fiber_func, result.args);
+    p->scope = result.scope;
+    p->format = result.format;
+    p->response_header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
+    p->response_header_extra_lines = rb_ary_new();
+    return 0;
   }
-
-  return 0;
+  rb_funcall(p->self, id_not_found, 0);
+  return 1;
 }
 
 static http_parser_settings request_settings = {
@@ -196,13 +187,15 @@ static void request_mark(void* pp) {
   Request* p = pp;
   if (p) {
     rb_gc_mark_maybe(p->header);
+    rb_gc_mark_maybe(p->accept);
+    rb_gc_mark_maybe(p->format);
     rb_gc_mark_maybe(p->fiber);
     rb_gc_mark_maybe(p->scope);
+    rb_gc_mark_maybe(p->path_with_query);
     rb_gc_mark_maybe(p->path);
-    rb_gc_mark_maybe(p->param);
+    rb_gc_mark_maybe(p->query);
     rb_gc_mark_maybe(p->last_field);
     rb_gc_mark_maybe(p->last_value);
-    rb_gc_mark_maybe(p->ext);
     rb_gc_mark_maybe(p->response_content_type);
     rb_gc_mark_maybe(p->response_header);
     rb_gc_mark_maybe(p->response_header_extra_lines);
@@ -223,14 +216,16 @@ static Request* request_alloc() {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
   p->mparser = NULL;
-  p->header = Qnil;
+  p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
+  p->accept = Qnil;
+  p->format = Qnil;
   p->fiber = Qnil;
   p->scope = Qnil;
-  p->path = Qnil;
-  p->param = Qnil;
+  p->path_with_query = Qnil;
+  p->path = rb_enc_str_new("", 0, u8_encoding);
+  p->query = rb_class_new_instance(0, NULL, nyara_param_hash_class);
   p->last_field = Qnil;
   p->last_value = Qnil;
-  p->ext = Qnil;
   p->fd = 0;
   p->status = 200;
   p->response_content_type = Qnil;
@@ -248,8 +243,8 @@ static VALUE request_alloc_func(VALUE klass) {
 invoke order:
 - find/create request
 - http_parser_execute
-- on_url
-- on_message_complete
+- on_headers_complete => 404 or create request
+- on_message_complete => run action
 */
 void nyara_handle_request(int fd) {
   Request* p = NULL;
@@ -311,9 +306,24 @@ static VALUE request_path(VALUE self) {
   return p->path;
 }
 
-static VALUE request_matched_accept(VALUE _, VALUE self) {
+static VALUE request_query(VALUE self) {
   P;
-  return p->ext == Qnil ? str_html : p->ext;
+  return p->query;
+}
+
+static VALUE request_path_with_query(VALUE self) {
+  P;
+  return p->path_with_query;
+}
+
+static VALUE request_accept(VALUE self) {
+  P;
+  return p->accept;
+}
+
+static VALUE request_format(VALUE self) {
+  P;
+  return p->format == Qnil ? str_html : p->format;
 }
 
 static VALUE request_status(VALUE self) {
@@ -346,11 +356,6 @@ static VALUE ext_request_set_status(VALUE _, VALUE self, VALUE n) {
   P;
   p->status = NUM2INT(n);
   return n;
-}
-
-static VALUE ext_request_param(VALUE _, VALUE self) {
-  P;
-  return p->param;
 }
 
 static VALUE ext_send_data(VALUE _, VALUE self, VALUE data) {
@@ -397,40 +402,35 @@ static VALUE ext_handle_request(VALUE _, VALUE v_fd) {
 
 // set internal attrs in the request object
 static VALUE ext_set_request_attrs(VALUE _, VALUE self, VALUE attrs) {
-# define ATTR(key) rb_hash_aref(attrs, ID2SYM(rb_intern(key)))
+# define ATTR(key) rb_hash_delete(attrs, ID2SYM(rb_intern(key)))
 # define HEADER_HASH_NEW rb_class_new_instance(0, NULL, nyara_header_hash_class)
   P;
 
-  if (ATTR("method_num") == Qnil) {
+  VALUE method_num = ATTR("method_num");
+  if (method_num == Qnil) {
     rb_raise(rb_eArgError, "bad method_num");
   }
+  p->method                      = NUM2INT(method_num);
+  p->path                        = ATTR("path");
+  p->query                       = ATTR("query");
+  p->fiber                       = ATTR("fiber");
+  p->scope                       = ATTR("scope");
+  p->header                      = ATTR("header");
+  p->format                      = ATTR("format");
+  p->response_header             = ATTR("response_header");
+  p->response_header_extra_lines = ATTR("response_header_extra_lines");
 
-  p->method          = NUM2INT(ATTR("method_num"));
-  p->path            = ATTR("path");
-  p->param           = ATTR("param");
-  p->fiber           = ATTR("fiber");
-  p->scope           = ATTR("scope");
-  p->header          = RTEST(ATTR("header")) ? ATTR("header") : HEADER_HASH_NEW;
-  p->ext             = ATTR("ext");
-  p->response_header = RTEST(ATTR("response_header")) ? ATTR("response_header") : HEADER_HASH_NEW;
-  if (RTEST(ATTR("response_header_extra_lines"))) {
-    p->response_header_extra_lines = ATTR("response_header_extra_lines");
-  } else {
-    p->response_header_extra_lines = rb_ary_new();
+  if (!RTEST(p->header)) p->header = HEADER_HASH_NEW;
+  if (!RTEST(p->response_header)) p->response_header = HEADER_HASH_NEW;
+  if (!RTEST(p->response_header_extra_lines)) p->response_header_extra_lines = rb_ary_new();
+
+  if (!RTEST(rb_funcall(attrs, rb_intern("empty?"), 0))) {
+    VALUE attrs_inspect = rb_funcall(attrs, rb_intern("inspect"), 0);
+    rb_raise(rb_eArgError, "unkown attrs: %.*s", (int)RSTRING_LEN(attrs_inspect), RSTRING_PTR(attrs_inspect));
   }
   return self;
 # undef HEADER_HASH_NEW
 # undef ATTR
-}
-
-// skip on_url so we can focus on testing request
-static VALUE ext_set_skip_on_url(VALUE _, VALUE pred) {
-  if (RTEST(pred)) {
-    request_settings.on_url = NULL;
-  } else {
-    request_settings.on_url = on_url;
-  }
-  return Qnil;
 }
 
 void Init_request(VALUE nyara, VALUE ext) {
@@ -454,7 +454,10 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "header", request_header, 0);
   rb_define_method(request_class, "scope", request_scope, 0);
   rb_define_method(request_class, "path", request_path, 0);
-  rb_define_method(request_class, "matched_accept", request_matched_accept, 0);
+  rb_define_method(request_class, "query", request_query, 0);
+  rb_define_method(request_class, "path_with_query", request_path_with_query, 0);
+  rb_define_method(request_class, "accept", request_accept, 0);
+  rb_define_method(request_class, "format", request_format, 0);
 
   rb_define_method(request_class, "status", request_status, 0);
   rb_define_method(request_class, "response_content_type", request_response_content_type, 0);
@@ -464,11 +467,9 @@ void Init_request(VALUE nyara, VALUE ext) {
 
   // hide internal methods in ext
   rb_define_singleton_method(ext, "request_set_status", ext_request_set_status, 2);
-  rb_define_singleton_method(ext, "request_param", ext_request_param, 1);
   rb_define_singleton_method(ext, "send_data", ext_send_data, 2);
   rb_define_singleton_method(ext, "send_chunk", ext_send_chunk, 2);
   // for test
   rb_define_singleton_method(ext, "handle_request", ext_handle_request, 1);
   rb_define_singleton_method(ext, "set_request_attrs", ext_set_request_attrs, 2);
-  rb_define_singleton_method(ext, "set_skip_on_url", ext_set_skip_on_url, 1);
 }

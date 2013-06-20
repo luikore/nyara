@@ -18,7 +18,7 @@ static char _half_octet(char c) {
   }
 }
 
-static size_t _decode_url_seg(VALUE path, const char*s, size_t len, char stop_char) {
+static long _decode_url_seg(VALUE path, const char*s, long len, char stop_char) {
   const char* last_s = s;
   long last_len = 0;
 
@@ -29,7 +29,7 @@ static size_t _decode_url_seg(VALUE path, const char*s, size_t len, char stop_ch
     last_len = 0;\
   }
 
-  size_t i;
+  long i;
   for (i = 0; i < len; i++) {
     if (s[i] == '%') {
       if (i + 2 >= len) {
@@ -71,12 +71,12 @@ static size_t _decode_url_seg(VALUE path, const char*s, size_t len, char stop_ch
 }
 
 // return parsed len, s + return == start of query
-size_t nyara_parse_path(VALUE output, const char* s, size_t len) {
+long nyara_parse_path(VALUE output, const char* s, long len) {
   return _decode_url_seg(output, s, len, '?');
 }
 
 static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
-  size_t parsed = nyara_parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
+  long parsed = nyara_parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
   return ULONG2NUM(parsed);
 }
 
@@ -227,10 +227,10 @@ static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE
   return output;
 }
 
-void nyara_parse_param(VALUE output, const char* s, size_t len) {
+void nyara_parse_param(VALUE output, const char* s, long len) {
   // split with /[&;] */
-  size_t last_i = 0;
-  size_t i = 0;
+  long last_i = 0;
+  long i = 0;
   for (; i < len; i++) {
     if (s[i] == '&' || s[i] == ';') {
       if (i > last_i) {
@@ -265,11 +265,11 @@ static VALUE _cookie_seg_str_new(const char* s, long len) {
 static VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str) {
   volatile VALUE arr = rb_ary_new();
   const char* s = RSTRING_PTR(str);
-  size_t len = RSTRING_LEN(str);
+  long len = RSTRING_LEN(str);
 
   // split with / *[,;] */
-  size_t last_i = 0;
-  size_t i = 0;
+  long last_i = 0;
+  long i = 0;
   for (; i < len; i++) {
     if (s[i] == ',' || s[i] == ';') {
       // char* and len parse_seg

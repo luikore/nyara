@@ -3,7 +3,7 @@
 module Nyara
   # request and handler
   class Request
-    # c-ext: http_method, scope, path, matched_accept, header
+    # c-ext: http_method, scope, path, query, path_with_query format, accept, header
     #        status, response_content_type, response_header, response_header_extra_lines
     # todo: body, move all underline methods into Ext
 
@@ -77,10 +77,6 @@ module Nyara
       header["Requested-With"] == "XMLHttpRequest"
     end
 
-    def accept
-      @accept ||= Ext.parse_accept_value header['Accept']
-    end
-
     def accept_language
       @accept_language ||= Ext.parse_accept_value header['Accept-Language']
     end
@@ -116,11 +112,12 @@ module Nyara
 
     def param
       @param ||= begin
-        query_param = Ext.request_param self
+        q = query.dup
         if form?
-          Ext.parse_param query_param, body
+          # todo read body
+          Ext.parse_param q, body
         end
-        query_param
+        q
       end
     end
 

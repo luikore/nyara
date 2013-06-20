@@ -220,7 +220,7 @@ static VALUE extract_ext(const char* s, long len) {
 }
 
 extern "C"
-RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
+RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, VALUE accept_arr) {
   RouteResult r = {Qnil, Qnil, Qnil, Qnil};
   auto map_iter = route_map.find(method_num);
   if (map_iter == route_map.end()) {
@@ -247,8 +247,8 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
       long suffix_len = len - i->prefix_len;
       if (i->suffix_len == 0) {
         if (suffix_len) {
-          r.ext = extract_ext(suffix, suffix_len);
-          if (r.ext == Qnil) {
+          r.format = extract_ext(suffix, suffix_len);
+          if (r.format == Qnil) {
             break;
           }
         }
@@ -260,8 +260,8 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
                                       (const UChar*)suffix, &region, 0);
         if (matched_len > 0) {
           if (matched_len < suffix_len) {
-            r.ext = extract_ext(suffix + matched_len, suffix_len);
-            if (r.ext == Qnil) {
+            r.format = extract_ext(suffix + matched_len, suffix_len);
+            if (r.format == Qnil) {
               break;
             }
           }
@@ -277,17 +277,19 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
   if (r.controller != Qnil) {
     r.scope = i->scope;
 
-    if (r.ext == Qnil) {
+    if (r.format == Qnil) {
       if (i->accept_exts == Qnil) {
-        r.ext = str_html;
+        r.format = str_html; // not configured, just plain html
       } else {
-        // NOTE maybe rejected
-        r.ext = i->accept_mimes;
+        r.format = ext_mime_match(Qnil, accept_arr, i->accept_mimes);
+        if (r.format == Qnil) {
+          r.controller = Qnil; // reject if mime mismatch
+        }
       }
     } else {
       if (i->accept_exts != Qnil) {
-        if (!RTEST(rb_hash_aref(i->accept_exts, r.ext))) {
-          r.controller = Qnil; // reject if ext mismatch
+        if (!RTEST(rb_hash_aref(i->accept_exts, r.format))) {
+          r.controller = Qnil; // reject if path ext mismatch
         }
       }
     }
@@ -295,14 +297,14 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath) {
   return r;
 }
 
-static VALUE ext_lookup_route(VALUE self, VALUE method, VALUE path) {
+static VALUE ext_lookup_route(VALUE self, VALUE method, VALUE path, VALUE accept_arr) {
   enum http_method method_num = canonicalize_http_method(method);
-  volatile RouteResult r = nyara_lookup_route(method_num, path);
+  volatile RouteResult r = nyara_lookup_route(method_num, path, accept_arr);
   volatile VALUE a = rb_ary_new();
   rb_ary_push(a, r.scope);
   rb_ary_push(a, r.controller);
   rb_ary_push(a, r.args);
-  rb_ary_push(a, r.ext);
+  rb_ary_push(a, r.format);
   return a;
 }
 
@@ -321,5 +323,5 @@ void Init_route(VALUE nyara, VALUE ext) {
 
   // for test
   rb_define_singleton_method(ext, "list_route", RUBY_METHOD_FUNC(ext_list_route), 0);
-  rb_define_singleton_method(ext, "lookup_route", RUBY_METHOD_FUNC(ext_lookup_route), 2);
+  rb_define_singleton_method(ext, "lookup_route", RUBY_METHOD_FUNC(ext_lookup_route), 3);
 }
