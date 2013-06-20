@@ -43,12 +43,13 @@ module Nyara
 
     def start_server
       port = Config[:port] || 3000
-      workers = Config[:workers] || (CpuCounter.count - 1)
+      workers = Config[:workers] || ((CpuCounter.count + 1)/ 2)
 
       puts "starting #{Config[:env]} server at 0.0.0.0:#{port}"
       case Config[:env].to_s
 
       when 'production'
+        puts "workers: #{workers}"
         server = TCPServer.new '0.0.0.0', port
         server.listen 1000
         trap :INT do
