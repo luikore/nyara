@@ -43,6 +43,14 @@ RSpec.configure do |config|
       end
     end
   end
+
+  config.before :each do
+    GC.stress = true
+  end
+
+  config.after :each do
+    GC.stress = false
+  end
 end
 
 configure do

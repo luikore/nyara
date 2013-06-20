@@ -244,7 +244,8 @@ module Nyara
         r.response_content_type ||
         header.aref_content_type ||
         (r.accept and MIME_TYPES[r.accept]) ||
-        template_deduced_content_type
+        template_deduced_content_type ||
+        'text/html'
 
       header.reverse_merge! OK_RESP_HEADER
 

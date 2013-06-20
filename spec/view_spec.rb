@@ -20,6 +20,10 @@ module Nyara
       View.init
     end
 
+    before :each do
+      GC.stress = false
+    end
+
     def render *xs
       @instance = RenderableMock.new
       view = View.new @instance, *xs
