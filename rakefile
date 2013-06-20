@@ -4,6 +4,8 @@ Dir.chdir __dir__
 
 status_file = "ext/inc/status_codes.inc"
 version_file = "ext/inc/version.inc"
+makefile = "ext/Makefile"
+extconf = "ext/extconf.rb"
 
 desc "code generate"
 task :gen => [status_file, version_file]
@@ -42,10 +44,54 @@ file version_file => 'nyara.gemspec' do
   end
 end
 
+desc "generate makefile"
+file makefile => extconf do
+  Dir.chdir 'ext' do
+    sh 'ruby extconf.rb'
+  end
+end
+
 desc "build ext"
-task :build do
+task :build => makefile do
   Dir.chdir 'ext' do
     sh 'make'
+  end
+end
+
+def term_color n
+  print "\e[38;5;#{n}m"
+end
+
+def reset_color
+  print "\e[00m"
+end
+
+desc "check arity of rb_define_method/rb_define_singleton_method"
+task :check_arity do
+  Dir.glob 'ext/*.{c,cc}' do |f|
+    puts "validatign #{f}"
+    arities = {}
+    data = File.read f
+    data.scan /^(?:static )?VALUE (\w+)\((.+)\)/ do |func, params|
+      arities[func] = params.count(',')
+      puts "  scan: #{func}/#{arities[func]}"
+    end
+    data.scan /rb_define(?:_singleton)?_method\(.*?(\w+)\s*\,\s*(\d+)\)/ do |func, arity|
+      print "  check: #{func}/#{arity} "
+      if arities[func].nil?
+        term_color 5
+        print "UNSCANNED"
+        reset_color
+        puts
+      elsif arities[func] != arity.to_i
+        term_color 9
+        print "MISMATCH #{arities[func]}"
+        reset_color
+        puts
+      else
+        puts "OK"
+      end
+    end
   end
 end
 
