@@ -6,6 +6,9 @@ extern "C" {
 #include <vector>
 #include <map>
 #include "inc/str_intern.h"
+#ifndef isalnum
+#include <cctype>
+#endif
 
 struct RouteEntry {
   // note on order: scope is supposed to be the last, but when searching, is_sub is checked first
