@@ -215,15 +215,18 @@ static void request_free(void* pp) {
 static Request* request_alloc() {
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
+  volatile VALUE header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
+  volatile VALUE path = rb_enc_str_new("", 0, u8_encoding);
+  volatile VALUE query = rb_class_new_instance(0, NULL, nyara_param_hash_class);
   p->mparser = NULL;
-  p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
+  p->header = header;
   p->accept = Qnil;
   p->format = Qnil;
   p->fiber = Qnil;
   p->scope = Qnil;
   p->path_with_query = Qnil;
-  p->path = rb_enc_str_new("", 0, u8_encoding);
-  p->query = rb_class_new_instance(0, NULL, nyara_param_hash_class);
+  p->path = path;
+  p->query = query;
   p->last_field = Qnil;
   p->last_value = Qnil;
   p->fd = 0;
