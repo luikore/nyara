@@ -45,7 +45,7 @@ static void qarray_delete(QArray* qa) {
   xfree(qa->qs);
 }
 
-static VALUE trim_space(VALUE str) {
+static VALUE trim_space(volatile VALUE str) {
   long olen = RSTRING_LEN(str);
   str = rb_str_new(RSTRING_PTR(str), olen);
   char* s = RSTRING_PTR(str);
@@ -105,7 +105,7 @@ static void parse_seg(const char* s, long len, VALUE out, QArray* qa) {
   rb_ary_store(out, pos, rb_str_new(s, len));
 }
 
-VALUE ext_parse_accept_value(VALUE _, VALUE str) {
+VALUE ext_parse_accept_value(VALUE _, volatile VALUE str) {
   if (str == Qnil) {
     return rb_ary_new();
   }
