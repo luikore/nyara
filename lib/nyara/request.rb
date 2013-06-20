@@ -114,7 +114,7 @@ module Nyara
       @param ||= begin
         q = query.dup
         if form?
-          # todo read body
+          # todo read body, change encoding
           Ext.parse_param q, body
         end
         q
