@@ -66,9 +66,10 @@ void nyara_headerlize(VALUE str) {
 static VALUE header_hash_tidy_key(VALUE key) {
   if (TYPE(key) == T_SYMBOL) {
     key = rb_sym_to_s(key);
+  } else {
+    Check_Type(key, T_STRING);
+    key = rb_str_new(RSTRING_PTR(key), RSTRING_LEN(key));
   }
-  Check_Type(key, T_STRING);
-  key = rb_str_new(RSTRING_PTR(key), RSTRING_LEN(key));
   nyara_headerlize(key);
   return key;
 }
