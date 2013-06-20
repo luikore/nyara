@@ -448,7 +448,7 @@ void Init_request(VALUE nyara, VALUE ext) {
   fd_request_map = rb_hash_new();
   rb_gc_register_mark_object(fd_request_map);
   str_accept = rb_str_new2("Accept");
-  rb_gc_register_mark_object(fd_request_map);
+  rb_gc_register_mark_object(str_accept);
 
   // request
   request_class = rb_define_class_under(nyara, "Request", rb_cObject);
