@@ -1,4 +1,5 @@
-// provide handy hash variants
+/* handy hash variants */
+
 #include "nyara.h"
 #include <ruby/st.h>
 

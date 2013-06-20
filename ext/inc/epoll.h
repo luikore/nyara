@@ -1,3 +1,5 @@
+/* epoll event adapter */
+
 #pragma once
 
 #include <sys/epoll.h>

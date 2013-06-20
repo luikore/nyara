@@ -1,3 +1,5 @@
+/* kqueue event adapter */
+
 #pragma once
 
 #include <sys/types.h>

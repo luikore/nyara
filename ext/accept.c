@@ -1,4 +1,4 @@
-/* efficient Accpet-* value parser in C */
+/* http accpet* value parser */
 
 #include "nyara.h"
 #include <ctype.h>

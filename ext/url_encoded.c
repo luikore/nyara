@@ -1,4 +1,5 @@
-// parse path / query / url-encoded body
+/* url-encoded parsing */
+
 #include "nyara.h"
 #include <ruby/encoding.h>
 

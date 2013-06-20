@@ -1,3 +1,5 @@
+/* request parsing and request object */
+
 #include "nyara.h"
 #include <ruby/encoding.h>
 #include <multipart_parser.h>

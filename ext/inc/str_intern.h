@@ -1,6 +1,6 @@
-#pragma once
+/* string internals, from ruby source code string.c */
 
-// from string.c
+#pragma once
 
 #define RUBY_MAX_CHAR_LEN 16
 #define STR_TMPLOCK FL_USER7

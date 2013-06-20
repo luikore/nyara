@@ -1,3 +1,5 @@
+/* route register and search */
+
 extern "C" {
 #include "nyara.h"
 }

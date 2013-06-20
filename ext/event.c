@@ -1,3 +1,5 @@
+/* unify API for epoll and kqueue */
+
 #include "nyara.h"
 #include <sys/fcntl.h>
 #include <sys/socket.h>

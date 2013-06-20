@@ -1,3 +1,5 @@
+/* ext entrance */
+
 #include "nyara.h"
 #include <ruby/io.h>
 #include <sys/socket.h>
