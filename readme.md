@@ -33,8 +33,11 @@ ruby nyahaha.rb
 
 # Build from source
 
+After cloning
+
 ```bash
-git submodule update --recursive
+git submodule update --init
+bundle
 rake gen
 rake gem
 ```
