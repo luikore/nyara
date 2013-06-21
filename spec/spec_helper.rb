@@ -44,12 +44,16 @@ RSpec.configure do |config|
     end
   end
 
-  config.before :each do
-    GC.stress = true
-  end
+  if config.formatters.any?{|f|f.class.to_s =~ /Document/}
+    puts "Enabling GC.stress with documentation formatter"
 
-  config.after :each do
-    GC.stress = false
+    config.before :each do
+      GC.stress = true
+    end
+
+    config.after :each do
+      GC.stress = false
+    end
   end
 end
 
