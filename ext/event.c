@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#define ETYPE_ACCEPT 0
-#define ETYPE_REQUEST 1
+#define ETYPE_CAN_ACCEPT 0
+#define ETYPE_HANDLE_REQUEST 1
 #define ETYPE_CONNECT 2
 #define MAX_E 1024
 static void loop_body(int fd, int etype);
@@ -40,15 +40,15 @@ static VALUE ext_add(VALUE _, VALUE vfd) {
 // platform independent, invoked by LOOP_E()
 static void loop_body(int fd, int etype) {
   switch (etype) {
-    case ETYPE_ACCEPT: {
+    case ETYPE_CAN_ACCEPT: {
       int cfd = accept(fd, NULL, NULL);
       if (cfd > 0) {
         set_nonblock(cfd);
-        ADD_E(cfd, ETYPE_REQUEST);
+        ADD_E(cfd, ETYPE_HANDLE_REQUEST);
       }
       break;
     }
-    case ETYPE_REQUEST: {
+    case ETYPE_HANDLE_REQUEST: {
       nyara_handle_request(fd);
       break;
     }
@@ -69,7 +69,7 @@ static VALUE ext_init_queue(VALUE _) {
 static VALUE ext_run_queue(VALUE _, VALUE v_fd) {
   int fd = FIX2INT(v_fd);
   set_nonblock(fd);
-  ADD_E(fd, ETYPE_ACCEPT);
+  ADD_E(fd, ETYPE_CAN_ACCEPT);
 
   LOOP_E();
   return Qnil;
