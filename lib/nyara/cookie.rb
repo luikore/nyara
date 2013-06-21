@@ -11,8 +11,8 @@ module Nyara
       res
     end
 
-    def add_set_cookie r, k, v, expires: nil, max_age: nil, domain: nil, path: nil, secure: nil, httponly: true
-      r << "Set-Cookie: "
+    def add_set_cookie header_lines, k, v, expires: nil, max_age: nil, domain: nil, path: nil, secure: nil, httponly: true
+      r = "Set-Cookie: "
       if v.nil? or v == true
         r << "#{CGI.escape k.to_s}; "
       else
@@ -26,6 +26,7 @@ module Nyara
       r << "Secure; " if secure
       r << "HttpOnly; " if httponly
       r << "\r\n"
+      header_lines << r
     end
   end
 end

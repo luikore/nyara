@@ -45,18 +45,35 @@ module Nyara
         Ext.request_set_fd @request, @server.fileno
       end
 
+      def receive_header
+        @c.send_header
+        @server.close_write
+        @client.read
+      end
+
       it "set response header and send" do
         @c.set_header 'X-Test', true
         @c.add_header_line "X-Test: also-true\r\n"
-        @c.send_header
-        @server.close_write
-        res = @client.read.lines
+        res = receive_header.lines
         assert_includes res, "X-Test: true\r\n"
         assert_includes res, "X-Test: also-true\r\n"
       end
 
-      it "set / delete / clear cookie" do
-        pending
+      it "set cookie" do
+        @c.set_cookie 'set', 'set'
+        cookie = receive_header.lines.grep(/Set-Cookie:/).last
+        assert_includes cookie, "set=set; HttpOnly"
+      end
+
+      it "delete cookie" do
+        @c.delete_cookie 'del'
+        cookie = receive_header.lines.grep(/Set-Cookie:/).last
+        assert_includes cookie, "Expires"
+      end
+
+      it "clear cookie" do
+        @c.clear_cookie
+        pending 'incomplete implementation'
       end
 
       it "#session" do

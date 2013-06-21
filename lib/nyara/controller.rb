@@ -198,15 +198,34 @@ module Nyara
     end
     alias cookies cookie
 
-    def set_cookie k, v=nil, opts
+    # Set cookie, if expires is +Time.now+, will remove the cookie entry
+    #
+    # :call-seq:
+    #
+    #   set_cookie 'JSESSIONID', 'not-exist'
+    #   set_cookie 'key-without-value'
+    #
+    # +opt: default_value+ are:
+    #
+    #   expires: nil
+    #   max_age: nil
+    #   domain: nil
+    #   path: nil
+    #   secure: nil
+    #   httponly: true
+    #
+    def set_cookie name, value=nil, opts={}
+      if value.is_a?(Hash)
+        raise ArgumentError, 'hash not allowed in cookie value, did you mean to use it as options?'
+      end
       # todo default domain ?
       opts = Hash[opts.map{|k,v| [k.to_sym,v]}]
-      Cookie.output_set_cookie response.response_header_extra_lines, k, v, opts
+      Cookie.add_set_cookie request.response_header_extra_lines, name, value, opts
     end
 
-    def delete_cookie k
+    def delete_cookie name
       # todo domain ? path ?
-      set_cookie k, expires: Time.now, max_age: 0
+      set_cookie name, nil, expires: Time.now, max_age: 0
     end
 
     def clear_cookie
