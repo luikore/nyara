@@ -58,43 +58,6 @@ task :build => makefile do
   end
 end
 
-def term_color n
-  print "\e[38;5;#{n}m"
-end
-
-def reset_color
-  print "\e[00m"
-end
-
-desc "check arity of rb_define_method/rb_define_singleton_method"
-task :check_arity do
-  Dir.glob 'ext/*.{c,cc}' do |f|
-    puts "validatign #{f}"
-    arities = {}
-    data = File.read f
-    data.scan /^(?:static )?VALUE (\w+)\((.+)\)/ do |func, params|
-      arities[func] = params.count(',')
-      puts "  scan: #{func}/#{arities[func]}"
-    end
-    data.scan /rb_define(?:_singleton)?_method\(.*?(\w+)\s*\,\s*(\d+)\)/ do |func, arity|
-      print "  check: #{func}/#{arity} "
-      if arities[func].nil?
-        term_color 5
-        print "UNSCANNED"
-        reset_color
-        puts
-      elsif arities[func] != arity.to_i
-        term_color 9
-        print "MISMATCH #{arities[func]}"
-        reset_color
-        puts
-      else
-        puts "OK"
-      end
-    end
-  end
-end
-
 desc "test"
 task :test => :build do
   sh 'rspec', '-c'
@@ -136,4 +99,41 @@ desc "list Nyara::Ext methods"
 task :list_ext do
   require_relative "lib/nyara/nyara"
   puts Nyara::Ext.methods - Module.methods
+end
+
+def term_color n
+  print "\e[38;5;#{n}m"
+end
+
+def reset_color
+  print "\e[00m"
+end
+
+desc "audit arity of rb_define_method/rb_define_singleton_method"
+task :audit_arity do
+  Dir.glob 'ext/*.{c,cc}' do |f|
+    puts "validatign #{f}"
+    arities = {}
+    data = File.read f
+    data.scan /^(?:static )?VALUE (\w+)\((.+)\)/ do |func, params|
+      arities[func] = params.count(',')
+      puts "  scan: #{func}/#{arities[func]}"
+    end
+    data.scan /rb_define(?:_singleton)?_method\(.*?(\w+)\s*\,\s*(\d+)\)/ do |func, arity|
+      print "  check: #{func}/#{arity} "
+      if arities[func].nil?
+        term_color 5
+        print "UNSCANNED"
+        reset_color
+        puts
+      elsif arities[func] != arity.to_i
+        term_color 9
+        print "MISMATCH #{arities[func]}"
+        reset_color
+        puts
+      else
+        puts "OK"
+      end
+    end
+  end
 end
