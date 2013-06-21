@@ -3,10 +3,7 @@ require_relative "spec_helper"
 module Nyara
   describe Request do
     before :each do
-      @server, @client = Socket.pair :UNIX, :STREAM, 0
-      Ext.set_nonblock @server.fileno
-      Ext.set_nonblock @client.fileno
-      @request = Ext.handle_request @server.fileno
+      @request = Ext.request_new
       @request_attrs = {
         method_num: HTTP_METHODS['GET'],
         path: '/',

@@ -11,11 +11,17 @@
 
 /* event.c */
 void Init_event(VALUE ext);
+void nyara_detach_fd(int fd);
+
+
+/* request_parse.c */
+void Init_request_parse(VALUE nyara);
 
 
 /* request.c */
 void Init_request(VALUE nyara, VALUE ext);
-void nyara_handle_request(int fd);
+VALUE nyara_request_new(int fd);
+void nyara_request_term_close(VALUE request, bool write_last_chunk);
 
 
 /* url_encoded.c */

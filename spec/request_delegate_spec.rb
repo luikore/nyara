@@ -8,7 +8,7 @@ module Nyara
     before :each do
       @client, @server = Socket.pair :UNIX, :STREAM
       Ext.set_nonblock @server.fileno
-      @request = Ext.handle_request @server.fileno
+      @request = Ext.request_new
       Ext.set_request_attrs @request, {
         method_num: HTTP_METHODS['GET'],
         path: '/search',
