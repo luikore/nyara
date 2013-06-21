@@ -1,4 +1,4 @@
 language: ruby
-script: git submodule update --init && rake gen && rake build && rspec -f d
+script: rake gen && rake build && rspec -f d
 rvm:
   - ruby-head
