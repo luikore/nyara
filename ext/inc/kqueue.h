@@ -18,7 +18,7 @@ static struct kevent qevents[MAX_E];
 
 static void ADD_E(int fd, uint64_t etype) {
   struct kevent e;
-  EV_SET(&e, fd, EVFILT_READ, EV_ADD, 0, 0, (void*)etype);
+  EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, (void*)etype);
   // todo timeout
 # ifdef NDEBUG
   kevent(qfd, &e, 1, NULL, 0, NULL);
@@ -30,7 +30,7 @@ static void ADD_E(int fd, uint64_t etype) {
 
 static void DEL_E(int fd) {
   struct kevent e;
-  EV_SET(&e, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+  EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
 # ifdef NDEBUG
   kevent(qfd, &e, 1, NULL, 0, NULL);
 # else
@@ -59,18 +59,16 @@ static void LOOP_E() {
     int sz = kevent(qfd, NULL, 0, qevents, MAX_E, &ts);
 
     for (int i = 0; i < sz; i++) {
-      switch (qevents[i].filter) {
-        case EVFILT_READ: {
-          int fd = (int)qevents[i].ident;
-          // EV_EOF is set if the read side of the socket is shutdown
-          // the event can keep flipping back to consume cpu if we don't remove it
-          if ((qevents[i].flags & EV_EOF)) {
-            DEL_E(fd);
-          } else {
-            loop_body(fd, (int)qevents[i].udata);
-          }
-          break;
+      if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
+        int fd = (int)qevents[i].ident;
+        // EV_EOF is set if the read side of the socket is shutdown
+        // the event can keep flipping back to consume cpu if we don't remove it
+        if ((qevents[i].flags & EV_EOF)) {
+          DEL_E(fd);
+        } else {
+          loop_body(fd, (int)qevents[i].udata);
         }
+        break;
       }
     }
     // execute other thread / interrupts

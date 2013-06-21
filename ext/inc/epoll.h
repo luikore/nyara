@@ -8,7 +8,7 @@ static struct epoll_event qevents[MAX_E];
 
 static void ADD_E(int fd, uint64_t etype) {
   struct epoll_event e;
-  e.events = EPOLLIN;
+  e.events = EPOLLIN | EPOLLOUT;
   e.data.u64 = (etype << 32) | (uint64_t)fd;
 
   // todo timeout
@@ -22,7 +22,7 @@ static void ADD_E(int fd, uint64_t etype) {
 
 static void DEL_E(int fd) {
   struct epoll_event e;
-  e.events = EPOLLIN;
+  e.events = EPOLLIN | EPOLLOUT;
   e.data.ptr = NULL;
 
 # ifdef NDEBUG
@@ -47,13 +47,11 @@ static void LOOP_E() {
     int sz = epoll_wait(qfd, qevents, MAX_E, 100);
 
     for (int i = 0; i < sz; i++) {
-      switch (qevents[i].events) {
-        case EPOLLIN: {
-          int fd = (int)(qevents[i].data.u64 & 0xFFFFFFFF);
-          int etype = (int)(qevents[i].data.u64 >> 32);
-          loop_body(fd, etype);
-          break;
-        }
+      if (qevents[i].events & (EPOLLIN | EPOLLOUT)) {
+        int fd = (int)(qevents[i].data.u64 & 0xFFFFFFFF);
+        int etype = (int)(qevents[i].data.u64 >> 32);
+        loop_body(fd, etype);
+        break;
       }
     }
     // execute other thread / interrupts
