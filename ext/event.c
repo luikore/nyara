@@ -96,6 +96,9 @@ static void _handle_request(int fd) {
       p->response_header_extra_lines = rb_ary_new();
     } else {
       rb_funcall(p->self, id_not_found, 0);
+      nyara_detach_fd(p->fd);
+      p->fd = 0;
+      return;
     }
   }
 

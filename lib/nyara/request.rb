@@ -133,9 +133,7 @@ module Nyara
 
     # todo rename and move it into Ext
     def not_found
-      puts "not found"
       Ext.send_data self, "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
-      Ext.close self
     end
   end
 end

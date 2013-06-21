@@ -267,7 +267,7 @@ module Nyara
     end
 
     # Send a data chunk, it can send_header first if header is not sent.
-    # 
+    #
     # :call-seq:
     #
     #   send_chunk 'hello world!'
