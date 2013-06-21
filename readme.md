@@ -94,3 +94,7 @@ Performance is feature, there are specs on (TODO):
 - param parse vs ruby
 - layout rendering vs tilt
 - evented IO vs eventmachine
+
+# License
+
+BSD, see copying
