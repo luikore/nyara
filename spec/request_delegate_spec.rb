@@ -6,8 +6,6 @@ module Nyara
     end
 
     before :each do
-      @client, @server = Socket.pair :UNIX, :STREAM
-      Ext.set_nonblock @server.fileno
       @request = Ext.request_new
       Ext.set_request_attrs @request, {
         method_num: HTTP_METHODS['GET'],
@@ -40,20 +38,30 @@ module Nyara
       assert_equal 'en-US', @c.header['accept']
     end
 
-    it "set response header and send" do
-      pending
-      @c.set_header
-      @c.add_header_line
-      @c.send_header
-      @client
-    end
+    context "Simulate IO" do
+      before :each do
+        @client, @server = Socket.pair :UNIX, :STREAM
+        Ext.set_nonblock @server.fileno
+        Ext.request_set_fd @request, @server.fileno
+      end
 
-    it "set / delete / clear cookie" do
-      pending
-    end
+      it "set response header and send" do
+        @c.set_header 'X-Test', true
+        @c.add_header_line "X-Test: also-true\r\n"
+        @c.send_header
+        @server.close_write
+        res = @client.read.lines
+        assert_includes res, "X-Test: true\r\n"
+        assert_includes res, "X-Test: also-true\r\n"
+      end
 
-    it "#session" do
-      pending
+      it "set / delete / clear cookie" do
+        pending
+      end
+
+      it "#session" do
+        pending
+      end
     end
   end
 end

@@ -183,7 +183,7 @@ module Nyara
     def add_header_line h
       raise 'can not modify sent header' if request.response_header.frozen?
       h = h.sub /(?<![\r\n])\z/, "\r\n"
-      request.response_header_extra_lines << s
+      request.response_header_extra_lines << h
     end
 
     # todo args helper
