@@ -7,7 +7,7 @@ env = {'HTTP_ACCEPT' => env}
 
 GC.disable
 
-nyara = bench(10000){ Nyara::Ext.parse_accept_value v }
-sinatra = bench_raw(10000){ Sinatra::Request.new(env.dup).accept }
-sinatra_baseline = bench_raw(10000){ Sinatra::Request.new(env.dup) }
-print Marshal.dump(nyara: nyara, sinatra: (sinatra - sinatra_baseline))
+nyara = bench(1000){ Nyara::Ext.parse_accept_value v }
+sinatra = bench_raw(1000){ Sinatra::Request.new(env.dup).accept }
+sinatra_baseline = bench_raw(1000){ Sinatra::Request.new(env.dup) }
+dump nyara: nyara, sinatra: (sinatra - sinatra_baseline)

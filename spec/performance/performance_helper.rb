@@ -19,3 +19,7 @@ def bench_raw n
   n.times{ yield }
   Time.now - t
 end
+
+def dump data
+  print Marshal.dump data
+end

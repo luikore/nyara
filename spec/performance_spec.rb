@@ -14,8 +14,13 @@ describe 'performance' do
     end
   end
 
-  it "[parse_accept_value] faster than sinatra 50%" do
+  it "[parse_accept_value] faster than sinatra" do
     res = bm 'parse_accept_value'
     assert res[:nyara] * 1.5 < res[:sinatra], res.inspect
+  end
+
+  it "[parse_param] faster than parse in pure ruby" do
+    res = bm 'parse_param'
+    assert res[:nyara] * 10 < res[:ruby], res.inspect
   end
 end

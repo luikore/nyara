@@ -89,8 +89,7 @@ In Nyara, nested templates of Slim, ERB or Haml share the same output buffer, so
 
 Performance is feature, there are specs on (TODO):
 
-- Accept-* parse vs rack
-- MIME matching vs rack
+- Accept-* parse vs sinatra
 - param parse vs ruby
 - layout rendering vs tilt
 - evented IO vs eventmachine
