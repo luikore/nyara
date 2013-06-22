@@ -2,4 +2,3 @@ language: ruby
 script: rake gen && rake build && rspec -f d
 rvm:
   - ruby-head
-before_install: gem ins bundler
