@@ -11,39 +11,28 @@
 // +level+ is a waste of time:
 //   http://stackoverflow.com/questions/13890996/http-accept-level
 
-// sorted data structure
-typedef struct {
-  double* qs;
-  long len;
-  long cap;
-} QArray;
+#define ACCEPT_MAX 1000
 
-static QArray qarray_new() {
-  QArray qa = {ALLOC_N(double, 10), 0, 10};
-  return qa;
-}
+// sorted data structure
+
+static double qarray[ACCEPT_MAX];
+static long qarray_len = 0;
 
 // return inserted pos
 // the sort is "stable", which doesn't swap elements with the same q
-static long qarray_insert(QArray* qa, double v) {
-  if (qa->len == qa->cap) {
-    qa->cap *= 2;
-    REALLOC_N(qa->qs, double, qa->cap);
-  }
-  long i = 0;
-  for (; i < qa->len; i++) {
-    if (qa->qs[i] < v) {
-      memmove(qa->qs + i + 1, qa->qs + i, sizeof(double) * (qa->len - i));
+static long qarray_insert(double v) {
+  long i = qarray_len;
+  for (long j = qarray_len - 1; j >= 0; j--) {
+    if (qarray[j] < v) {
+      i = j;
+    } else {
       break;
     }
   }
-  qa->qs[i] = v;
-  qa->len++;
+  memmove(qarray + i + 1, qarray + i, sizeof(double) * (qarray_len - i));
+  qarray[i] = v;
+  qarray_len++;
   return i;
-}
-
-static void qarray_delete(QArray* qa) {
-  xfree(qa->qs);
 }
 
 // why truncate:
@@ -51,9 +40,9 @@ static void qarray_delete(QArray* qa) {
 // 2. qarray_insert is O(n^2) in worst case, can lead to ddos vulnerability if there are more than 50000 accept entries
 static VALUE trim_space_and_truncate(volatile VALUE str) {
   long olen = RSTRING_LEN(str);
-  if (olen > 1000) {
+  if (olen > ACCEPT_MAX) {
     // todo log this exception
-    olen = 1000;
+    olen = ACCEPT_MAX;
   }
   str = rb_str_new(RSTRING_PTR(str), olen);
   char* s = RSTRING_PTR(str);
@@ -89,7 +78,7 @@ static const char* find_q(const char* s, long len) {
 }
 
 // parse a segment, and store in a sorted array, also updates qarray
-static void parse_seg(const char* s, long len, VALUE out, QArray* qa) {
+static void parse_seg(const char* s, long len, VALUE out) {
   double qval = 1;
   const char* q = find_q(s, len);
   if (q) {
@@ -105,7 +94,7 @@ static void parse_seg(const char* s, long len, VALUE out, QArray* qa) {
     }
     len = q - s;
   }
-  long pos = qarray_insert(qa, qval);
+  long pos = qarray_insert(qval);
   rb_ary_push(out, Qnil); // just to increase cap
   VALUE* out_ptr = RARRAY_PTR(out);
   long out_len = RARRAY_LEN(out); // note this len is +1
@@ -122,17 +111,16 @@ VALUE ext_parse_accept_value(VALUE _, volatile VALUE str) {
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
   volatile VALUE out = rb_ary_new();
-  QArray qa = qarray_new();
+  qarray_len = 0;
   while (len > 0) {
     long seg_len = find_seg(s, len);
     if (seg_len == 0) {
       break;
     }
-    parse_seg(s, seg_len, out, &qa);
+    parse_seg(s, seg_len, out);
     s += seg_len + 1;
     len -= seg_len + 1;
   }
-  qarray_delete(&qa);
   return out;
 }
 

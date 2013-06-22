@@ -7,16 +7,18 @@ require_relative "spec_helper"
 describe 'performance' do
   def bm name
     bm = __dir__ + '/performance/' + name + '.rb'
-    assert File.exist?(bm), "File not found: #{bm}"
-    IO.popen ['ruby', bm] do |io|
+    assert File.exist?(bm), "file not found: #{bm}"
+    res = IO.popen ['ruby', bm] do |io|
       data = io.read
       Marshal.load data
     end
+    assert_nil $!, "an error stops script #{bm}"
+    res
   end
 
   it "[parse_accept_value] faster than sinatra" do
     res = bm 'parse_accept_value'
-    assert res[:nyara] * 1.5 < res[:sinatra], res.inspect
+    assert res[:nyara] * 1.8 < res[:sinatra], res.inspect
   end
 
   it "[parse_param] faster than parse in pure ruby" do
