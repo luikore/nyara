@@ -24,6 +24,7 @@ static QArray qarray_new() {
 }
 
 // return inserted pos
+// the sort is "stable", which doesn't swap elements with the same q
 static long qarray_insert(QArray* qa, double v) {
   if (qa->len == qa->cap) {
     qa->cap *= 2;
@@ -45,8 +46,15 @@ static void qarray_delete(QArray* qa) {
   xfree(qa->qs);
 }
 
-static VALUE trim_space(volatile VALUE str) {
+// why truncate:
+// 1. normal user never send such long Aceept
+// 2. qarray_insert is O(n^2) in worst case, can lead to ddos vulnerability if there are more than 50000 accept entries
+static VALUE trim_space_and_truncate(volatile VALUE str) {
   long olen = RSTRING_LEN(str);
+  if (olen > 1000) {
+    // todo log this exception
+    olen = 1000;
+  }
   str = rb_str_new(RSTRING_PTR(str), olen);
   char* s = RSTRING_PTR(str);
   long len = 0;
@@ -80,7 +88,7 @@ static const char* find_q(const char* s, long len) {
   return NULL;
 }
 
-// parse a segment, and +out[value] = q+
+// parse a segment, and store in a sorted array, also updates qarray
 static void parse_seg(const char* s, long len, VALUE out, QArray* qa) {
   double qval = 1;
   const char* q = find_q(s, len);
@@ -110,7 +118,7 @@ VALUE ext_parse_accept_value(VALUE _, volatile VALUE str) {
     return rb_ary_new();
   }
 
-  str = trim_space(str);
+  str = trim_space_and_truncate(str);
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
   volatile VALUE out = rb_ary_new();
