@@ -88,17 +88,30 @@ end
 
 desc "collect line stat"
 task :lines do
-  c = 0
-  Dir.glob('{**/*.rb,ext/*.{c,cc,h}}') do |f|
-    c += (File.read(f).count "\n")
+  rb_c = 0
+  Dir.glob('**/*.rb') do |f|
+    rb_c += (File.read(f).count "\n")
   end
-  puts "#{c} lines"
+
+  c_c = 0
+  Dir.glob('ext/*.{c,cc,h}') do |f|
+    c_c += (File.read(f).count "\n")
+  end
+
+  spec_c = 0
+  Dir.glob('spec/**/*.rb') do |f|
+    spec_c += (File.read(f).count "\n")
+  end
+
+  puts "c: #{c_c} lines"
+  puts "rb: #{rb_c - spec_c} lines"
+  puts "spec: #{spec_c} lines"
 end
 
 desc "list Nyara::Ext methods"
 task :list_ext do
   require_relative "lib/nyara/nyara"
-  puts Nyara::Ext.methods - Module.methods
+  puts (Nyara::Ext.methods - Module.methods).sort
 end
 
 def term_color n
