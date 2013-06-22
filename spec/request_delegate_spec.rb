@@ -7,7 +7,7 @@ module Nyara
 
     before :each do
       @request = Ext.request_new
-      Ext.set_request_attrs @request, {
+      Ext.request_set_attrs @request, {
         method_num: HTTP_METHODS['GET'],
         path: '/search',
         query: ParamHash.new.tap{|h| h['q'] = 'nyara' },

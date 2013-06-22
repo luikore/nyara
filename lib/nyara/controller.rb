@@ -257,7 +257,7 @@ module Nyara
       r = request
       header = r.response_header
 
-      Ext.send_data r, HTTP_STATUS_FIRST_LINES[r.status]
+      Ext.request_send_data r, HTTP_STATUS_FIRST_LINES[r.status]
 
       header.aset_content_type \
         r.response_content_type ||
@@ -273,7 +273,7 @@ module Nyara
       end
       data.concat r.response_header_extra_lines
       data << "\r\n"
-      Ext.send_data r, data.join
+      Ext.request_send_data r, data.join
 
       # forbid further modification
       header.freeze
@@ -282,7 +282,7 @@ module Nyara
     # Send raw data, that is, not wrapped in chunked encoding<br>
     # NOTE: often you should call send_header before doing this.
     def send_data data
-      Ext.send_data request, data.to_s
+      Ext.request_send_data request, data.to_s
     end
 
     # Send a data chunk, it can send_header first if header is not sent.
@@ -292,7 +292,7 @@ module Nyara
     #   send_chunk 'hello world!'
     def send_chunk data
       send_header unless request.response_header.frozen?
-      Ext.send_chunk request, data.to_s
+      Ext.request_send_chunk request, data.to_s
     end
     alias send_string send_chunk
 

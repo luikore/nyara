@@ -182,7 +182,7 @@ static bool _send_data(int fd, const char* buf, long len) {
   return true;
 }
 
-static VALUE ext_send_data(VALUE _, VALUE self, VALUE data) {
+static VALUE ext_request_send_data(VALUE _, VALUE self, VALUE data) {
   P;
   char* buf = RSTRING_PTR(data);
   long len = RSTRING_LEN(data);
@@ -190,7 +190,7 @@ static VALUE ext_send_data(VALUE _, VALUE self, VALUE data) {
   return Qnil;
 }
 
-static VALUE ext_send_chunk(VALUE _, VALUE self, VALUE str) {
+static VALUE ext_request_send_chunk(VALUE _, VALUE self, VALUE str) {
   long len = RSTRING_LEN(str);
   if (!len) {
     return Qnil;
@@ -226,7 +226,7 @@ static VALUE ext_request_set_fd(VALUE _, VALUE self, VALUE vfd) {
 }
 
 // set internal attrs in the request object
-static VALUE ext_set_request_attrs(VALUE _, VALUE self, VALUE attrs) {
+static VALUE ext_request_set_attrs(VALUE _, VALUE self, VALUE attrs) {
 # define ATTR(key) rb_hash_delete(attrs, ID2SYM(rb_intern(key)))
 # define HEADER_HASH_NEW rb_class_new_instance(0, NULL, nyara_header_hash_class)
   P;
@@ -284,10 +284,10 @@ void Init_request(VALUE nyara, VALUE ext) {
 
   // hide internal methods in ext
   rb_define_singleton_method(ext, "request_set_status", ext_request_set_status, 2);
-  rb_define_singleton_method(ext, "send_data", ext_send_data, 2);
-  rb_define_singleton_method(ext, "send_chunk", ext_send_chunk, 2);
+  rb_define_singleton_method(ext, "request_send_data", ext_request_send_data, 2);
+  rb_define_singleton_method(ext, "request_send_chunk", ext_request_send_chunk, 2);
   // for test
   rb_define_singleton_method(ext, "request_new", ext_request_new, 0);
   rb_define_singleton_method(ext, "request_set_fd", ext_request_set_fd, 2);
-  rb_define_singleton_method(ext, "set_request_attrs", ext_set_request_attrs, 2);
+  rb_define_singleton_method(ext, "request_set_attrs", ext_request_set_attrs, 2);
 }

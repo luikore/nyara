@@ -12,7 +12,7 @@ module Nyara
         scope: '/',
         format: 'html'
       }
-      set_request_attrs
+      request_set_attrs
     end
 
     context "#scheme detect by forwarded.." do
@@ -38,8 +38,8 @@ module Nyara
       assert_equal 3000, @request.port
     end
 
-    def set_request_attrs
-      Ext.set_request_attrs @request, @request_attrs
+    def request_set_attrs
+      Ext.request_set_attrs @request, @request_attrs
     end
   end
 end
