@@ -87,12 +87,11 @@ In Nyara, nested templates of Slim, ERB or Haml share the same output buffer, so
 
 # How fast
 
-Performance is feature, there are specs on (TODO):
+Performance is feature, there are specs on:
 
 - Accept-* parse vs sinatra
 - param parse vs ruby
 - layout rendering vs tilt
-- evented IO vs eventmachine
 
 # License
 
