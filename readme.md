@@ -8,7 +8,7 @@ Not Yet Another Ruby Async web framework and server. Not on rack nor rack-compat
 
 # Getting started
 
-Requires Ruby 2.0+, BSD/Linux/Mac OS X.
+Requires Ruby 2.0+, BSD/Linux/Mac OS X, GCC4.7+ or Clang.
 
 Install
 
