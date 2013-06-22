@@ -1,4 +1,4 @@
 language: ruby
 script: rake gen && rake build && rspec -f d
 rvm:
-  - ruby-head
+  - 2.0.0
