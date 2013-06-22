@@ -128,6 +128,7 @@ module Nyara
         ENGINE_DEFAULT_CONTENT_TYPES[ext] = default_content_type
       end
 
+      # local keys are for first-time code generation, values not used
       # returns +[meth, ext_without_dot]+
       def template path, locals={}
         if File.extname(path).empty?

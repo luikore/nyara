@@ -1,0 +1,16 @@
+- # for layout_render.rb, locals: items
+h1 Markup examples
+
+#content
+  p This example shows you how a basic Slim file looks like.
+
+  - unless items.empty?
+    table
+      - items.each do |item|
+        tr
+          td.name = item.name
+          td.price = item.price
+  - else
+    p
+     | No items found.  Please add some inventory.
+       Thank you!

@@ -1,0 +1,14 @@
+- # for layout_render.rb, captures: @title
+doctype html
+html
+  head
+    meta charset="utf-8"
+    meta http-equiv="X-UA-Compatible" content="IE=edge"
+    title == @title
+    link rel="icon" type="image/x-icon" href="/favicon.ico"
+    script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"
+  body
+    == yield
+
+    div#footer
+      | Copyright © #{Time.now}
