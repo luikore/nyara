@@ -1,10 +1,17 @@
-Not Yet Another Ruby Async web framework and server. Not on rack nor rack-compatible neither eventmachine.
+Not Yet Another Ruby Async web framework and server.
+
+[![Build Status](https://travis-ci.org/luikore/nyara.png)](https://travis-ci.org/luikore/nyara)
 
 - Evented IO while API remains synchrony
 - Prefork production server
 - Sinatra-like http method and scanf-like http path and path helper
 - Request format matcher with just `case ... when`
 - Easy to stream the view with `Fiber.yield`
+
+**Notice**
+
+- *Nyara* is not based on *rack*.
+- *Nyara* is not compatible with *eventmachine*. It won't work if you add gems like *em-synchrony*.
 
 # Getting started
 
