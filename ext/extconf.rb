@@ -12,7 +12,7 @@ end
 def tweak_cflags
   mf_conf = RbConfig::MAKEFILE_CONFIG
   if mf_conf['CC'] =~ /clang/
-    # enable c++11. this can not be installed on $CPPFLAGS, wtf??
+    # enable c++0x. this can not be installed on $CPPFLAGS, wtf??
     mf_conf['CXXFLAGS'] << ' -stdlib=libc++ -std=c++0x'
     $CFLAGS << ' $(xflags)'
   else
