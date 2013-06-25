@@ -180,7 +180,7 @@ static VALUE ext_set_nonblock(VALUE _, VALUE v_fd) {
 }
 
 static VALUE ext_fd_watch(VALUE _, VALUE v_fd) {
-  int fd = FIX2INT(v_fd);
+  int fd = NUM2INT(v_fd);
   rb_hash_aset(watch_request_map, v_fd, curr_request->self);
   rb_ary_push(curr_request->watched_fds, v_fd);
   ADD_E(fd, ETYPE_CONNECT);
@@ -262,6 +262,8 @@ static VALUE ext_fd_recv(VALUE _, VALUE v_fd, VALUE v_len, VALUE v_flags) {
 void Init_event(VALUE ext) {
   fd_request_map = rb_hash_new();
   rb_gc_register_mark_object(fd_request_map);
+  watch_request_map = rb_hash_new();
+  rb_gc_register_mark_object(watch_request_map);
   id_not_found = rb_intern("not_found");
   sym_term_close = ID2SYM(rb_intern("term_close"));
   sym_writing = ID2SYM(rb_intern("writing"));

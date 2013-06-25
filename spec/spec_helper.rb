@@ -7,6 +7,7 @@ require "slim"
 require "erb"
 require "haml"
 require "liquid"
+require "open-uri"
 
 RSpec.configure do |config|
   config.expect_with :stdlib
