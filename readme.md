@@ -42,6 +42,13 @@ rake gen
 rake gem
 ```
 
+If you have cloned the repo once, and want to update code
+
+```bash
+git pull --recurse-submodules
+git submodule foreach git fetch
+```
+
 # Testing
 
 Simply run the test
