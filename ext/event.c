@@ -8,6 +8,11 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#ifndef rb_obj_hide
+extern VALUE rb_obj_hide(VALUE obj);
+extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
+#endif
+
 #define ETYPE_CAN_ACCEPT 0
 #define ETYPE_HANDLE_REQUEST 1
 #define ETYPE_CONNECT 2
