@@ -1,4 +1,5 @@
 require_relative "spec_helper"
+unless ENV['SKIP_PERFORMANCE']
 
 # run benchmarks in performance/, each output is a hash dumped with Marshal
 #
@@ -31,3 +32,5 @@ describe 'performance' do
     assert res[:nyara] * 1.1 < res[:tilt], res.inspect
   end
 end
+
+end # unless
