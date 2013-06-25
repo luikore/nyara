@@ -42,6 +42,26 @@ rake gen
 rake gem
 ```
 
+# Testing
+
+Simply run the test
+
+```bash
+rspec -c
+```
+
+Test in GC.stress mode
+
+```bash
+rspec -c -f d
+```
+
+With coverage (generates *coverage/index.html*)
+
+```bash
+COVERAGE=1 rspec -c
+```
+
 # Why fast
 
 ### Solid http parsers written in C

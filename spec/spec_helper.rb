@@ -1,4 +1,3 @@
-require_relative "../lib/nyara/nyara"
 require 'rspec/core'
 require 'rspec/mocks'
 require 'rspec/autorun'
@@ -8,6 +7,15 @@ require "erb"
 require "haml"
 require "liquid"
 require "open-uri"
+require 'pp'
+
+if ENV['COVERAGE']
+  require "simplecov"
+  SimpleCov.start do
+    add_group 'lib', 'lib'
+  end
+end
+require_relative "../lib/nyara/nyara"
 
 RSpec.configure do |config|
   config.expect_with :stdlib
@@ -35,7 +43,6 @@ RSpec.configure do |config|
       xs
     end
 
-    require 'pp'
     module Kernel
       def pp obj
         s = CGI.escape_html(PP.pp obj, '')
@@ -43,9 +50,8 @@ RSpec.configure do |config|
         obj
       end
     end
-  end
 
-  if config.formatters.any?{|f|f.class.to_s =~ /Document/}
+  elsif config.formatters.any?{|f|f.class.to_s =~ /Document/}
     puts "Enabling GC.stress with documentation formatter"
 
     config.before :each do
@@ -55,11 +61,10 @@ RSpec.configure do |config|
     config.after :each do
       GC.stress = false
     end
+
   end
 end
 
 configure do
   set :env, 'test'
 end
-
-# todo a test helper to compile routes after app loaded
