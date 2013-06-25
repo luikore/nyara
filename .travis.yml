@@ -6,9 +6,3 @@ rvm:
 matrix:
   allow_failures:
     - rvm: ruby-head
-before_script:
-  # update gcc
-  # TODO: wait for travis-ci/travis-core#195
-  - sudo add-apt-repository -y "deb http://us.archive.ubuntu.com/ubuntu/ quantal main"
-  - sudo apt-get update
-  - sudo apt-get install g++
