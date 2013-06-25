@@ -81,6 +81,7 @@ task :clean do
   sh 'rm', '-f', '*.gem'
   Dir.chdir 'ext' do
     sh 'make', 'clean'
+    sh 'rm', '-f', 'Makefile'
   end
 end
 
