@@ -19,13 +19,13 @@ static char _half_octet(char c) {
   }
 }
 
-static long _decode_url_seg(VALUE path, const char*s, long len, char stop_char) {
+static long _decode_url_seg(VALUE output, const char*s, long len, char stop_char) {
   const char* last_s = s;
   long last_len = 0;
 
 # define FLUSH_UNESCAPED\
   if (last_len) {\
-    rb_str_cat(path, last_s, last_len);\
+    rb_str_cat(output, last_s, last_len);\
     last_s += last_len;\
     last_len = 0;\
   }
@@ -51,7 +51,7 @@ static long _decode_url_seg(VALUE path, const char*s, long len, char stop_char) 
       unsigned char r = ((unsigned char)r1 << 4) | (unsigned char)r2;
       FLUSH_UNESCAPED;
       last_s += 3;
-      rb_str_cat(path, (char*)&r, 1);
+      rb_str_cat(output, (char*)&r, 1);
 
     } else if (s[i] == stop_char) {
       i++;
@@ -59,7 +59,7 @@ static long _decode_url_seg(VALUE path, const char*s, long len, char stop_char) 
 
     } else if (s[i] == '+') {
       FLUSH_UNESCAPED;
-      rb_str_cat(path, " ", 1);
+      rb_str_cat(output, " ", 1);
 
     } else {
       last_len++;
@@ -71,9 +71,68 @@ static long _decode_url_seg(VALUE path, const char*s, long len, char stop_char) 
   return i;
 }
 
+// s should contain no space
 // return parsed len, s + return == start of query
+// NOTE it's similar to _decode_url_seg, but:
+// - "+" is not escaped
+// - matrix uri params (segments starting with ";") are ignored
 long nyara_parse_path(VALUE output, const char* s, long len) {
-  return _decode_url_seg(output, s, len, '?');
+  const char* last_s = s;
+  long last_len = 0;
+
+# define FLUSH_UNESCAPED\
+  if (last_len) {\
+    rb_str_cat(output, last_s, last_len);\
+    last_s += last_len;\
+    last_len = 0;\
+  }
+
+  long i;
+  for (i = 0; i < len; i++) {
+    if (s[i] == '%') {
+      if (i + 2 >= len) {
+        last_len++;
+        continue;
+      }
+      char r1 = _half_octet(s[i + 1]);
+      if (r1 < 0) {
+        last_len++;
+        continue;
+      }
+      char r2 = _half_octet(s[i + 2]);
+      if (r2 < 0) {
+        last_len++;
+        continue;
+      }
+      i += 2;
+      unsigned char r = ((unsigned char)r1 << 4) | (unsigned char)r2;
+      FLUSH_UNESCAPED;
+      last_s += 3;
+      rb_str_cat(output, (char*)&r, 1);
+
+    } else if (s[i] == ';') {
+      // skip matrix uri params
+      i++;
+      for (; i < len; i++) {
+        if (s[i] == '?') {
+          i++;
+          break;
+        }
+      }
+      break;
+
+    } else if (s[i] == '?') {
+      i++;
+      break;
+
+    } else {
+      last_len++;
+    }
+  }
+  FLUSH_UNESCAPED;
+# undef FLUSH_UNESCAPED
+
+  return i;
 }
 
 static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {

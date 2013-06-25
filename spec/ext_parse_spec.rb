@@ -63,45 +63,64 @@ module Nyara
         @output = ''
       end
 
-      it "parses" do
+      it "converts '%' bytes but not '+'" do
         i = '/%23+%24'
         assert_equal i.bytesize, parse(i)
-        assert_equal "/\x23 \x24", @output
+        assert_equal "/\x23+\x24", @output
       end
 
-      it "truncates ? after %" do
+      it "truncates '?' after %" do
         i = '/hello%f3%?world'
         len = parse i
         assert_equal '/hello%f3%?'.bytesize, len
         assert_equal "/hello\xf3%", @output
       end
 
-      it "truncates ? after begin" do
+      it "truncates '?' after begin" do
         i = '?a'
         len = parse i
         assert_equal 1, len
         assert_equal '', @output
       end
 
-      it "truncates ? before end" do
+      it "truncates '?' before end" do
         i = 'a?'
         len = parse i
         assert_equal 2, len
         assert_equal 'a', @output
       end
 
-      it "truncates ? after unescaped char" do
+      it "truncates '?' after unescaped char" do
         i = 'a?a'
         len = parse i
         assert_equal 2, len
         assert_equal 'a', @output
       end
 
-      it "truncates ? after escaped char" do
+      it "truncates '?' after escaped char" do
         i = '%40?'
         len = parse i
         assert_equal 4, len
         assert_equal "\x40", @output
+      end
+
+      it "removes matrix uri params" do
+        i = '/a;matrix;matrix=3'
+        len = parse i
+        assert_equal i.size, len
+        assert_equal "/a", @output
+
+        @output = ''
+        i += '?'
+        len = parse i
+        assert_equal i.size, len
+        assert_equal "/a", @output
+
+        @output = ''
+        i += 'query'
+        len = parse i
+        assert_equal i.size - 'query'.size, len
+        assert_equal '/a', @output
       end
 
       def parse input
