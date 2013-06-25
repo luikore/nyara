@@ -20,6 +20,8 @@ static void ADD_E(int fd, uint64_t etype) {
 # endif
 }
 
+// either epoll or kqueue removes the event watch from queue when fd closed
+// seems this is not required in epoll?
 static void DEL_E(int fd) {
   struct epoll_event e;
   e.events = EPOLLIN | EPOLLOUT;

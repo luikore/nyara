@@ -43,41 +43,54 @@ module Nyara
 
     def start_server
       port = Config[:port] || 3000
-      workers = Config[:workers] || ((CpuCounter.count + 1)/ 2)
 
       puts "starting #{Config[:env]} server at 0.0.0.0:#{port}"
       case Config[:env].to_s
-
       when 'production'
-        puts "workers: #{workers}"
-        server = TCPServer.new '0.0.0.0', port
-        server.listen 1000
-        trap :INT do
-          @workers.each do |w|
-            Process.kill :KILL, w
-          end
-        end
-        GC.start
-        @workers = workers.times.map do
-          fork {
-            Ext.init_queue
-            Ext.run_queue server.fileno
-          }
-        end
-        Process.waitall
-
+        patch_tcp_socket
+        start_production_server port
       when 'test'
         # don't
-
       else
-        t = Thread.new do
-          server = TCPServer.new '0.0.0.0', port
-          server.listen 1000
+        patch_tcp_socket
+        start_development_server port
+      end
+    end
+
+    def patch_tcp_socket
+      puts "patching TCPSocket"
+      require_relative "patch_tcp_socket"
+    end
+
+    def start_production_server port
+      workers = Config[:workers] || ((CpuCounter.count + 1)/ 2)
+
+      puts "workers: #{workers}"
+      server = TCPServer.new '0.0.0.0', port
+      server.listen 1000
+      trap :INT do
+        @workers.each do |w|
+          Process.kill :KILL, w
+        end
+      end
+      GC.start
+      @workers = workers.times.map do
+        fork {
           Ext.init_queue
           Ext.run_queue server.fileno
-        end
-        t.join
+        }
       end
+      Process.waitall
+    end
+
+    def start_development_server port
+      t = Thread.new do
+        server = TCPServer.new '0.0.0.0', port
+        server.listen 1000
+        Ext.init_queue
+        Ext.run_queue server.fileno
+      end
+      t.join
     end
   end
 end

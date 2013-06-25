@@ -38,4 +38,6 @@ typedef struct {
   VALUE response_content_type;
   VALUE response_header;
   VALUE response_header_extra_lines;
+
+  VALUE watched_fds;
 } Request;

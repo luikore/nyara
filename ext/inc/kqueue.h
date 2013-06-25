@@ -10,8 +10,6 @@
 # include <sys/queue.h>
 #endif
 
-static void loop_body(int fd, int etype);
-
 #define MAX_E 1024
 static int qfd;
 static struct kevent qevents[MAX_E];
@@ -28,9 +26,9 @@ static void ADD_E(int fd, uint64_t etype) {
 # endif
 }
 
-static void DEL_E(int fd) {
+static void DEL_E(int fd, int filter) {
   struct kevent e;
-  EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+  EV_SET(&e, fd, filter, EV_DELETE, 0, 0, NULL);
 # ifdef NDEBUG
   kevent(qfd, &e, 1, NULL, 0, NULL);
 # else
@@ -59,15 +57,14 @@ static void LOOP_E() {
     int sz = kevent(qfd, NULL, 0, qevents, MAX_E, &ts);
 
     for (int i = 0; i < sz; i++) {
-      if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
-        int fd = (int)qevents[i].ident;
+      int fd = (int)qevents[i].ident;
+      if (qevents[i].flags & EV_EOF) {
         // EV_EOF is set if the read side of the socket is shutdown
         // the event can keep flipping back to consume cpu if we don't remove it
-        if ((qevents[i].flags & EV_EOF)) {
-          DEL_E(fd);
-        } else {
-          loop_body(fd, (int)qevents[i].udata);
-        }
+        DEL_E(fd, qevents[i].filter);
+      }
+      if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
+        loop_body(fd, (int)qevents[i].udata);
         break;
       }
     }

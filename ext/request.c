@@ -29,6 +29,7 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->response_content_type);
     rb_gc_mark_maybe(p->response_header);
     rb_gc_mark_maybe(p->response_header_extra_lines);
+    rb_gc_mark_maybe(p->watched_fds);
   }
 }
 
@@ -68,6 +69,9 @@ static Request* _request_alloc() {
   p->response_content_type = Qnil;
   p->response_header = Qnil;
   p->response_header_extra_lines = Qnil;
+
+  volatile VALUE watched_fds = rb_ary_new();
+  p->watched_fds = watched_fds;
 
   p->self = Data_Wrap_Struct(request_class, request_mark, request_free, p);
   return p;
@@ -208,7 +212,7 @@ static VALUE ext_request_send_chunk(VALUE _, VALUE self, VALUE str) {
     _send_data(p->fd, "\r\n", 2);
 
   if (!success) {
-    rb_raise(rb_eIOError, "%s", strerror(errno));
+    rb_sys_fail("write(2)");
   }
 
   return Qnil;

@@ -26,18 +26,21 @@ extern http_parser_settings nyara_request_parse_settings;
 #endif
 
 static VALUE fd_request_map;
+static VALUE watch_request_map;
 static ID id_not_found;
 static VALUE sym_term_close;
 static VALUE sym_writing;
+static VALUE sym_reading;
+static Request* curr_request;
 
 static void _set_nonblock(int fd) {
   int flags;
 
   if ((flags = fcntl(fd, F_GETFL)) == -1) {
-    rb_raise(rb_eRuntimeError, "fcntl(F_GETFL): %s", strerror(errno));
+    rb_sys_fail("fcntl(F_GETFL)");
   }
   if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-    rb_raise(rb_eRuntimeError, "fcntl(F_SETFL,O_NONBLOCK): %s", strerror(errno));
+    rb_sys_fail("fcntl(F_SETFL,O_NONBLOCK)");
   }
 }
 
@@ -48,25 +51,19 @@ static VALUE _fiber_func(VALUE _, VALUE args) {
   return Qnil;
 }
 
-static void _handle_request(int fd) {
-  // get request
-  VALUE key = INT2FIX(fd);
-  volatile VALUE request = rb_hash_aref(fd_request_map, key);
-  if (request == Qnil) {
-    request = nyara_request_new(fd);
-    rb_hash_aset(fd_request_map, key, request);
-  }
+static void _handle_request(VALUE request) {
   Request* p;
   Data_Get_Struct(request, Request, p);
+  curr_request = p;
 
   // read and parse data
   // NOTE we don't let http_parser invoke ruby code, because:
   // 1. so the stack is shallower
   // 2. Fiber.yield can pause http_parser, then the unparsed received_data is lost
-  long len = read(fd, received_data, MAX_RECEIVE_DATA);
+  long len = read(p->fd, received_data, MAX_RECEIVE_DATA);
   if (len < 0) {
     if (errno != EAGAIN) {
-      rb_warn("%s", strerror(errno));
+      // this can happen when 2 events are fetched, and first event closes the fd, then second event fails
       if (p->fd) {
         nyara_detach_fd(p->fd);
         p->fd = 0;
@@ -111,6 +108,10 @@ static void _handle_request(int fd) {
     nyara_request_term_close(request, true);
   } else if (state == sym_writing) {
     // do nothing
+  } else if (state == sym_reading) {
+    // do nothing
+  } else {
+    // double value: sleep
   }
 }
 
@@ -126,20 +127,35 @@ static void loop_body(int fd, int etype) {
       break;
     }
     case ETYPE_HANDLE_REQUEST: {
-      _handle_request(fd);
+      VALUE key = INT2FIX(fd);
+      volatile VALUE request = rb_hash_aref(fd_request_map, key);
+      if (request == Qnil) {
+        request = nyara_request_new(fd);
+        rb_hash_aset(fd_request_map, key, request);
+      }
+      _handle_request(request);
       break;
     }
     case ETYPE_CONNECT: {
-      // todo
-      // NOTE
-      // fd and connection are 1:1, there can more more than 1 fds on a same file / address
-      // so it's streight forward to using fd as query index
+      VALUE request = rb_hash_aref(watch_request_map, INT2FIX(fd));
+      if (request != Qnil) {
+        _handle_request(request);
+      }
     }
   }
 }
 
 void nyara_detach_fd(int fd) {
-  rb_hash_delete(fd_request_map, INT2FIX(fd));
+  VALUE request = rb_hash_delete(fd_request_map, INT2FIX(fd));
+  if (request != Qnil) {
+    Request* p;
+    Data_Get_Struct(request, Request, p);
+    VALUE* watched = RARRAY_PTR(p->watched_fds);
+    long watched_len = RARRAY_LEN(p->watched_fds);
+    for (long i = 0; i < watched_len; i++) {
+      rb_hash_delete(watch_request_map, watched[i]);
+    }
+  }
   close(fd);
 }
 
@@ -163,11 +179,86 @@ static VALUE ext_set_nonblock(VALUE _, VALUE v_fd) {
   return Qnil;
 }
 
-static VALUE ext_watch(VALUE _, VALUE vfd) {
-  // todo dupe fd or just stub into TCP
-  int fd = FIX2INT(vfd);
+static VALUE ext_fd_watch(VALUE _, VALUE v_fd) {
+  int fd = FIX2INT(v_fd);
+  rb_hash_aset(watch_request_map, v_fd, curr_request->self);
+  rb_ary_push(curr_request->watched_fds, v_fd);
   ADD_E(fd, ETYPE_CONNECT);
   return Qnil;
+}
+
+// override TCPSocket.send
+// returns sent length
+static VALUE ext_fd_send(VALUE _, VALUE v_fd, VALUE v_data, VALUE v_flags) {
+  int flags = NUM2INT(v_flags);
+  int fd = NUM2INT(v_fd);
+  char* buf = RSTRING_PTR(v_data);
+  long len = RSTRING_LEN(v_data);
+
+  // similar to _send_data in request.c
+  while(len) {
+    long written = send(fd, buf, len, flags);
+    if (written <= 0) {
+      if (errno == EAGAIN) {
+        rb_fiber_yield(1, &sym_writing);
+        continue;
+      } else {
+        rb_sys_fail("send(2)");
+        break;
+      }
+    } else {
+      buf += written;
+      len -= written;
+      if (len) {
+        rb_fiber_yield(1, &sym_writing);
+      }
+    }
+  }
+
+  return LONG2NUM(RSTRING_LEN(v_data) - len);
+}
+
+// override TCPSocket.recv
+// simulate blocking recv len or eof
+static VALUE ext_fd_recv(VALUE _, VALUE v_fd, VALUE v_len, VALUE v_flags) {
+  int flags = NUM2INT(v_flags);
+  int fd = NUM2INT(v_fd);
+  long buf_len = NUM2INT(v_len); // int shall be large enough...
+
+  volatile VALUE str = rb_tainted_str_new(0, buf_len);
+  volatile VALUE klass = RBASIC(str)->klass;
+  rb_obj_hide(str);
+
+  char* s = RSTRING_PTR(str);
+  while(buf_len) {
+    long recved = recv(fd, s, buf_len, flags);
+    if (recved < 0) {
+      if (errno == EAGAIN) {
+        rb_fiber_yield(1, &sym_reading);
+        continue;
+      } else if (errno == EBADF) { // maybe closed. todo check other possible errno
+        break;
+      } else {
+        rb_sys_fail("recv(2)");
+        break;
+      }
+    } else if (recved == 0) { // reached EOF
+      break;
+    }
+    s += recved;
+    buf_len -= recved;
+  }
+
+  if (RBASIC(str)->klass || RSTRING_LEN(str) != NUM2INT(v_len)) {
+    rb_raise(rb_eRuntimeError, "buffer string modified");
+  }
+  rb_obj_reveal(str, klass);
+  if (buf_len) {
+    rb_str_set_len(str, RSTRING_LEN(str) - buf_len);
+  }
+  rb_obj_taint(str);
+
+  return str;
 }
 
 void Init_event(VALUE ext) {
@@ -176,11 +267,14 @@ void Init_event(VALUE ext) {
   id_not_found = rb_intern("not_found");
   sym_term_close = ID2SYM(rb_intern("term_close"));
   sym_writing = ID2SYM(rb_intern("writing"));
+  sym_reading = ID2SYM(rb_intern("reading"));
 
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
-  rb_define_singleton_method(ext, "watch", ext_watch, 1);
 
-  // for test
+  // fd operations
   rb_define_singleton_method(ext, "set_nonblock", ext_set_nonblock, 1);
+  rb_define_singleton_method(ext, "fd_watch", ext_fd_watch, 1);
+  rb_define_singleton_method(ext, "fd_send", ext_fd_send, 3);
+  rb_define_singleton_method(ext, "fd_recv", ext_fd_recv, 3);
 }
