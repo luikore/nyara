@@ -170,7 +170,7 @@ static bool _send_data(int fd, const char* buf, long len) {
   while(len) {
     long written = write(fd, buf, len);
     if (written <= 0) {
-      if (errno == EAGAIN) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         rb_fiber_yield(1, &sym_writing);
       } else {
         return false;

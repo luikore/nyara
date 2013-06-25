@@ -62,7 +62,7 @@ static void _handle_request(VALUE request) {
   // 2. Fiber.yield can pause http_parser, then the unparsed received_data is lost
   long len = read(p->fd, received_data, MAX_RECEIVE_DATA);
   if (len < 0) {
-    if (errno != EAGAIN) {
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
       // this can happen when 2 events are fetched, and first event closes the fd, then second event fails
       if (p->fd) {
         nyara_detach_fd(p->fd);
@@ -199,7 +199,7 @@ static VALUE ext_fd_send(VALUE _, VALUE v_fd, VALUE v_data, VALUE v_flags) {
   while(len) {
     long written = send(fd, buf, len, flags);
     if (written <= 0) {
-      if (errno == EAGAIN) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         rb_fiber_yield(1, &sym_writing);
         continue;
       } else {
@@ -233,11 +233,9 @@ static VALUE ext_fd_recv(VALUE _, VALUE v_fd, VALUE v_len, VALUE v_flags) {
   while(buf_len) {
     long recved = recv(fd, s, buf_len, flags);
     if (recved < 0) {
-      if (errno == EAGAIN) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         rb_fiber_yield(1, &sym_reading);
         continue;
-      } else if (errno == EBADF) { // maybe closed. todo check other possible errno
-        break;
       } else {
         rb_sys_fail("recv(2)");
         break;
