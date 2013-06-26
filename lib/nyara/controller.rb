@@ -313,8 +313,18 @@ module Nyara
     end
 
     # Resume action after +seconds+
-    def sleep seconds
-      Fiber.yield seconds.to_f # todo
+    def _sleep seconds
+      seconds = seconds.to_f
+      raise ArgumentError, 'bad sleep seconds' if seconds < 0
+
+      # NOTE request_wake requires request as param, so this method can not be generalized to Fiber.sleep
+
+      Ext.request_sleep self # place sleep actions before wake
+      Thread.new do
+        sleep seconds
+        Ext.request_wakeup self
+      end
+      Fiber.yield :sleep # see event.c for the handler
     end
 
     # One shot render, and terminate the action.

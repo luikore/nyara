@@ -1,1 +1,3 @@
+2013-06-26 patch TCPSocket so client libraries in Ruby won't stuck
+           add sleep helper
 2013-06-22 add changes and copying

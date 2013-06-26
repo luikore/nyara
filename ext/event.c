@@ -21,6 +21,7 @@ static void loop_body(int fd, int etype);
 static int qfd;
 
 #define MAX_RECEIVE_DATA 65536
+// * 4
 static char received_data[MAX_RECEIVE_DATA];
 extern http_parser_settings nyara_request_parse_settings;
 
@@ -36,6 +37,7 @@ static ID id_not_found;
 static VALUE sym_term_close;
 static VALUE sym_writing;
 static VALUE sym_reading;
+static VALUE sym_sleep;
 static Request* curr_request;
 
 static void _set_nonblock(int fd) {
@@ -59,6 +61,9 @@ static VALUE _fiber_func(VALUE _, VALUE args) {
 static void _handle_request(VALUE request) {
   Request* p;
   Data_Get_Struct(request, Request, p);
+  if (p->sleeping) {
+    return;
+  }
   curr_request = p;
 
   // read and parse data
@@ -115,8 +120,8 @@ static void _handle_request(VALUE request) {
     // do nothing
   } else if (state == sym_reading) {
     // do nothing
-  } else {
-    // double value: sleep
+  } else if (state == sym_sleep) {
+    // do nothing
   }
 }
 
@@ -175,6 +180,34 @@ static VALUE ext_run_queue(VALUE _, VALUE v_fd) {
   ADD_E(fd, ETYPE_CAN_ACCEPT);
 
   LOOP_E();
+  return Qnil;
+}
+
+static VALUE ext_request_sleep(VALUE _, VALUE request) {
+  Request* p;
+  Data_Get_Struct(request, Request, p);
+
+  VALUE* v_fds = RARRAY_PTR(p->watched_fds);
+  long v_fds_len = RARRAY_LEN(p->watched_fds);
+  for (long i = 0; i < v_fds_len; i++) {
+    DEL_E(FIX2INT(v_fds[i]));
+  }
+  DEL_E(p->fd);
+  p->sleeping = true;
+  return Qnil;
+}
+
+static VALUE ext_request_wakeup(VALUE _, VALUE request) {
+  // NOTE should not use current_request
+  Request* p;
+  Data_Get_Struct(request, Request, p);
+
+  VALUE* v_fds = RARRAY_PTR(p->watched_fds);
+  long v_fds_len = RARRAY_LEN(p->watched_fds);
+  for (long i = 0; i < v_fds_len; i++) {
+    ADD_E(FIX2INT(v_fds[i]), ETYPE_CONNECT);
+  }
+  ADD_E(p->fd, ETYPE_HANDLE_REQUEST);
   return Qnil;
 }
 
@@ -273,9 +306,13 @@ void Init_event(VALUE ext) {
   sym_term_close = ID2SYM(rb_intern("term_close"));
   sym_writing = ID2SYM(rb_intern("writing"));
   sym_reading = ID2SYM(rb_intern("reading"));
+  sym_sleep = ID2SYM(rb_intern("sleep"));
 
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
+
+  rb_define_singleton_method(ext, "request_sleep", ext_request_sleep, 0);
+  rb_define_singleton_method(ext, "request_wakeup", ext_request_wakeup, 0);
 
   // fd operations
   rb_define_singleton_method(ext, "set_nonblock", ext_set_nonblock, 1);
