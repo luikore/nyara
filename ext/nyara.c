@@ -20,6 +20,8 @@ void Init_nyara() {
   set_fd_limit(20000);
 
   VALUE nyara = rb_define_module("Nyara");
+# include "inc/version.inc"
+  rb_const_set(nyara, rb_intern("VERSION"), rb_str_new2(NYARA_VERSION));
 
   // utils: hashes
   Init_hashes(nyara);

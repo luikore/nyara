@@ -11,7 +11,7 @@ desc "code generate"
 task :gen => [status_file, version_file]
 
 desc "generate #{status_file}"
-file status_file do
+file status_file => __FILE__ do
   puts "generating: #{status_file}"
   require "nokogiri"
   require "open-uri"
@@ -28,13 +28,13 @@ file status_file do
 end
 
 desc "generate #{version_file}"
-file version_file => 'nyara.gemspec' do
+file version_file => ['nyara.gemspec', __FILE__] do
   puts "generating: #{version_file}"
   lines = File.readlines('nyara.gemspec')
   version = nil
   lines.each do |line|
     if line =~ /s\.version =/
-      version = line[/\d+(\.\d+)*(\.pre)?/]
+      version = line[/\d+(\.\d+)*(\.pre\d+)?/]
       break
     end
   end
