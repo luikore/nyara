@@ -15,7 +15,11 @@ Not Yet Another Ruby Async web framework and server.
 
 # Getting started
 
-Requires Ruby 2.0+, BSD/Linux/Mac OS X, GCC4.5+ or Clang.
+Requirement
+
+- BSD/Linux/Mac OS X
+- Ruby 2.0.0-p195 or higher (due to some syntax issues, doesn't work on 2.0.0-p0)
+- GCC4.5+ or Clang
 
 Install
 
