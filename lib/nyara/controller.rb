@@ -313,7 +313,7 @@ module Nyara
     end
 
     # Resume action after +seconds+
-    def _sleep seconds
+    def sleep seconds
       seconds = seconds.to_f
       raise ArgumentError, 'bad sleep seconds' if seconds < 0
 
