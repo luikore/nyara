@@ -73,6 +73,8 @@ static Request* _request_alloc() {
   volatile VALUE watched_fds = rb_ary_new();
   p->watched_fds = watched_fds;
 
+  p->sleeping = false;
+
   p->self = Data_Wrap_Struct(request_class, request_mark, request_free, p);
   return p;
 }
