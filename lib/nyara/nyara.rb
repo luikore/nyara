@@ -59,7 +59,7 @@ module Nyara
 
     def patch_tcp_socket
       puts "patching TCPSocket"
-      require_relative "patch_tcp_socket"
+      require_relative "patches/tcp_socket"
     end
 
     def start_production_server port
