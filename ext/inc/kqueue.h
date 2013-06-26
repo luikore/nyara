@@ -16,8 +16,9 @@ static struct kevent qevents[MAX_E];
 
 static void ADD_E(int fd, uint64_t etype) {
   struct kevent e;
+  // without EV_CLEAR, it is level-triggered
+  // http://www.cs.helsinki.fi/linux/linux-kernel/2001-38/0547.html
   EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, (void*)etype);
-  // todo timeout
 # ifdef NDEBUG
   kevent(qfd, &e, 1, NULL, 0, NULL);
 # else
@@ -26,7 +27,7 @@ static void ADD_E(int fd, uint64_t etype) {
 # endif
 }
 
-static void DEL_E(int fd, int filter) {
+static void DEL_E_WITH_FILTER(int fd, int filter) {
   struct kevent e;
   EV_SET(&e, fd, filter, EV_DELETE, 0, 0, NULL);
 # ifdef NDEBUG
@@ -37,11 +38,14 @@ static void DEL_E(int fd, int filter) {
 # endif
 }
 
+static void DEL_E(int fd) {
+  DEL_E_WITH_FILTER(fd, EVFILT_READ | EVFILT_WRITE);
+}
+
 static void INIT_E() {
   qfd = kqueue();
   if (qfd == -1) {
-    printf("%s\n", strerror(errno));
-    exit(-1);
+    rb_sys_fail("kqueue(2)");
   }
 }
 
@@ -61,7 +65,7 @@ static void LOOP_E() {
       if (qevents[i].flags & EV_EOF) {
         // EV_EOF is set if the read side of the socket is shutdown
         // the event can keep flipping back to consume cpu if we don't remove it
-        DEL_E(fd, qevents[i].filter);
+        DEL_E_WITH_FILTER(fd, qevents[i].filter);
       }
       if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
         loop_body(fd, (int)qevents[i].udata);

@@ -8,6 +8,9 @@ static struct epoll_event qevents[MAX_E];
 
 static void ADD_E(int fd, uint64_t etype) {
   struct epoll_event e;
+  // not using edge trigger flag EPOLLET
+  // because edge trigger only fire once when fd is readable/writable
+  // but the event may not be consumed in our handler
   e.events = EPOLLIN | EPOLLOUT;
   e.data.u64 = (etype << 32) | (uint64_t)fd;
 
@@ -20,8 +23,7 @@ static void ADD_E(int fd, uint64_t etype) {
 # endif
 }
 
-// either epoll or kqueue removes the event watch from queue when fd closed
-// seems this is not required in epoll?
+// NOTE either epoll or kqueue removes the event watch from queue when fd closed
 static void DEL_E(int fd) {
   struct epoll_event e;
   e.events = EPOLLIN | EPOLLOUT;
@@ -38,8 +40,7 @@ static void DEL_E(int fd) {
 static void INIT_E() {
   qfd = epoll_create(10); // size not important
   if (qfd == -1) {
-    printf("%s\n", strerror(errno));
-    exit(-1);
+    rb_sys_fail("epoll_create(2)");
   }
 }
 
