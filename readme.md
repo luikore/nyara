@@ -10,8 +10,8 @@ Not Yet Another Ruby Async web framework and server.
 
 **Notice**
 
-- *Nyara* is not based on *rack*.
-- *Nyara* is not compatible with *eventmachine*. It won't work if you add gems like *em-synchrony*.
+- *Nyara* is not based on [rack](https://github.com/rack/rack).
+- *Nyara* is not compatible with [eventmachine](https://github.com/eventmachine/eventmachine). It won't work if you add gems like [em-synchrony](https://github.com/igrigorik/em-synchrony).
 
 # Getting started
 
