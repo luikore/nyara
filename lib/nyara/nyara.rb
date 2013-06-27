@@ -1,6 +1,7 @@
 # master require
 require "fiber"
 require "cgi"
+require "uri"
 require "openssl"
 require "json"
 require "base64"
@@ -24,6 +25,8 @@ require_relative "cpu_counter"
 
 module Nyara
   HTTP_STATUS_FIRST_LINES = Hash[HTTP_STATUS_CODES.map{|k,v|[k, "HTTP/1.1 #{k} #{v}\r\n".freeze]}].freeze
+
+  HTTP_REDIRECT_STATUS = [300, 301, 302, 303, 307]
 
   # base header response for 200
   # caveat: these entries can not be deleted

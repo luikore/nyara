@@ -1,4 +1,6 @@
 module Nyara
+  # keys ignore case, and values all string<br>
+  # TODO check invalid chars in values
   class HeaderHash
     alias has_key? key?
 
