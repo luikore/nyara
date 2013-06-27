@@ -1,4 +1,4 @@
 .DS_Store
 *.gem
 Gemfile.lock
-coverage
+.coverage

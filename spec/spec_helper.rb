@@ -12,6 +12,7 @@ require 'pp'
 if ENV['COVERAGE']
   require "simplecov"
   SimpleCov.start do
+    coverage_dir '.coverage'
     add_group 'lib', 'lib'
   end
 end
