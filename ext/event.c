@@ -20,8 +20,7 @@ extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
 static void loop_body(int fd, int etype);
 static int qfd;
 
-#define MAX_RECEIVE_DATA 65536
-// * 4
+#define MAX_RECEIVE_DATA 65536 * 2
 static char received_data[MAX_RECEIVE_DATA];
 extern http_parser_settings nyara_request_parse_settings;
 
@@ -198,7 +197,7 @@ static VALUE ext_request_sleep(VALUE _, VALUE request) {
 }
 
 static VALUE ext_request_wakeup(VALUE _, VALUE request) {
-  // NOTE should not use current_request
+  // NOTE should not use curr_request
   Request* p;
   Data_Get_Struct(request, Request, p);
 
@@ -297,6 +296,18 @@ static VALUE ext_fd_recv(VALUE _, VALUE v_fd, VALUE v_len, VALUE v_flags) {
   return str;
 }
 
+// (for test) run request handler, read from associated fd and write to it
+static VALUE ext_handle_request(VALUE _, VALUE request) {
+  Request* p;
+  Data_Get_Struct(request, Request, p);
+
+  // FIXME may hang up if request data incomplete
+  while (p->fiber == Qnil || rb_fiber_alive_p(p->fiber)) {
+    _handle_request(request);
+  }
+  return Qnil;
+}
+
 void Init_event(VALUE ext) {
   fd_request_map = rb_hash_new();
   rb_gc_register_mark_object(fd_request_map);
@@ -319,4 +330,7 @@ void Init_event(VALUE ext) {
   rb_define_singleton_method(ext, "fd_watch", ext_fd_watch, 1);
   rb_define_singleton_method(ext, "fd_send", ext_fd_send, 3);
   rb_define_singleton_method(ext, "fd_recv", ext_fd_recv, 3);
+
+  // for test
+  rb_define_singleton_method(ext, "handle_request", ext_handle_request, 1);
 }
