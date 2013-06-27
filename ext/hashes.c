@@ -2,6 +2,8 @@
 
 #include "nyara.h"
 #include <ruby/st.h>
+#include <ruby/encoding.h>
+#include "inc/str_intern.h"
 
 VALUE nyara_param_hash_class;
 VALUE nyara_header_hash_class;
@@ -83,7 +85,7 @@ static VALUE header_hash_key_p(VALUE self, VALUE key) {
   return nyara_rb_hash_has_key(self, header_hash_tidy_key(key)) ? Qtrue : Qfalse;
 }
 
-ID id_to_s;
+static ID id_to_s;
 static VALUE header_hash_aset(VALUE self, VALUE key, VALUE value) {
   key = header_hash_tidy_key(key);
   if (TYPE(value) != T_STRING) {
@@ -93,7 +95,7 @@ static VALUE header_hash_aset(VALUE self, VALUE key, VALUE value) {
   return rb_hash_aset(self, key, value);
 }
 
-int header_hash_merge_func(VALUE k, VALUE v, VALUE self_st) {
+static int header_hash_merge_func(VALUE k, VALUE v, VALUE self_st) {
   st_table* t = (st_table*)self_st;
   if (!st_is_member(t, k)) {
     st_insert(t, (st_data_t)k, (st_data_t)v);
@@ -110,8 +112,29 @@ static VALUE header_hash_reverse_merge_bang(VALUE self, VALUE other) {
   return self;
 }
 
+static rb_encoding* u8_encoding;
+static int header_hash_serialize_func(VALUE k, VALUE v, VALUE arr) {
+  long klen = RSTRING_LEN(k);
+  long vlen = RSTRING_LEN(v);
+  long capa = klen + vlen + 4;
+  volatile VALUE s = rb_str_buf_new(capa);
+  sprintf(RSTRING_PTR(s), "%.*s: %.*s\r\n", (int)klen, RSTRING_PTR(k), (int)vlen, RSTRING_PTR(v));
+  STR_SET_LEN(s, capa);
+  rb_enc_associate(s, u8_encoding);
+  rb_ary_push(arr, s);
+  return ST_CONTINUE;
+}
+
+static VALUE header_hash_serialize(VALUE self) {
+  long size = (!RHASH(self)->ntbl ? RHASH(self)->ntbl->num_entries : 0);
+  volatile VALUE arr = rb_ary_new_capa(size);
+  rb_hash_foreach(self, header_hash_serialize_func, arr);
+  return arr;
+}
+
 void Init_hashes(VALUE nyara) {
   id_to_s = rb_intern("to_s");
+  u8_encoding = rb_utf8_encoding();
 
   nyara_param_hash_class = rb_define_class_under(nyara, "ParamHash", rb_cHash);
   nyara_header_hash_class = rb_define_class_under(nyara, "HeaderHash", nyara_param_hash_class);
@@ -125,6 +148,7 @@ void Init_hashes(VALUE nyara) {
   rb_define_method(nyara_header_hash_class, "key?", header_hash_key_p, 1);
   rb_define_method(nyara_header_hash_class, "[]=", header_hash_aset, 2);
   rb_define_method(nyara_header_hash_class, "reverse_merge!", header_hash_reverse_merge_bang, 1);
+  rb_define_method(nyara_header_hash_class, "serialize", header_hash_serialize, 0);
 
   // for internal use
   rb_define_method(nyara_header_hash_class, "_aset", rb_hash_aset, 2);

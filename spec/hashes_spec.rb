@@ -26,6 +26,14 @@ module Nyara
       assert_equal ['Content-Type', 'text/plain'], h.to_a.first
     end
 
+    it "can serialize into an array" do
+      h = HeaderHash.new
+      h['Content-Length'] = 3
+      h['X-Weird'] = '奇怪'
+      arr = h.serialize
+      assert_equal ["Content-Length: 3\r\n", "X-Weird: 奇怪\r\n"], arr
+    end
+
     class HaHash < HeaderHash
     end
 
