@@ -132,7 +132,7 @@ module Nyara
     # todo serialize the changed cookie
 
     # todo rename and move it into Ext
-    def not_found
+    def not_found # :nodoc:
       Ext.request_send_data self, "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
     end
   end

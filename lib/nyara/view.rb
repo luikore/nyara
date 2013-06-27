@@ -42,7 +42,7 @@ module Nyara
       end
       attr_reader :root
 
-      # +path+ needs extension
+      # NOTE: +path+ needs extension
       def on_delete path
         meth = path2meth path
         Renderable.class_eval do
@@ -64,7 +64,7 @@ module Nyara
         @meth2ext.clear
       end
 
-      # +path+ needs extension
+      # NOTE: +path+ needs extension<br>
       # returns dot_ext for further use
       def on_update path
         meth = path2meth path
@@ -108,7 +108,7 @@ module Nyara
         line = 1
 
         if stream_friendly
-          Renderable.class_eval <<-RUBY, __FILE__, __LINE__ + 1
+          Renderable.class_eval <<-RUBY, __FILE__, __LINE__
             def render locals={}
               @_nyara_locals = locals
               src = locals.map{|k, _| "\#{k} = @_nyara_locals[:\#{k}];" }.join
@@ -119,7 +119,7 @@ module Nyara
           RUBY
           ENGINE_STREAM_FRIENDLY[ext] = true
         else
-          Renderable.class_eval <<-RUBY, __FILE__, __LINE__ + 1
+          Renderable.class_eval <<-RUBY, __FILE__, __LINE__
             def render locals=nil
               Tilt[#{ext.inspect}].new(#{file}, #{line}){ @_nyara_view.in }.render self, locals
             end
@@ -278,8 +278,7 @@ RUBY
       Fiber.yield :term_close
     end
 
-    # :nodoc:
-    def _render
+    def _render # :nodoc:
       t, _ = @rest_layouts.pop
       if @rest_layouts.empty?
         @instance.send t, @locals

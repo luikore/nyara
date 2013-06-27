@@ -81,8 +81,8 @@ module Nyara
         http 'PATCH', path, &blk
       end
 
-      # HTTP OPTIONS
-      # todo generate options response for a url
+      # HTTP OPTIONS<br>
+      # todo generate options response for a url<br>
       # see http://tools.ietf.org/html/rfc5789
       def options path, &blk
         http 'OPTIONS', path, &blk
@@ -104,8 +104,7 @@ module Nyara
       end
       attr_reader :controller_name
 
-      # :nodoc:
-      def preprocess_actions
+      def preprocess_actions # :nodoc:
         raise "#{self}: no action defined" unless @route_entries
 
         curr_id = :'#0'
@@ -128,7 +127,6 @@ module Nyara
 
     include Renderable
 
-    # :nodoc:
     def self.inherited klass
       # klass will also have this inherited method
       # todo check class name
@@ -158,7 +156,7 @@ module Nyara
       r
     end
 
-    # Url helper
+    # Url helper<br>
     # NOTE: host can include port
     def url_for id, *args, scheme: nil, host: Config['host'], **opts
       scheme = scheme ? scheme.sub(/\:?$/, '://') : '//'
