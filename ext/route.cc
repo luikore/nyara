@@ -60,7 +60,7 @@ static bool start_with(const char* a, long a_len, const char* b, long b_len) {
   if (b_len > a_len) {
     return false;
   }
-  for (size_t i = 0; i < b_len; i++) {
+  for (long i = 0; i < b_len; i++) {
     if (a[i] != b[i]) {
       return false;
     }
@@ -163,13 +163,12 @@ static VALUE ext_list_route(VALUE self) {
   // note: prevent leak with init nil
   volatile VALUE arr = Qnil;
   volatile VALUE e = Qnil;
-  volatile VALUE prefix = Qnil;
   volatile VALUE conv = Qnil;
 
   volatile VALUE route_hash = rb_hash_new();
   for (MapIter j = route_map.begin(); j != route_map.end(); j++) {
     RouteEntries* route_entries = j->second;
-    VALUE arr = rb_ary_new();
+    arr = rb_ary_new();
     rb_hash_aset(route_hash, rb_str_new2(http_method_str(j->first)), arr);
     for (EntriesIter i = route_entries->begin(); i != route_entries->end(); i++) {
       e = rb_ary_new();

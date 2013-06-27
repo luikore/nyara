@@ -79,8 +79,9 @@ module Nyara
         if src
           sig = @meth2sig[meth].map{|k| "#{k}: nil" }.join ','
           sig = '_={}' if sig.empty?
+          sig = "(#{sig})" # 2.0.0-p0 requirement
           Renderable.class_eval <<-RUBY, path, 1
-            def render #{sig}
+            def render#{sig}
               #{src}
             end
             alias :#{meth.inspect} render

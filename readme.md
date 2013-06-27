@@ -13,7 +13,7 @@ Not Yet Another Ruby Async web framework and server.
 Requirement
 
 - BSD/Linux/Mac OS X
-- Ruby 2.0.0-p195 or higher (due to some syntax issues, doesn't work on 2.0.0-p0)
+- Ruby 2.0.0 or higher
 - GCC or Clang
 
 Install
