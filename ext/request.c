@@ -89,10 +89,8 @@ void nyara_request_term_close(VALUE self, bool write_last_chunk) {
   P;
   if (write_last_chunk || p->status == 200) {
     // usually this succeeds, while not, it doesn't matter cause we are closing it
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wunused-result"
-    write(p->fd, "0\r\n\r\n", 5);
-#   pragma GCC diagnostic pop
+    if (write(p->fd, "0\r\n\r\n", 5)) {
+    }
   }
   nyara_detach_fd(p->fd);
   p->fd = 0;

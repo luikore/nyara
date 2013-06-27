@@ -14,7 +14,7 @@ Requirement
 
 - BSD/Linux/Mac OS X
 - Ruby 2.0.0-p195 or higher (due to some syntax issues, doesn't work on 2.0.0-p0)
-- GCC4.5+ or Clang
+- GCC or Clang
 
 Install
 

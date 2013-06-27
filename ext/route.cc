@@ -45,7 +45,11 @@ struct RouteEntry {
 };
 
 typedef std::vector<RouteEntry> RouteEntries;
-static std::map<enum http_method, RouteEntries*> route_map;
+typedef RouteEntries::iterator EntriesIter;
+typedef std::map<enum http_method, RouteEntries*> RouteMap;
+typedef RouteMap::iterator MapIter;
+
+static RouteMap route_map;
 static OnigRegion region; // we can reuse the region without worrying thread safety
 static ID id_to_s;
 static rb_encoding* u8_enc;
@@ -76,9 +80,9 @@ static enum http_method canonicalize_http_method(VALUE m) {
 }
 
 static VALUE ext_clear_route(VALUE req) {
-  for (auto i = route_map.begin(); i != route_map.end(); ++i) {
+  for (MapIter i = route_map.begin(); i != route_map.end(); ++i) {
     RouteEntries* entries = i->second;
-    for (auto j = entries->begin(); j != entries->end(); ++j) {
+    for (EntriesIter j = entries->begin(); j != entries->end(); ++j) {
       j->dealloc();
     }
     delete entries;
@@ -91,7 +95,7 @@ static VALUE ext_register_route(VALUE self, VALUE v_e) {
   // get route entries
   enum http_method m = canonicalize_http_method(rb_iv_get(v_e, "@http_method"));
   RouteEntries* route_entries;
-  auto map_iter = route_map.find(m);
+  MapIter map_iter = route_map.find(m);
   if (map_iter == route_map.end()) {
     route_entries = new RouteEntries();
     route_map[m] = route_entries;
@@ -163,11 +167,11 @@ static VALUE ext_list_route(VALUE self) {
   volatile VALUE conv = Qnil;
 
   volatile VALUE route_hash = rb_hash_new();
-  for (auto j = route_map.begin(); j != route_map.end(); j++) {
+  for (MapIter j = route_map.begin(); j != route_map.end(); j++) {
     RouteEntries* route_entries = j->second;
     VALUE arr = rb_ary_new();
     rb_hash_aset(route_hash, rb_str_new2(http_method_str(j->first)), arr);
-    for (auto i = route_entries->begin(); i != route_entries->end(); i++) {
+    for (EntriesIter i = route_entries->begin(); i != route_entries->end(); i++) {
       e = rb_ary_new();
       rb_ary_push(e, i->is_sub ? Qtrue : Qfalse);
       rb_ary_push(e, i->scope);
@@ -227,7 +231,7 @@ static VALUE extract_ext(const char* s, long len) {
 extern "C"
 RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, VALUE accept_arr) {
   RouteResult r = {Qnil, Qnil, Qnil, Qnil};
-  auto map_iter = route_map.find(method_num);
+  MapIter map_iter = route_map.find(method_num);
   if (map_iter == route_map.end()) {
     return r;
   }
@@ -237,7 +241,7 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, VALUE a
   long len = RSTRING_LEN(vpath);
   // must iterate all
   bool last_matched = false;
-  auto i = route_entries->begin();
+  EntriesIter i = route_entries->begin();
   for (; i != route_entries->end(); ++i) {
     bool matched;
     if (i->is_sub && last_matched) { // save a bit compare
