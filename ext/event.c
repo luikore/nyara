@@ -322,8 +322,8 @@ void Init_event(VALUE ext) {
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
 
-  rb_define_singleton_method(ext, "request_sleep", ext_request_sleep, 0);
-  rb_define_singleton_method(ext, "request_wakeup", ext_request_wakeup, 0);
+  rb_define_singleton_method(ext, "request_sleep", ext_request_sleep, 1);
+  rb_define_singleton_method(ext, "request_wakeup", ext_request_wakeup, 1);
 
   // fd operations
   rb_define_singleton_method(ext, "set_nonblock", ext_set_nonblock, 1);
