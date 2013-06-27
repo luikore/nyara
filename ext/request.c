@@ -8,6 +8,7 @@ static VALUE str_html;
 static rb_encoding* u8_encoding;
 static VALUE request_class;
 static VALUE sym_writing;
+static VALUE str_transfer_encoding;
 
 #define P \
   Request* p;\
@@ -87,9 +88,14 @@ VALUE nyara_request_new(int fd) {
 
 void nyara_request_term_close(VALUE self, bool write_last_chunk) {
   P;
-  if (write_last_chunk || p->status == 200) {
-    // usually this succeeds, while not, it doesn't matter cause we are closing it
-    if (write(p->fd, "0\r\n\r\n", 5)) {
+  VALUE transfer_enc = rb_hash_aref(p->response_header, str_transfer_encoding);
+  if (TYPE(transfer_enc) == T_STRING) {
+    if (RSTRING_LEN(transfer_enc) == 7) {
+      if (strncmp(RSTRING_PTR(transfer_enc), "chunked", 7) == 0) {
+        // usually this succeeds, while not, it doesn't matter cause we are closing it
+        if (write(p->fd, "0\r\n\r\n", 5)) {
+        }
+      }
     }
   }
   nyara_detach_fd(p->fd);
@@ -271,6 +277,8 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_gc_register_mark_object(str_html);
   u8_encoding = rb_utf8_encoding();
   sym_writing = ID2SYM(rb_intern("writing"));
+  str_transfer_encoding = rb_enc_str_new("Transfer-Encoding", strlen("Transfer-Encoding"), u8_encoding);
+  rb_gc_register_mark_object(str_transfer_encoding);
 
   // request
   request_class = rb_define_class_under(nyara, "Request", rb_cObject);
