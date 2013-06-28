@@ -8,6 +8,11 @@
 #undef NDEBUG
 #endif
 
+// in 2.1 rb_ary_tmp_new => rb_ary_new_capa
+#ifndef rb_ary_new_capa
+#define rb_ary_new_capa rb_ary_tmp_new
+#endif
+
 
 /* event.c */
 void Init_event(VALUE ext);
