@@ -47,6 +47,7 @@ end
 desc "generate makefile"
 file makefile => extconf do
   Dir.chdir 'ext' do
+    sh 'make clean' if File.exist?('Makefile')
     sh 'ruby extconf.rb'
   end
 end

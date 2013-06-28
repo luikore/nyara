@@ -8,11 +8,6 @@
 #undef NDEBUG
 #endif
 
-// only available after 2.1
-#ifndef HAVE_RB_ARY_NEW_CAPA
-#define rb_ary_new_capa(n) rb_ary_new()
-#endif
-
 
 /* event.c */
 void Init_event(VALUE ext);

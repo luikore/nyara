@@ -126,8 +126,12 @@ static int header_hash_serialize_func(VALUE k, VALUE v, VALUE arr) {
 }
 
 static VALUE header_hash_serialize(VALUE self) {
+# ifdef HAVE_RB_ARY_NEW_CAPA
   long size = (!RHASH(self)->ntbl ? RHASH(self)->ntbl->num_entries : 0);
   volatile VALUE arr = rb_ary_new_capa(size);
+# else
+  volatile VALUE arr = rb_ary_new();
+# endif
   rb_hash_foreach(self, header_hash_serialize_func, arr);
   return arr;
 }
