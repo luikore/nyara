@@ -1,9 +1,11 @@
+# patch core classes first
+require_relative "patches/mini_support"
+
 # master require
 require "fiber"
 require "cgi"
 require "uri"
 require "openssl"
-require "json"
 require "base64"
 require "socket"
 require "tilt"

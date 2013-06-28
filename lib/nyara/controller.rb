@@ -145,13 +145,9 @@ module Nyara
       r = Route.path_template(self.class, id) % args
 
       if opts
-        r << ".#{opts[:format]}" if opts[:format]
-        query = opts.map do |k, v|
-          next if k == :format
-          "#{CGI.escape k.to_s}=#{CGI.escape v}"
-        end
-        query.compact!
-        r << '?' << query.join('&') unless query.empty?
+        format = opts.delete :format
+        r << ".#{format}" if format
+        r << '?' << opts.to_query unless opts.empty?
       end
       r
     end
