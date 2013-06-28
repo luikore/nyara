@@ -31,6 +31,7 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->response_header);
     rb_gc_mark_maybe(p->response_header_extra_lines);
     rb_gc_mark_maybe(p->watched_fds);
+    rb_gc_mark_maybe(p->instance);
   }
 }
 
@@ -73,6 +74,7 @@ static Request* _request_alloc() {
 
   volatile VALUE watched_fds = rb_ary_new();
   p->watched_fds = watched_fds;
+  p->instance = Qnil;
 
   p->sleeping = false;
 

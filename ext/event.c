@@ -96,6 +96,7 @@ static void _handle_request(VALUE request) {
       rb_ary_push(result.args, rb_class_new_instance(1, &(p->self), result.controller));
       // result.args is on stack, no need to worry gc
       p->fiber = rb_fiber_new(_fiber_func, result.args);
+      p->instance = RARRAY_PTR(result.args)[RARRAY_LEN(result.args) - 1];
       p->scope = result.scope;
       p->format = result.format;
       p->response_header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
@@ -305,7 +306,7 @@ static VALUE ext_handle_request(VALUE _, VALUE request) {
   while (p->fiber == Qnil || rb_fiber_alive_p(p->fiber)) {
     _handle_request(request);
   }
-  return Qnil;
+  return p->instance;
 }
 
 void Init_event(VALUE ext) {

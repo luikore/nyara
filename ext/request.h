@@ -40,6 +40,7 @@ typedef struct {
   VALUE response_header_extra_lines;
 
   VALUE watched_fds;
+  VALUE instance;
 
   bool sleeping;
 } Request;
