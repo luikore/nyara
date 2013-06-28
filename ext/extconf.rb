@@ -24,6 +24,8 @@ have_epoll = have_func('epoll_create', 'sys/epoll.h')
 abort('no kqueue nor epoll') if !have_kqueue and !have_epoll
 $defs << "-DNDEBUG -D#{have_epoll ? 'HAVE_EPOLL' : 'HAVE_KQUEUE'}"
 
+have_func('rb_ary_new_capa', 'ruby.h')
+
 tweak_include
 tweak_cflags
 create_makefile 'nyara'
