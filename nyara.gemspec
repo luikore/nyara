@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.summary = "Fast, slim and fuzzy ruby web framework + server"
   s.description = "Fast, slim and fuzzy ruby web framework + server, based on preforked event queue and Fiber. NO rack NOR eventmachine are used."
   s.required_ruby_version = ">=2.0.0"
-  s.licenses = ['BSD']
+  s.licenses = ['BSD 3-Clause']
 
   s.files = Dir.glob('{rakefile,nyara.gemspec,readme.md,**/*.{rb,h,c,cc,inc}}')
   s.files += Dir.glob('ext/http-parser/{AUTHORS,CONTRIBUTIONS,LICENSE-MIT}')
