@@ -54,6 +54,7 @@ void Init_nyara() {
   Init_accept(ext);
   Init_mime(ext);
   Init_request(nyara, ext);
+  Init_test_response(nyara);
   Init_event(ext);
   Init_route(nyara, ext);
   Init_url_encoded(ext);

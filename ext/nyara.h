@@ -24,6 +24,10 @@ VALUE nyara_request_new(int fd);
 void nyara_request_term_close(VALUE request, bool write_last_chunk);
 
 
+/* test_response.c */
+void Init_test_response(VALUE nyara);
+
+
 /* url_encoded.c */
 void Init_url_encoded(VALUE ext);
 long nyara_parse_path(VALUE path, const char*s, long len);
