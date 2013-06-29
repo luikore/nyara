@@ -12,7 +12,7 @@ module Nyara
     end
 
     def compile
-      global_path_templates = {} # "name#id" => path
+      @global_path_templates = {} # "name#id" => path
       @path_templates = {}       # klass => {any_id => path}
 
       a = @controllers.map do |scope, c|
@@ -31,7 +31,7 @@ module Nyara
         route_entries.each do |e|
           id = e.id.to_s
           path = File.join scope, e.path
-          global_path_templates[name + id] = path
+          @global_path_templates[name + id] = path
           @path_templates[c][id] = path
         end
 
@@ -39,7 +39,7 @@ module Nyara
       end
 
       @path_templates.keys.each do |c|
-        @path_templates[c] = global_path_templates.merge @path_templates[c]
+        @path_templates[c] = @global_path_templates.merge @path_templates[c]
       end
 
       Ext.clear_route
@@ -51,6 +51,10 @@ module Nyara
 
     def path_template klass, id
       @path_templates[klass][id]
+    end
+
+    def global_path_template id
+      @global_path_templates[id]
     end
 
     def clear

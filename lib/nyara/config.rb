@@ -6,6 +6,11 @@ module Nyara
   # - public
   Config = ConfigHash.new
   class << Config
+    def reset
+      clear
+      Route.clear
+    end
+
     def map prefix, controller
       Route.register_controller prefix, controller
     end

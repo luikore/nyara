@@ -17,6 +17,7 @@ if ENV['COVERAGE']
   end
 end
 require_relative "../lib/nyara/nyara"
+require_relative "../lib/nyara/test"
 
 RSpec.configure do |config|
   config.expect_with :stdlib

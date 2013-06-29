@@ -46,6 +46,12 @@ module Nyara
       Config
     end
 
+    def setup
+      Session.init
+      Route.compile
+      View.init
+    end
+
     def start_server
       port = Config[:port] || 3000
 
