@@ -159,3 +159,18 @@ task :audit_arity do
     end
   end
 end
+
+desc "audit http_parser struct size, it should be dividable by 8 so that Request fields are aligned"
+task :audit_sizeof_http_parser do
+  require "mkmf"
+  $CFLAGS << " -Iext/http-parser"
+  res = check_sizeof("http_parser", "http_parser.h")
+  if res % 8 == 0
+    puts "OK"
+  else
+    term_color 9
+    print "Need padding"
+    reset_color
+    puts
+  end
+end
