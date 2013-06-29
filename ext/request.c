@@ -89,7 +89,7 @@ VALUE nyara_request_new(int fd) {
   return p->self;
 }
 
-void nyara_request_term_close(VALUE self, bool need_detach) {
+void nyara_request_term_close(VALUE self) {
   P;
   VALUE transfer_enc = rb_hash_aref(p->response_header, str_transfer_encoding);
   if (TYPE(transfer_enc) == T_STRING) {
@@ -101,7 +101,7 @@ void nyara_request_term_close(VALUE self, bool need_detach) {
       }
     }
   }
-  if (need_detach && p->fd) {
+  if (p->fd) {
     nyara_detach_fd(p->fd);
     p->fd = 0;
   }
@@ -239,7 +239,7 @@ static VALUE ext_request_new(VALUE _) {
 
 static VALUE ext_request_set_fd(VALUE _, VALUE self, VALUE vfd) {
   P;
-  p->fd = NUM2INT(vfd);
+  p->fd = dup(NUM2INT(vfd));
   return Qnil;
 }
 

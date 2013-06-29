@@ -3,9 +3,7 @@
 #include "nyara.h"
 #include <multipart_parser.h>
 #include <errno.h>
-#ifndef write
 #include <unistd.h>
-#endif
 
 enum ParseState {
   PS_INIT, PS_HEADERS_COMPLETE, PS_MESSAGE_COMPLETE, PS_TERM_CLOSE, PS_ERROR

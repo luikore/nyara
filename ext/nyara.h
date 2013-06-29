@@ -21,7 +21,7 @@ void Init_request_parse(VALUE nyara);
 /* request.c */
 void Init_request(VALUE nyara, VALUE ext);
 VALUE nyara_request_new(int fd);
-void nyara_request_term_close(VALUE request, bool write_last_chunk);
+void nyara_request_term_close(VALUE request);
 
 
 /* test_response.c */
