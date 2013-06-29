@@ -113,14 +113,20 @@ end
 desc "list Nyara::Ext methods"
 task :list_ext do
   require_relative "lib/nyara/nyara"
+  puts_methods = lambda{|methods|
+    methods.each do |m|
+      puts "#{m} /#{Nyara::Ext.method(m).arity}"
+    end
+  }
+
   methods = (Nyara::Ext.methods - Module.methods).sort
   [/queue/, /route/, /parse/, /request/].each do |r|
     group = methods.grep r
-    puts group
+    puts_methods[group]
     puts
     methods -= group
   end
-  puts methods
+  puts_methods[methods]
 end
 
 def term_color n
