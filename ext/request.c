@@ -40,6 +40,7 @@ static void request_free(void* pp) {
   if (p) {
     if (p->fd) {
       nyara_detach_fd(p->fd);
+      p->fd = 0;
     }
     xfree(p);
   }
@@ -88,7 +89,7 @@ VALUE nyara_request_new(int fd) {
   return p->self;
 }
 
-void nyara_request_term_close(VALUE self, bool write_last_chunk) {
+void nyara_request_term_close(VALUE self, bool need_detach) {
   P;
   VALUE transfer_enc = rb_hash_aref(p->response_header, str_transfer_encoding);
   if (TYPE(transfer_enc) == T_STRING) {
@@ -100,8 +101,10 @@ void nyara_request_term_close(VALUE self, bool write_last_chunk) {
       }
     }
   }
-  nyara_detach_fd(p->fd);
-  p->fd = 0;
+  if (need_detach && p->fd) {
+    nyara_detach_fd(p->fd);
+    p->fd = 0;
+  }
 }
 
 static VALUE request_http_method(VALUE self) {

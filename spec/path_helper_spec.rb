@@ -52,7 +52,10 @@ module Nyara
       end
 
       it "generates for nested query" do
-        pending
+        c = FooController.new :stub_request
+        path = c.path_to('#index', 1, post: {array: [1, 2]})
+        items = URI.parse(path).query.split('&').map{|q| CGI.unescape q }
+        assert_equal ["post[array][]=1", "post[array][]=2"], items
       end
 
       it "perserves _method query" do

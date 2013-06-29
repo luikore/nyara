@@ -25,11 +25,13 @@ module Nyara
         self.session = ParamHash.new
       end
 
-      # process req data
-      def << req
-        client << req
+      def process_request_data data, response_limit=50_000_000
+        client << data
         self.controller = Ext.handle_request request
-        self.response = Response.new client.read
+        response_data = client.read_nonblock response_limit
+        self.response = Response.new response_data
+        server.close
+        client.close
       end
     end
 
@@ -52,7 +54,7 @@ module Nyara
         request_info << body_params
       end
 
-      @_env << request_info.join
+      @_env.process_request_data request_info.join
     end
 
     def get *xs

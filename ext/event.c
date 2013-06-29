@@ -57,7 +57,7 @@ static VALUE _fiber_func(VALUE _, VALUE args) {
   return Qnil;
 }
 
-static void _handle_request(VALUE request) {
+static void _handle_request(VALUE request, bool need_detach) {
   Request* p;
   Data_Get_Struct(request, Request, p);
   if (p->sleeping) {
@@ -113,9 +113,11 @@ static void _handle_request(VALUE request) {
   VALUE state = rb_fiber_resume(p->fiber, 0, NULL);
   if (state == Qnil) { // _fiber_func always returns Qnil
     // terminated (todo log raised error ?)
-    nyara_request_term_close(request, false);
+    nyara_request_term_close(request, need_detach);
+    p->parse_state = PS_TERM_CLOSE;
   } else if (state == sym_term_close) {
-    nyara_request_term_close(request, true);
+    nyara_request_term_close(request, need_detach);
+    p->parse_state = PS_TERM_CLOSE;
   } else if (state == sym_writing) {
     // do nothing
   } else if (state == sym_reading) {
@@ -143,13 +145,13 @@ static void loop_body(int fd, int etype) {
         request = nyara_request_new(fd);
         rb_hash_aset(fd_request_map, key, request);
       }
-      _handle_request(request);
+      _handle_request(request, true);
       break;
     }
     case ETYPE_CONNECT: {
       VALUE request = rb_hash_aref(watch_request_map, INT2FIX(fd));
       if (request != Qnil) {
-        _handle_request(request);
+        _handle_request(request, true);
       }
     }
   }
@@ -302,9 +304,11 @@ static VALUE ext_handle_request(VALUE _, VALUE request) {
   Request* p;
   Data_Get_Struct(request, Request, p);
 
-  // FIXME may hang up if request data incomplete
   while (p->fiber == Qnil || rb_fiber_alive_p(p->fiber)) {
-    _handle_request(request);
+    _handle_request(request, false);
+    if (p->parse_state == PS_TERM_CLOSE) {
+      break;
+    }
   }
   return p->instance;
 }
