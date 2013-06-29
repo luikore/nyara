@@ -67,3 +67,7 @@ typedef struct {
 
 extern void Init_route(VALUE nyara, VALUE ext);
 extern RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, VALUE accept_arr);
+
+
+/* nyara.c */
+void nyara_set_nonblock(int fd);

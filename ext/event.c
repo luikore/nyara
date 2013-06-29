@@ -18,7 +18,7 @@ extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
 #define ETYPE_CONNECT 2
 #define MAX_E 1024
 static void loop_body(int fd, int etype);
-static int qfd;
+static int qfd = 0;
 
 #define MAX_RECEIVE_DATA 65536 * 2
 static char received_data[MAX_RECEIVE_DATA];
@@ -39,17 +39,6 @@ static VALUE sym_reading;
 static VALUE sym_sleep;
 static Request* curr_request;
 
-static void _set_nonblock(int fd) {
-  int flags;
-
-  if ((flags = fcntl(fd, F_GETFL)) == -1) {
-    rb_sys_fail("fcntl(F_GETFL)");
-  }
-  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-    rb_sys_fail("fcntl(F_SETFL,O_NONBLOCK)");
-  }
-}
-
 static VALUE _fiber_func(VALUE _, VALUE args) {
   VALUE instance = rb_ary_pop(args);
   VALUE meth = rb_ary_pop(args);
@@ -64,13 +53,6 @@ static void _handle_request(VALUE request) {
     return;
   }
   curr_request = p;
-
-  if (p->parse_state == PS_TERM_CLOSE) {
-    if (p->fd) {
-      nyara_detach_fd(p->fd);
-      p->fd = 0;
-    }
-  }
 
   // read and parse data
   // NOTE we don't let http_parser invoke ruby code, because:
@@ -121,10 +103,8 @@ static void _handle_request(VALUE request) {
   if (state == Qnil) { // _fiber_func always returns Qnil
     // terminated (todo log raised error ?)
     nyara_request_term_close(request);
-    p->parse_state = PS_TERM_CLOSE;
   } else if (state == sym_term_close) {
     nyara_request_term_close(request);
-    p->parse_state = PS_TERM_CLOSE;
   } else if (state == sym_writing) {
     // do nothing
   } else if (state == sym_reading) {
@@ -140,7 +120,7 @@ static void loop_body(int fd, int etype) {
     case ETYPE_CAN_ACCEPT: {
       int cfd = accept(fd, NULL, NULL);
       if (cfd > 0) {
-        _set_nonblock(cfd);
+        nyara_set_nonblock(cfd);
         ADD_E(cfd, ETYPE_HANDLE_REQUEST);
       }
       break;
@@ -185,7 +165,7 @@ static VALUE ext_init_queue(VALUE _) {
 
 static VALUE ext_run_queue(VALUE _, VALUE v_fd) {
   int fd = FIX2INT(v_fd);
-  _set_nonblock(fd);
+  nyara_set_nonblock(fd);
   ADD_E(fd, ETYPE_CAN_ACCEPT);
 
   LOOP_E();
@@ -196,13 +176,18 @@ static VALUE ext_request_sleep(VALUE _, VALUE request) {
   Request* p;
   Data_Get_Struct(request, Request, p);
 
+  p->sleeping = true;
+  if (!qfd) {
+    // we are in a test
+    return Qnil;
+  }
+
   VALUE* v_fds = RARRAY_PTR(p->watched_fds);
   long v_fds_len = RARRAY_LEN(p->watched_fds);
   for (long i = 0; i < v_fds_len; i++) {
     DEL_E(FIX2INT(v_fds[i]));
   }
   DEL_E(p->fd);
-  p->sleeping = true;
   return Qnil;
 }
 
@@ -210,6 +195,12 @@ static VALUE ext_request_wakeup(VALUE _, VALUE request) {
   // NOTE should not use curr_request
   Request* p;
   Data_Get_Struct(request, Request, p);
+
+  p->sleeping = false;
+  if (!qfd) {
+    // we are in a test
+    return Qnil;
+  }
 
   VALUE* v_fds = RARRAY_PTR(p->watched_fds);
   long v_fds_len = RARRAY_LEN(p->watched_fds);
@@ -222,7 +213,7 @@ static VALUE ext_request_wakeup(VALUE _, VALUE request) {
 
 static VALUE ext_set_nonblock(VALUE _, VALUE v_fd) {
   int fd = FIX2INT(v_fd);
-  _set_nonblock(fd);
+  nyara_set_nonblock(fd);
   return Qnil;
 }
 
@@ -313,8 +304,15 @@ static VALUE ext_handle_request(VALUE _, VALUE request) {
 
   while (p->fiber == Qnil || rb_fiber_alive_p(p->fiber)) {
     _handle_request(request);
-    if (p->parse_state == PS_TERM_CLOSE) {
-      break;
+    // stop if no more to read
+    // NOTE this condition is sufficient to terminate handle, because
+    // - there's no connect yield during test
+    // - there's no view pause yield up to _handle_request
+    if (!p->sleeping) {
+      char buf[1];
+      if (recv(p->fd, buf, 1, MSG_PEEK) <= 0) {
+        break;
+      }
     }
   }
   return p->instance;

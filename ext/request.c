@@ -239,7 +239,12 @@ static VALUE ext_request_new(VALUE _) {
 
 static VALUE ext_request_set_fd(VALUE _, VALUE self, VALUE vfd) {
   P;
-  p->fd = dup(NUM2INT(vfd));
+  int fd = NUM2INT(vfd);
+  if (fd) {
+    fd = dup(fd);
+    nyara_set_nonblock(fd);
+    p->fd = fd;
+  }
   return Qnil;
 }
 

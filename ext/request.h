@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 enum ParseState {
-  PS_INIT, PS_HEADERS_COMPLETE, PS_MESSAGE_COMPLETE, PS_TERM_CLOSE, PS_ERROR
+  PS_INIT, PS_HEADERS_COMPLETE, PS_MESSAGE_COMPLETE, PS_ERROR
 };
 
 typedef struct {

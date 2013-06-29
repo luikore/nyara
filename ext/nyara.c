@@ -4,6 +4,18 @@
 #include <ruby/io.h>
 #include <sys/socket.h>
 #include <sys/resource.h>
+#include <sys/fcntl.h>
+
+void nyara_set_nonblock(int fd) {
+  int flags;
+
+  if ((flags = fcntl(fd, F_GETFL)) == -1) {
+    rb_sys_fail("fcntl(F_GETFL)");
+  }
+  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    rb_sys_fail("fcntl(F_SETFL,O_NONBLOCK)");
+  }
+}
 
 static void set_fd_limit(int nofiles) {
   struct rlimit rlim;

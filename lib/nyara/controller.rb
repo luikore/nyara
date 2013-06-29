@@ -183,8 +183,8 @@ module Nyara
       uri = URI.parse url_or_path
       if uri.host.nil?
         uri.host = Config['host']
-        uri.scheme = r.ssl? ? 'https' : 'http'
       end
+      uri.scheme = r.ssl? ? 'https' : 'http'
       r.header['Location'] = uri.to_s
 
       # similar to send_header, but without content-type
