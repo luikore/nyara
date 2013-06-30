@@ -72,7 +72,7 @@ module Nyara
         # serialize cookie / session
         if headers['Cookie']
           cookie.clear
-          cookie.merge! Cookie.decode header
+          cookie.merge! Cookie.decode headers
         end
         Session.encode_to_cookie session, cookie
         headers['Cookie'] = Cookie.encode cookie

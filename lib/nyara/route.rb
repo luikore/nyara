@@ -123,6 +123,9 @@ module Nyara
         when '%s'
           conv << :to_s
           '([^/]+)'
+        when '%z'
+          conv << :to_s
+          '(.+)'
         else
           Regexp.quote s
         end

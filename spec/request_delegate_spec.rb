@@ -5,6 +5,10 @@ module Nyara
     class DelegateController < Controller
     end
 
+    before :all do
+      Session.init
+    end
+
     before :each do
       @request = Ext.request_new
       Ext.request_set_attrs @request, {
@@ -61,14 +65,14 @@ module Nyara
 
       it "set cookie" do
         @c.set_cookie 'set', 'set'
-        cookie = receive_header.lines.grep(/Set-Cookie:/).last
-        assert_includes cookie, "set=set; HttpOnly"
+        cookie_lines = receive_header.lines.grep(/Set-Cookie:/)
+        assert cookie_lines.grep(/set=set; HttpOnly/).first, cookie_lines.inspect
       end
 
       it "delete cookie" do
         @c.delete_cookie 'del'
-        cookie = receive_header.lines.grep(/Set-Cookie:/).last
-        assert_includes cookie, "Expires"
+        cookie_lines = receive_header.lines.grep(/Set-Cookie:/)
+        assert cookie_lines.grep(/del.*Expires/).first, cookie_lines.inspect
       end
 
       it "clear cookie" do

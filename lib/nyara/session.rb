@@ -44,6 +44,11 @@ module Nyara
       @cipher_key ? cipher(str) : str
     end
 
+    # encode as header line
+    def encode_set_cookie h
+      "Set-Cookie: #{@name}=#{encode h}\r\n"
+    end
+
     def decode cookie
       str = cookie[@name].to_s
       return empty_hash if str.empty?
