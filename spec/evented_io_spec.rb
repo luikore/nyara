@@ -15,6 +15,7 @@ module Nyara
     end
 
     it "works" do
+      GC.stress = false # open-uri creates too many objects!
       result1 = open "http://localhost:3003", &:read
       result2 = open "http://baidu.com", &:read
       assert_equal result2, result1
