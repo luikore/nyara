@@ -32,11 +32,16 @@ module Nyara
 
     attr_reader :name
 
-    def encode h, cookie
+    def encode_to_cookie h, cookie
+      cookie[@name] = encode h
+    end
+
+    # encode to value
+    def encode h
       str = h.to_json
       sig = @dsa.syssign @dss.digest str
-      str = "#{Base64.urlsafe_encode64 sig}&#{str}"
-      cookie[@name] = @cipher_key ? cipher(str) : str
+      str = "#{Base64.urlsafe_encode64 sig}/#{Base64.urlsafe_encode64 str}"
+      @cipher_key ? cipher(str) : str
     end
 
     def decode cookie
@@ -44,11 +49,12 @@ module Nyara
       return empty_hash if str.empty?
 
       str = decipher(str) if @cipher_key
-      sig, str = str.split '&', 2
+      sig, str = str.split '/', 2
       return empty_hash unless str
 
       begin
         sig = Base64.urlsafe_decode64 sig
+        str = Base64.urlsafe_decode64 str
         verified = @dsa.sysverify @dss.digest(str), sig
         if verified
           h = JSON.parse str, create_additions: false, object_class: ParamHash

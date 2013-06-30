@@ -75,10 +75,6 @@ module Nyara
         @c.clear_cookie
         pending 'incomplete implementation'
       end
-
-      it "#session" do
-        pending
-      end
     end
   end
 end

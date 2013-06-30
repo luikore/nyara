@@ -11,9 +11,10 @@ module Nyara
       it "should encode and decode" do
         cookie = {}
         session = {'hello' => 'world'}
-        Session.encode session, cookie
+        Session.encode_to_cookie session, cookie
 
-        assert_includes cookie[Session.name], 'world'
+        session_data = cookie[Session.name].split('/')[1]
+        assert_includes Base64.urlsafe_decode64(session_data), 'world'
 
         session2 = Session.decode cookie
         assert_equal 'world', session2[:hello]
@@ -22,7 +23,7 @@ module Nyara
       it "drops bad signature" do
         cookie = {}
         session = {'hello' => 'world'}
-        Session.encode session, cookie
+        Session.encode_to_cookie session, cookie
 
         cookie[Session.name].sub!(/\w/, &:swapcase)
 
@@ -40,9 +41,12 @@ module Nyara
       it "encode and decode" do
         cookie = {}
         session = {'hello' => 'world'}
-        Session.encode session, cookie
+        Session.encode_to_cookie session, cookie
 
-        assert_not_includes cookie[Session.name], 'world'
+        session_data = cookie[Session.name].split('/')[1]
+        if session_data
+          assert_not_includes Base64.urlsafe_decode64(session_data), 'world'
+        end
 
         session2 = Session.decode cookie
         assert_equal 'world', session2[:hello]
