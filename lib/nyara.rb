@@ -1,10 +1,12 @@
 # auto run
 require_relative "nyara/nyara"
 
-at_exit do
-  Nyara.setup
-  Nyara.start_server
-end
+END {
+  if $!.nil? and !Nyara.config.test?
+    Nyara.setup
+    Nyara.start_server
+  end
+}
 
 module Nyara
   class SimpleController < Controller
