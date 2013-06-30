@@ -44,7 +44,7 @@ static VALUE trim_space_and_truncate(volatile VALUE str) {
     // todo log this exception
     olen = ACCEPT_MAX;
   }
-  str = rb_str_new(RSTRING_PTR(str), olen);
+  str = rb_enc_str_new(RSTRING_PTR(str), olen, u8_encoding);
   char* s = RSTRING_PTR(str);
   long len = 0;
   for (long i = 0; i < olen; i++) {
@@ -99,7 +99,7 @@ static void parse_seg(const char* s, long len, VALUE out) {
   VALUE* out_ptr = RARRAY_PTR(out);
   long out_len = RARRAY_LEN(out); // note this len is +1
   memmove(out_ptr + pos + 1, out_ptr + pos, sizeof(VALUE) * (out_len - pos - 1));
-  rb_ary_store(out, pos, rb_str_new(s, len));
+  rb_ary_store(out, pos, rb_enc_str_new(s, len, u8_encoding));
 }
 
 VALUE ext_parse_accept_value(VALUE _, volatile VALUE str) {

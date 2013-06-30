@@ -1,5 +1,6 @@
 #pragma once
 #include <ruby.h>
+#include <ruby/encoding.h>
 #include <stdbool.h>
 #include <http_parser.h>
 #include "inc/status_codes.inc"
@@ -71,3 +72,4 @@ extern RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, 
 
 /* nyara.c */
 void nyara_set_nonblock(int fd);
+extern rb_encoding* u8_encoding;

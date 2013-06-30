@@ -12,7 +12,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
   p->method = parser->method;
 
   if (p->path_with_query == Qnil) {
-    p->path_with_query = rb_str_new(s, len);
+    p->path_with_query = rb_enc_str_new(s, len, u8_encoding);
   } else {
     rb_str_cat(p->path_with_query, s, len);
   }
@@ -22,7 +22,7 @@ static int on_url(http_parser* parser, const char* s, size_t len) {
 static int on_header_field(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
   if (p->last_field == Qnil) {
-    p->last_field = rb_str_new(s, len);
+    p->last_field = rb_enc_str_new(s, len, u8_encoding);
     p->last_value = Qnil;
   } else {
     rb_str_cat(p->last_field, s, len);
@@ -40,7 +40,7 @@ static int on_header_value(http_parser* parser, const char* s, size_t len) {
     rb_str_cat(p->last_value, s, len);
   } else {
     nyara_headerlize(p->last_field);
-    p->last_value = rb_str_new(s, len);
+    p->last_value = rb_enc_str_new(s, len, u8_encoding);
     rb_hash_aset(p->header, p->last_field, p->last_value);
     p->last_field = Qnil;
   }
@@ -114,9 +114,9 @@ http_parser_settings nyara_request_parse_settings = {
 };
 
 void Init_request_parse(VALUE nyara) {
-  str_accept = rb_str_new2("Accept");
+  str_accept = rb_enc_str_new("Accept", strlen("Accept"), u8_encoding);
   rb_gc_register_mark_object(str_accept);
-  method_override_key = rb_str_new2("_method");
+  method_override_key = rb_enc_str_new("_method", strlen("_method"), u8_encoding);
   OBJ_FREEZE(method_override_key);
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
   nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));

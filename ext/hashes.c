@@ -2,7 +2,6 @@
 
 #include "nyara.h"
 #include <ruby/st.h>
-#include <ruby/encoding.h>
 #include "inc/str_intern.h"
 
 VALUE nyara_param_hash_class;
@@ -71,7 +70,7 @@ static VALUE header_hash_tidy_key(VALUE key) {
     key = rb_sym_to_s(key);
   } else {
     Check_Type(key, T_STRING);
-    key = rb_str_new(RSTRING_PTR(key), RSTRING_LEN(key));
+    key = rb_enc_str_new(RSTRING_PTR(key), RSTRING_LEN(key), u8_encoding);
   }
   nyara_headerlize(key);
   return key;
@@ -112,7 +111,6 @@ static VALUE header_hash_reverse_merge_bang(VALUE self, VALUE other) {
   return self;
 }
 
-static rb_encoding* u8_encoding;
 static int header_hash_serialize_func(VALUE k, VALUE v, VALUE arr) {
   long klen = RSTRING_LEN(k);
   long vlen = RSTRING_LEN(v);
@@ -138,7 +136,6 @@ static VALUE header_hash_serialize(VALUE self) {
 
 void Init_hashes(VALUE nyara) {
   id_to_s = rb_intern("to_s");
-  u8_encoding = rb_utf8_encoding();
 
   nyara_param_hash_class = rb_define_class_under(nyara, "ParamHash", rb_cHash);
   nyara_header_hash_class = rb_define_class_under(nyara, "HeaderHash", nyara_param_hash_class);

@@ -1,11 +1,9 @@
 /* request parsing and request object */
 
 #include "nyara.h"
-#include <ruby/encoding.h>
 #include "request.h"
 
 static VALUE str_html;
-static rb_encoding* u8_encoding;
 static VALUE request_class;
 static VALUE sym_writing;
 static VALUE str_transfer_encoding;
@@ -109,7 +107,9 @@ void nyara_request_term_close(VALUE self) {
 
 static VALUE request_http_method(VALUE self) {
   P;
-  return rb_str_new2(http_method_str(p->method));
+  // todo reduce allocation
+  const char* str = http_method_str(p->method);
+  return rb_enc_str_new(str, strlen(str), u8_encoding);
 }
 
 static VALUE request_header(VALUE self) {
@@ -282,10 +282,9 @@ static VALUE ext_request_set_attrs(VALUE _, VALUE self, VALUE attrs) {
 }
 
 void Init_request(VALUE nyara, VALUE ext) {
-  str_html = rb_str_new2("html");
+  str_html = rb_enc_str_new("html", strlen("html"), u8_encoding);
   OBJ_FREEZE(str_html);
   rb_gc_register_mark_object(str_html);
-  u8_encoding = rb_utf8_encoding();
   sym_writing = ID2SYM(rb_intern("writing"));
   str_transfer_encoding = rb_enc_str_new("Transfer-Encoding", strlen("Transfer-Encoding"), u8_encoding);
   rb_gc_register_mark_object(str_transfer_encoding);

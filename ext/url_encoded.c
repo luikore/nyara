@@ -1,9 +1,6 @@
 /* url-encoded parsing */
 
 #include "nyara.h"
-#include <ruby/encoding.h>
-
-static rb_encoding* u8_encoding;
 
 static char _half_octet(char c) {
   // there's a faster way but not validating the range:
@@ -354,8 +351,6 @@ static VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str) {
 }
 
 void Init_url_encoded(VALUE ext) {
-  u8_encoding = rb_utf8_encoding();
-
   rb_define_singleton_method(ext, "parse_param", ext_parse_param, 2);
   rb_define_singleton_method(ext, "parse_cookie", ext_parse_cookie, 2);
   // for test

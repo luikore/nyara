@@ -4,7 +4,6 @@ extern "C" {
 #include "nyara.h"
 }
 #include <ruby/re.h>
-#include <ruby/encoding.h>
 #include <vector>
 #include <map>
 #include "inc/str_intern.h"
@@ -52,7 +51,6 @@ typedef RouteMap::iterator MapIter;
 static RouteMap route_map;
 static OnigRegion region; // we can reuse the region without worrying thread safety
 static ID id_to_s;
-static rb_encoding* u8_enc;
 static VALUE str_html;
 static VALUE nyara_http_methods;
 
@@ -169,13 +167,13 @@ static VALUE ext_list_route(VALUE self) {
   for (MapIter j = route_map.begin(); j != route_map.end(); j++) {
     RouteEntries* route_entries = j->second;
     arr = rb_ary_new();
-    rb_hash_aset(route_hash, rb_str_new2(http_method_str(j->first)), arr);
+    rb_hash_aset(route_hash, rb_enc_str_new(http_method_str(j->first), strlen(http_method_str(j->first)), u8_encoding), arr);
     for (EntriesIter i = route_entries->begin(); i != route_entries->end(); i++) {
       e = rb_ary_new();
       rb_ary_push(e, i->is_sub ? Qtrue : Qfalse);
       rb_ary_push(e, i->scope);
-      rb_ary_push(e, rb_str_new(i->prefix, i->prefix_len));
-      rb_ary_push(e, rb_str_new(i->suffix, i->suffix_len));
+      rb_ary_push(e, rb_enc_str_new(i->prefix, i->prefix_len, u8_encoding));
+      rb_ary_push(e, rb_enc_str_new(i->suffix, i->suffix_len, u8_encoding));
       rb_ary_push(e, i->controller);
       rb_ary_push(e, i->id);
       conv = rb_ary_new();
@@ -191,13 +189,13 @@ static VALUE ext_list_route(VALUE self) {
 
 static VALUE build_args(const char* suffix, std::vector<ID>& conv) {
   volatile VALUE args = rb_ary_new();
-  volatile VALUE str = rb_str_new2("");
+  volatile VALUE str = rb_str_new2(""); // tmp for conversion, no need encoding
   long last_len = 0;
   for (size_t j = 0; j < conv.size(); j++) {
     const char* capture_ptr = suffix + region.beg[j+1];
     long capture_len = region.end[j+1] - region.beg[j+1];
     if (conv[j] == id_to_s) {
-      rb_ary_push(args, rb_enc_str_new(capture_ptr, capture_len, u8_enc));
+      rb_ary_push(args, rb_enc_str_new(capture_ptr, capture_len, u8_encoding));
     } else if (capture_len == 0) {
       rb_ary_push(args, Qnil);
     } else {
@@ -224,7 +222,7 @@ static VALUE extract_ext(const char* s, long len) {
       return Qnil;
     }
   }
-  return rb_str_new(s, len);
+  return rb_enc_str_new(s, len, u8_encoding);
 }
 
 extern "C"
@@ -320,8 +318,7 @@ extern "C"
 void Init_route(VALUE nyara, VALUE ext) {
   nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
   id_to_s = rb_intern("to_s");
-  u8_enc = rb_utf8_encoding();
-  str_html = rb_str_new2("html");
+  str_html = rb_enc_str_new("html", strlen("html"), u8_encoding);
   OBJ_FREEZE(str_html);
   rb_gc_register_mark_object(str_html);
   onig_region_init(&region);
