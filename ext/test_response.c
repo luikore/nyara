@@ -96,13 +96,12 @@ static void response_mark(void* pp) {
 static VALUE response_alloc(VALUE klass) {
   Response* p = ALLOC(Response);
   http_parser_init(&(p->hparser), HTTP_RESPONSE);
-  volatile VALUE header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
-  volatile VALUE set_cookies = rb_ary_new();
-  p->header = header;
+  p->header = Qnil;
   p->body = Qnil;
   p->last_field = Qnil;
   p->last_value = Qnil;
-  p->set_cookies = set_cookies;
+  p->set_cookies = Qnil;
+  // NOTE new in alloc func will crash GCC-4.2/4.6 in GC.stress mode
   return Data_Wrap_Struct(klass, response_mark, xfree, p);
 }
 
@@ -110,6 +109,8 @@ static VALUE response_initialize(VALUE self, VALUE data) {
   Check_Type(data, T_STRING);
   Response* p;
   Data_Get_Struct(self, Response, p);
+  p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
+  p->set_cookies = rb_ary_new();
   http_parser_execute(&(p->hparser), &response_parse_settings, RSTRING_PTR(data), RSTRING_LEN(data));
   return self;
 }
