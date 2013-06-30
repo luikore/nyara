@@ -3,7 +3,7 @@
 #include <ruby/encoding.h>
 #include <stdbool.h>
 #include <http_parser.h>
-#include "inc/status_codes.inc"
+#include "inc/status_codes.h"
 
 #ifdef DEBUG
 #undef NDEBUG

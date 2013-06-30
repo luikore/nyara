@@ -2,13 +2,13 @@ require "rake"
 
 Dir.chdir __dir__
 
-status_file = "ext/inc/status_codes.inc"
+status_file = "ext/inc/status_codes.h"
 version_file = "ext/inc/version.inc"
 makefile = "ext/Makefile"
 extconf = "ext/extconf.rb"
 
 desc "code generate"
-task :gen => [status_file, version_file]
+task :gen => [version_file]
 
 desc "generate #{status_file}"
 file status_file => __FILE__ do
