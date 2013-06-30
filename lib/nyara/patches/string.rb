@@ -7,15 +7,15 @@ class String
   end
 
   unless defined? scrub
-    # NOTE: block unsupported
     def scrub replacement=nil
-      if replacement
-        replacement = replacement.encode 'UTF-16BE'
-      else
-        replacement = "\xFF\xFD".force_encoding 'UTF-16BE'
-      end
-      r = encode("UTF-16BE", undef: :replace, invalid: :replace, replace: replacement)
-      r.encode("UTF-8").gsub("\0".encode("UTF-8"), '')
+      return self if self.valid_encoding?
+      self.each_char.map do |char|
+        if char.valid_encoding?
+          char
+        else
+          block_given? ? yield(char) : replacement
+        end
+      end.join
     end
   end
 end
