@@ -186,4 +186,5 @@ task :audit_sizeof_parsers do
     end
     puts
   end
+  sh 'rm', 'mkmf.log'
 end
