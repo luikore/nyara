@@ -11,13 +11,20 @@ module Nyara
 
     before :each do
       @request = Ext.request_new
+      session = ParamHash.new
       Ext.request_set_attrs @request, {
         method_num: HTTP_METHODS['GET'],
         path: '/search',
         query: ParamHash.new.tap{|h| h['q'] = 'nyara' },
         fiber: Fiber.new{},
         scope: '/scope',
-        header: HeaderHash.new.tap{|h| h['Accept'] = 'en-US' }
+        header: HeaderHash.new.tap{|h| h['Accept'] = 'en-US' },
+        session: session,
+        flash: Flash.new(session),
+        cookie: ParamHash.new.tap{|h|
+          h['key1'] = 1
+          h['key2'] = 2
+        }
         # ext: nil
         # response_header:
         # response_header_extra_lines:
@@ -76,13 +83,6 @@ module Nyara
       end
 
       it "clear cookie" do
-        Ext.request_set_attrs @request, {
-          method_num: HTTP_METHODS['GET'],
-          cookie: ParamHash.new.tap{|h|
-            h['key1'] = 1
-            h['key2'] = 2
-          }
-        }
         @c.clear_cookie
         cookie_lines = receive_header.lines
         assert_equal 2, cookie_lines.grep(/Set-Cookie: (key1|key2);/).size, cookie_lines.inspect

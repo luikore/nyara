@@ -337,6 +337,8 @@ module Nyara
 
       # forbid further modification
       header.freeze
+      session.freeze
+      flash.next.freeze
     end
 
     # Send raw data, that is, not wrapped in chunked encoding<br>
