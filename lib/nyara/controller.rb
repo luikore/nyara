@@ -327,7 +327,7 @@ module Nyara
 
       data = header.serialize
       data.concat r.response_header_extra_lines
-      data << Session.encode_set_cookie(r.session)
+      data << Session.encode_set_cookie(r.session, r.ssl?)
       data << "\r\n"
       Ext.request_send_data r, data.join
 

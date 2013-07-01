@@ -1,37 +1,57 @@
 module Nyara
-  # cookie based
-  # usually it's no need to call cache or database data a "session"
+  # cookie based<br>
+  # usually it's no need to call cache or database data a "session"<br><br>
+  # session is by default DSA + SHA2/SHA1 signed, sub config options are:
+  #
+  # [name]       session entry name in cookie, default is +'spare_me_plz'+
+  # [expire]     expire session after seconds. default is +nil+, which means session expires when browser is closed<br>
+  # [expires]    same as +expire+
+  # [secure]     - +nil+(default): if request is https, add +Secure+ option to it
+  #              - +true+: always add +Secure+
+  #              - +false+: always no +Secure+
+  # [key]        DSA private key string, in der or pem format, use random if not given
+  # [cipher_key] if exist, use aes-256-cbc to cipher the "sig/json"<br>
+  #              NOTE: it's no need to set +cipher_key+ if using https
+  #
+  # = example
+  #
+  #   configure do
+  #     set 'session', 'key', File.read(project_path 'config/session.key')
+  #     set 'session', 'expire', 30 * 60
+  #   end
+  #
   module Session
     extend self
 
     CIPHER_BLOCK_SIZE = 256/8
 
-    # session is by default DSA + SHA2/SHA1 signed, sub config options are:
-    #
-    # - name       (session entry name in cookie, default is 'spare_me_plz')
-    # - key        (DSA private key string, in der or pem format, use random if not given)
-    # - cipher_key (if exist, use aes-256-cbc to cipher the "sig&json", the first 256bit is sliced for iv)
-    #              (it's no need to set cipher_key if using https)
-
     # init from config
     def init
-      c = Config['session'] || {}
-      @name = (c['name'] || 'spare_me_plz').to_s
+      c = Config['session'] ? Config['session'].dup : {}
+      @name = (c.delete('name') || 'spare_me_plz').to_s
 
       if c['key']
-        @dsa = OpenSSL::PKey::DSA.new c['key']
+        @dsa = OpenSSL::PKey::DSA.new c.delete 'key'
       else
-        @dsa = OpenSSL::PKey::DSA.generate 256
+        @dsa = generate_key
       end
 
       # DSA can sign on any digest since 1.0.0
       @dss = OpenSSL::VERSION >= '1.0.0' ? OpenSSL::Digest::SHA256 : OpenSSL::Digest::DSS1
 
-      @cipher_key = pad_256_bit c['cipher_key']
+      @cipher_key = pad_256_bit c.delete 'cipher_key'
+
+      @expire = c.delete('expire') || c.delete('expires')
+      @secure = c.delete('secure')
+
+      unless c.empty?
+        raise "unknown options in Nyara::Config[:session]: #{c.inspect}"
+      end
     end
 
     attr_reader :name
 
+    # encode into a cookie hash, for test environment
     def encode_to_cookie h, cookie
       cookie[@name] = encode h
     end
@@ -45,8 +65,11 @@ module Nyara
     end
 
     # encode as header line
-    def encode_set_cookie h
-      "Set-Cookie: #{@name}=#{encode h}\r\n"
+    def encode_set_cookie h, secure
+      secure = @secure unless @secure.nil?
+      # todo time zone?
+      expire = (Time.now + @expire).gmtime.rfc2822 if @expire
+      "Set-Cookie: #{@name}=#{encode h}; HttpOnly#{'; Secure' if secure}#{"; Expires=#{expire}" if expire}\r\n"
     end
 
     def decode cookie
@@ -73,6 +96,10 @@ module Nyara
       else
         empty_hash
       end
+    end
+
+    def generate_key
+      OpenSSL::PKey::DSA.generate 256
     end
 
     # private
