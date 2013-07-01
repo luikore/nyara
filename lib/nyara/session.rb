@@ -1,6 +1,6 @@
 module Nyara
-  # cookie based<br>
-  # usually it's no need to call cache or database data a "session"<br><br>
+  # helper module for session management, cookie based<br>
+  # (usually it's no need to call cache or database data a "session")<br><br>
   # session is by default DSA + SHA2/SHA1 signed, sub config options are:
   #
   # [name]       session entry name in cookie, default is +'spare_me_plz'+
