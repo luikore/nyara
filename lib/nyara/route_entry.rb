@@ -1,7 +1,12 @@
 module Nyara
   class RouteEntry
     REQUIRED_ATTRS = [:http_method, :scope, :prefix, :suffix, :controller, :id, :conv]
-    attr_accessor *REQUIRED_ATTRS
+    attr_reader *REQUIRED_ATTRS
+    attr_writer :http_method, :id
+    # stores symbol for C conenience, and returns string for Ruby side goodness
+    def id
+      @id.to_s
+    end
 
     # optional
     attr_accessor :accept_exts, :accept_mimes
@@ -13,6 +18,25 @@ module Nyara
       instance_eval &p if p
     end
 
+    def path_template
+      File.join @scope, (@path.gsub '%z', '%s')
+    end
+
+    # compute prefix, suffix, conv
+    # NOTE route_entries may be inherited, so late-setting controller is necessary
+    def compile controller, scope
+      @controller = controller
+      @scope = scope
+
+      path = scope.sub /\/?$/, @path
+      if path.empty?
+        path = '/'
+      end
+      @prefix, suffix = analyse_path path
+      @suffix, @conv = compile_re suffix
+    end
+
+    # compute accept_exts, accept_mimes
     def set_accept_exts a
       @accept_exts = {}
       @accept_mimes = []
@@ -37,7 +61,50 @@ module Nyara
           raise ArgumentError, "missing #{attr}"
         end
       end
-      raise ArgumentError, "id must be symbol" unless id.is_a?(Symbol)
+      raise ArgumentError, "id must be symbol" unless @id.is_a?(Symbol)
+    end
+
+    # private
+
+    # returns [str_re, conv]
+    def compile_re suffix
+      return ['', []] unless suffix
+      conv = []
+      re_segs = suffix.split(/(?<=%[dfsux])|(?=%[dfsux])/).map do |s|
+        case s
+        when '%d'
+          conv << :to_i
+          '(-?[0-9]+)'
+        when '%f'
+          conv << :to_f
+          # just copied from scanf
+          '([-+]?(?:0[xX](?:\.\h+|\h+(?:\.\h*)?)[pP][-+]\d+|\d+(?![\d.])|\d*\.\d*(?:[eE][-+]?\d+)?))'
+        when '%u'
+          conv << :to_i
+          '([0-9]+)'
+        when '%x'
+          conv << :hex
+          '(\h+)'
+        when '%s'
+          conv << :to_s
+          '([^/]+)'
+        when '%z'
+          conv << :to_s
+          '(.+)'
+        else
+          Regexp.quote s
+        end
+      end
+      ["^#{re_segs.join}$", conv]
+    end
+
+    # split the path into parts
+    def analyse_path path
+      raise 'path must contain no new line' if path.index "\n"
+      raise 'path must start with /' unless path.start_with? '/'
+      path = path.sub(/\/$/, '') if path != '/'
+
+      path.split(/(?=%[dfsux])/, 2)
     end
   end
 end

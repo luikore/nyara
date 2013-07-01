@@ -15,7 +15,7 @@ module Nyara
         action.http_method = HTTP_METHODS[method]
         action.path = path
         action.set_accept_exts @formats
-        action.id = @curr_id.to_sym if @curr_id
+        action.id = @curr_id if @curr_id
         action.blk = blk
         @route_entries << action
 
@@ -45,7 +45,7 @@ module Nyara
         if tag
           # todo scan class
           id = tag[/\#\w++(\-\w++)*/]
-          @curr_id = id
+          @curr_id = id.to_sym
         end
 
         if opts
@@ -104,7 +104,7 @@ module Nyara
       end
       attr_reader :controller_name
 
-      def preprocess_actions # :nodoc:
+      def compile_route_entries scope # :nodoc:
         raise "#{self}: no action defined" unless @route_entries
 
         curr_id = :'#0'
@@ -117,12 +117,18 @@ module Nyara
         }
         next_id[]
 
+        @path_templates = {}
         @route_entries.each do |e|
-          e.id ||= next_id[]
+          e.id = next_id[] if e.id.empty?
           define_method e.id, &e.blk
+          e.compile self, scope
+          e.validate
+          @path_templates[e.id] = e.path_template
         end
         @route_entries
       end
+
+      attr_accessor :path_templates
     end
 
     include Renderable
@@ -131,8 +137,14 @@ module Nyara
       # klass will also have this inherited method
       # todo check class name
       klass.extend ClassMethods
-      [:@route_entries, :@usred_ids, :@default_layout].each do |iv|
+      [:@used_ids, :@default_layout].each do |iv|
         klass.instance_variable_set iv, klass.superclass.instance_variable_get(iv)
+      end
+
+      route_entries = klass.superclass.instance_variable_get :@route_entries
+      if route_entries
+        route_entries.map! {|e| e.dup }
+        klass.instance_variable_set :@route_entries, route_entries
       end
     end
 
@@ -142,7 +154,7 @@ module Nyara
         opts = args.pop
       end
 
-      r = Route.path_template(self.class, id) % args
+      r = self.class.path_templates[id.to_s] % args
 
       if opts
         format = opts.delete :format

@@ -23,14 +23,14 @@ end
 module Nyara
   describe [Controller, Route] do
     before :all do
-      Route.clear
       Config.configure do
+        reset
         set 'host', 'yavaeye.com'
         map '/', 'foo'
         map '/bar-prefix', 'foo_controller::bar'
         map '/baz-prefix', 'foo_controller::baz'
       end
-      Route.compile
+      Nyara.setup
     end
 
     context '#path_to' do
