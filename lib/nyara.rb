@@ -13,7 +13,7 @@ module Nyara
   end
 end
 
-%w[on tag get post put delete patch options].each do |m|
+%w[on tag get post put delete patch options meta].each do |m|
   eval <<-RUBY
   def #{m} *xs, &blk
     Nyara::SimpleController.#{m} *xs, &blk
