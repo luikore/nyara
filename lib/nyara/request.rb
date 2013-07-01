@@ -55,7 +55,7 @@ module Nyara
         if r
           r.split(':', 2).first
         else
-          ''
+          Config['host'] || 'localhost'
         end
       end
     end
@@ -66,12 +66,19 @@ module Nyara
         if r
           r = r.split(':', 2).last
         end
-        r ? r.to_i : 80 # or server running port?
+        r ? r.to_i : (Config['port'] || 80)
       end
     end
 
-    def host
-      header['Host']
+    def host_with_port
+      header['Host'] || begin
+        p = port
+        if p == 80
+          domain
+        else
+          "#{domain}:#{p}"
+        end
+      end
     end
 
     def xhr?

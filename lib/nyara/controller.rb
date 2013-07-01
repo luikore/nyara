@@ -165,11 +165,11 @@ module Nyara
     end
 
     # Url helper<br>
-    # NOTE: host can include port<br>
+    # NOTE: host string can include port number<br>
     # TODO: user and password?
-    def url_to id, *args, scheme: nil, host: Config['host'], **opts
+    def url_to id, *args, scheme: nil, host: nil, **opts
       scheme = scheme ? scheme.sub(/\:?$/, '://') : '//'
-      host ||= 'localhost'
+      host ||= request.host_with_port
       path = path_to id, *args, opts
       scheme << host << path
     end
@@ -194,7 +194,8 @@ module Nyara
 
       uri = URI.parse url_or_path
       if uri.host.nil?
-        uri.host = Config['host']
+        uri.host = request.domain
+        uri.port = request.port
       end
       uri.scheme = r.ssl? ? 'https' : 'http'
       r.header['Location'] = uri.to_s

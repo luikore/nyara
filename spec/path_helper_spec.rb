@@ -71,7 +71,12 @@ module Nyara
 
     context '#url_to' do
       it "works" do
-        c = FooController::BazController.new :stub_request
+        request = Object.new
+        class << request
+          attr_accessor :host_with_port
+        end
+        request.host_with_port = 'yavaeye.com'
+        c = FooController::BazController.new request
         assert_equal '//yavaeye.com/baz-prefix/1', c.url_to('#index', 1)
         assert_equal 'https://localhost:4567/1', c.url_to('foo#index', 1, scheme: 'https', host: 'localhost:4567')
       end
