@@ -76,8 +76,13 @@ module Nyara
       end
 
       it "clear cookie" do
+        @request.instance_variable_set :@cookie, ParamHash.new.tap{|h|
+          h['key1'] = 1
+          h['key2'] = 2
+        }
         @c.clear_cookie
-        pending 'incomplete implementation'
+        cookie_lines = receive_header.lines
+        assert_equal 2, cookie_lines.grep(/Set-Cookie: (key1|key2);/).size, cookie_lines.inspect
       end
     end
   end
