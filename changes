@@ -1,3 +1,4 @@
+2013-07-01 add flash helper
 2013-06-30 add Nyara::Test::Response for test to parse response
 2013-06-27 compatibility fixes for versions of GCC and Ruby
 2013-06-26 patch TCPSocket so client libraries in Ruby won't stuck

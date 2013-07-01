@@ -296,6 +296,10 @@ module Nyara
       request.session
     end
 
+    def flash
+      request.flash
+    end
+
     # Set response status
     def status n
       raise ArgumentError, "unsupported status: #{n}" unless HTTP_STATUS_FIRST_LINES[n]
