@@ -4,6 +4,7 @@ module Nyara
   # request and handler
   class Request
     # c-ext: http_method, scope, path, query, path_with_query format, accept, header
+    #        cookie, session, flash
     #        status, response_content_type, response_header, response_header_extra_lines
     # todo: body, move all underline methods into Ext
 
@@ -119,18 +120,6 @@ module Nyara
         end
         q
       end
-    end
-
-    def cookie
-      @cookie ||= Cookie.decode header
-    end
-
-    def session
-      @session ||= Session.decode cookie
-    end
-
-    def flash
-      @flash ||= Flash.new @session
     end
 
     # todo rename and move it into Ext

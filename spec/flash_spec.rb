@@ -13,17 +13,17 @@ module Nyara
       assert_not_empty @session.values.first
 
       @flash.next[:bar] = 'bar'
-      assert_equal 'bar', @flash['bar']
+      assert_nil @flash[:bar]
     end
 
     it "#now" do
       @flash.now['foo'] = 'foo'
       assert_nil @flash.next['foo']
       assert_empty @session.values.first
+    end
 
-      @flash.next['foo'] = 'bar'
-      assert_equal 'foo', @flash['foo']
-      assert_equal 'bar', @flash['foo']
+    it "#now is from session, and #next is to session" do
+      
     end
   end
 end

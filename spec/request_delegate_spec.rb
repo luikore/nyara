@@ -42,7 +42,7 @@ module Nyara
       assert_equal 'en-US', @c.header['accept']
     end
 
-    context "Simulate IO" do
+    context "Emulate output IO" do
       before :each do
         @client, @server = Socket.pair :UNIX, :STREAM
         Ext.set_nonblock @server.fileno
@@ -76,9 +76,12 @@ module Nyara
       end
 
       it "clear cookie" do
-        @request.instance_variable_set :@cookie, ParamHash.new.tap{|h|
-          h['key1'] = 1
-          h['key2'] = 2
+        Ext.request_set_attrs @request, {
+          method_num: HTTP_METHODS['GET'],
+          cookie: ParamHash.new.tap{|h|
+            h['key1'] = 1
+            h['key2'] = 2
+          }
         }
         @c.clear_cookie
         cookie_lines = receive_header.lines

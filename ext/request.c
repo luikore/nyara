@@ -25,6 +25,11 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->query);
     rb_gc_mark_maybe(p->last_field);
     rb_gc_mark_maybe(p->last_value);
+
+    rb_gc_mark_maybe(p->cookie);
+    rb_gc_mark_maybe(p->session);
+    rb_gc_mark_maybe(p->flash);
+
     rb_gc_mark_maybe(p->response_content_type);
     rb_gc_mark_maybe(p->response_header);
     rb_gc_mark_maybe(p->response_header_extra_lines);
@@ -67,6 +72,11 @@ static Request* _request_alloc() {
   p->query = query;
   p->last_field = Qnil;
   p->last_value = Qnil;
+
+  p->cookie = Qnil;
+  p->session = Qnil;
+  p->flash = Qnil;
+
   p->response_content_type = Qnil;
   p->response_header = Qnil;
   p->response_header_extra_lines = Qnil;
@@ -85,6 +95,25 @@ VALUE nyara_request_new(int fd) {
   Request* p = _request_alloc();
   p->fd = fd;
   return p->self;
+}
+
+void nyara_request_init_env(VALUE self) {
+  static VALUE cookie_mod = Qnil;
+  static VALUE session_mod = Qnil;
+  static VALUE flash_class = Qnil;
+  static ID id_decode = 0;
+  if (cookie_mod == Qnil) {
+    VALUE nyara = rb_const_get(rb_cModule, rb_intern("Nyara"));
+    cookie_mod = rb_const_get(nyara, rb_intern("Cookie"));
+    session_mod = rb_const_get(nyara, rb_intern("Session"));
+    flash_class = rb_const_get(nyara, rb_intern("Flash"));
+    id_decode = rb_intern("decode");
+  }
+
+  P;
+  p->cookie = rb_funcall(cookie_mod, id_decode, 1, p->header);
+  p->session = rb_funcall(session_mod, id_decode, 1, p->cookie);
+  p->flash = rb_class_new_instance(1, &p->session, flash_class);
 }
 
 void nyara_request_term_close(VALUE self) {
@@ -145,6 +174,21 @@ static VALUE request_accept(VALUE self) {
 static VALUE request_format(VALUE self) {
   P;
   return p->format == Qnil ? str_html : p->format;
+}
+
+static VALUE request_cookie(VALUE self) {
+  P;
+  return p->cookie;
+}
+
+static VALUE request_session(VALUE self) {
+  P;
+  return p->session;
+}
+
+static VALUE request_flash(VALUE self) {
+  P;
+  return p->flash;
 }
 
 static VALUE request_status(VALUE self) {
@@ -248,7 +292,8 @@ static VALUE ext_request_set_fd(VALUE _, VALUE self, VALUE vfd) {
   return Qnil;
 }
 
-// set internal attrs in the request object
+// set internal attrs in the request object<br>
+// method_num is required, others are optional
 static VALUE ext_request_set_attrs(VALUE _, VALUE self, VALUE attrs) {
 # define ATTR(key) rb_hash_delete(attrs, ID2SYM(rb_intern(key)))
 # define HEADER_HASH_NEW rb_class_new_instance(0, NULL, nyara_header_hash_class)
@@ -265,6 +310,9 @@ static VALUE ext_request_set_attrs(VALUE _, VALUE self, VALUE attrs) {
   p->scope                       = ATTR("scope");
   p->header                      = ATTR("header");
   p->format                      = ATTR("format");
+  p->cookie                      = ATTR("cookie");
+  p->session                     = ATTR("session");
+  p->flash                       = ATTR("flash");
   p->response_header             = ATTR("response_header");
   p->response_header_extra_lines = ATTR("response_header_extra_lines");
 
@@ -299,6 +347,9 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "path_with_query", request_path_with_query, 0);
   rb_define_method(request_class, "accept", request_accept, 0);
   rb_define_method(request_class, "format", request_format, 0);
+  rb_define_method(request_class, "cookie", request_cookie, 0);
+  rb_define_method(request_class, "session", request_session, 0);
+  rb_define_method(request_class, "flash", request_flash, 0);
 
   rb_define_method(request_class, "status", request_status, 0);
   rb_define_method(request_class, "response_content_type", request_response_content_type, 0);

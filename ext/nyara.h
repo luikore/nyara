@@ -22,6 +22,7 @@ void Init_request_parse(VALUE nyara);
 /* request.c */
 void Init_request(VALUE nyara, VALUE ext);
 VALUE nyara_request_new(int fd);
+void nyara_request_init_env(VALUE request);
 void nyara_request_term_close(VALUE request);
 
 

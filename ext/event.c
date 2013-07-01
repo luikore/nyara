@@ -90,6 +90,7 @@ static void _handle_request(VALUE request) {
       p->format = result.format;
       p->response_header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
       p->response_header_extra_lines = rb_ary_new();
+      nyara_request_init_env(request);
     } else {
       rb_funcall(p->self, id_not_found, 0);
       nyara_detach_fd(p->fd);

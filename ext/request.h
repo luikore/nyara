@@ -32,6 +32,11 @@ typedef struct {
   VALUE last_field;
   VALUE last_value;
 
+  // env
+  VALUE cookie;
+  VALUE session;
+  VALUE flash;
+
   // response
   VALUE response_content_type;
   VALUE response_header;
