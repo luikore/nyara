@@ -2,6 +2,7 @@ Not Yet Another Ruby Async web framework and server.
 
 [![Build Status](https://travis-ci.org/luikore/nyara.png)](https://travis-ci.org/luikore/nyara)
 
+- Fast
 - Evented IO while API remains synchrony
 - Prefork production server, mixing a bit blocking operations won't block other users
 - Sinatra-like http method and scanf-like http path and path helper
@@ -39,6 +40,7 @@ ruby nyahaha.rb
 
 # Documentation
 
+- [Wiki](https://github.com/luikore/nyara/wiki/Home)
 - [Manual](https://github.com/luikore/nyara/wiki/Manual)
 - [API doc](http://rubydoc.info/github/luikore/nyara/master/frames)
 - [Building from source](https://github.com/luikore/nyara/wiki/Building)
@@ -51,3 +53,8 @@ ruby nyahaha.rb
 # License
 
 BSD 3-Clause, see [copying](https://github.com/luikore/nyara/blob/master/copying)
+
+# Contributors
+
+luikore
+hooopo
