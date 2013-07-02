@@ -60,7 +60,7 @@ module Nyara
     def encode h
       str = h.to_json
       sig = @dsa.syssign @dss.digest str
-      str = "#{Base64.urlsafe_encode64 sig}/#{Base64.urlsafe_encode64 str}"
+      str = "#{encode64 sig}/#{decode64 str}"
       @cipher_key ? cipher(str) : str
     end
 
@@ -81,8 +81,8 @@ module Nyara
       return empty_hash unless str
 
       begin
-        sig = Base64.urlsafe_decode64 sig
-        str = Base64.urlsafe_decode64 str
+        sig = decode64 sig
+        str = decode64 str
         verified = @dsa.sysverify @dss.digest(str), sig
         if verified
           h = JSON.parse str, create_additions: false, object_class: ParamHash
@@ -104,14 +104,22 @@ module Nyara
 
     # private
 
+    def encode64 s
+      [s].pack('m0').tr("+/", "-_")
+    end
+
+    def decode64 s
+      s.tr("-_", "+/").unpack('m0').first
+    end
+
     def cipher str
       iv = rand(36**CIPHER_BLOCK_SIZE).to_s(36).ljust CIPHER_BLOCK_SIZE
       c = new_cipher true, iv
-      Base64.urlsafe_encode64(iv.dup << c.update(str) << c.final)
+      encode64(iv.dup << c.update(str) << c.final)
     end
 
     def decipher str
-      str = Base64.urlsafe_decode64 str
+      str = decode64 str
       iv = str.byteslice 0...CIPHER_BLOCK_SIZE
       str = str.byteslice CIPHER_BLOCK_SIZE..-1
       return '' if !str or str.empty?

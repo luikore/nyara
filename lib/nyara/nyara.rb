@@ -6,7 +6,6 @@ require "fiber"
 require "cgi"
 require "uri"
 require "openssl"
-require "base64"
 require "socket"
 require "tilt"
 

@@ -7,6 +7,7 @@ require "erb"
 require "haml"
 require "liquid"
 require "open-uri"
+require "base64"
 require 'pp'
 
 if ENV['COVERAGE']
