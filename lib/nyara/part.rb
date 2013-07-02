@@ -1,5 +1,6 @@
 module Nyara
   # a part in multipart<br>
+  # for an easy introduction, http://msdn.microsoft.com/en-us/library/ms526943(v=exchg.10).aspx
   #
   # - todo make it possible to store data into /tmp (this requires memory threshold counting)
   # - todo nested multipart?
@@ -51,12 +52,13 @@ module Nyara
     #
     def initialize head
       self['head'] = head
-      mechanism = head['Content-Transfer-Encoding']
-      self['mechanism'] = mechanism.strip.downcase
-      if self['type'] = head['Content-Type']
-        self['type'] = self['type'][/.*(?=;|$)/]
+      if mechanism = head['Content-Transfer-Encoding']
+        self['mechanism'] = mechanism.strip.downcase
       end
-      self['data'] = ''
+      if self['type'] = head['Content-Type']
+        self['type'] = self['type'][/.*?(?=;|$)/]
+      end
+      self['data'] = ''.force_encoding('binary')
 
       disposition = head['Content-Disposition']
       if disposition
@@ -66,6 +68,7 @@ module Nyara
         # store values not so specific as encoded value
         tmp_values = {}
         ex_params.scan EX_PARAM do |name, v1, v2, enc, v3|
+          name.downcase!
           if enc
             # value with charset and lang is more specific
             self[name] ||= enc_unescape enc, v3
@@ -82,6 +85,7 @@ module Nyara
       self['name'] ||= head['Content-Id']
     end
 
+    # prereq: +raw+ in binary encoding
     def update raw
       case self['mechanism']
       when 'base64'
@@ -92,13 +96,9 @@ module Nyara
         end
         # last part can be at most 4 bytes and 2 '='s
         size = raw.bytesize - 6
-        if size > 0
+        if size >= 4
           size = size / 4 * 4
-          if size > 0
-            self['data'] << raw.byteslice(0...size).unpack('m').first
-            self['tmp'] = raw.byteslice(size..-1)
-            return
-          end
+          self['data'] << raw.slice!(0...size).unpack('m').first
         end
         self['tmp'] = raw
 
@@ -124,18 +124,18 @@ module Nyara
     def final
       case self['mechanism']
       when 'base64'
-        if self['tmp']
-          self['data'] << self['tmp'].unpack('m').first
+        if tmp = self['tmp']
+          self['data'] << tmp.unpack('m').first
+          delete 'tmp'
         end
-        delete 'tmp'
 
       when 'quoted-printable'
-        if self['tmp']
-          self['data'] << self['tmp'].gsub(/=(\h\h)|=\r\n/n) do
+        if tmp = self['tmp']
+          self['data'] << tmp.gsub(/=(\h\h)|=\r\n/n) do
             [$1].pack 'H*'
           end
+          delete 'tmp'
         end
-        delete 'tmp'
       end
       self
     end
