@@ -60,14 +60,13 @@ module Nyara
     def encode h
       str = h.to_json
       sig = @dsa.syssign @dss.digest str
-      str = "#{encode64 sig}/#{decode64 str}"
+      str = "#{encode64 sig}/#{encode64 str}"
       @cipher_key ? cipher(str) : str
     end
 
     # encode as header line
     def encode_set_cookie h, secure
       secure = @secure unless @secure.nil?
-      # todo time zone?
       expire = (Time.now + @expire).gmtime.rfc2822 if @expire
       "Set-Cookie: #{@name}=#{encode h}; HttpOnly#{'; Secure' if secure}#{"; Expires=#{expire}" if expire}\r\n"
     end
