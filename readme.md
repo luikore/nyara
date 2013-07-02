@@ -56,5 +56,5 @@ BSD 3-Clause, see [copying](https://github.com/luikore/nyara/blob/master/copying
 
 # Contributors
 
-luikore
-hooopo
+- luikore
+- hooopo
