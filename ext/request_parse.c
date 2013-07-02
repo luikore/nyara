@@ -2,10 +2,85 @@
 
 #include "nyara.h"
 #include "request.h"
+#include <ruby/re.h>
 
+static ID id_update;
+static ID id_final;
 static VALUE str_accept;
+static VALUE str_content_type;
 static VALUE method_override_key;
 static VALUE nyara_http_methods;
+
+static int mp_header_field(multipart_parser* parser, const char* s, size_t len) {
+  Request* p = multipart_parser_get_data(parser);
+  if (p->last_part == Qnil) {
+    p->last_part = rb_hash_new();
+  }
+
+  if (p->last_field == Qnil) {
+    p->last_field = rb_enc_str_new(s, len, u8_encoding);
+    p->last_value = Qnil;
+  } else {
+    rb_str_cat(p->last_field, s, len);
+  }
+  return 0;
+}
+
+static int mp_header_value(multipart_parser* parser, const char* s, size_t len) {
+  Request* p = multipart_parser_get_data(parser);
+  if (p->last_field == Qnil) {
+    if (p->last_value == Qnil) {
+      p->parse_state = PS_ERROR;
+      return 1;
+    }
+    rb_str_cat(p->last_value, s, len);
+  } else {
+    nyara_headerlize(p->last_field);
+    p->last_value = rb_enc_str_new(s, len, u8_encoding);
+    rb_hash_aset(p->last_part, p->last_field, p->last_value);
+    p->last_field = Qnil;
+  }
+  return 0;
+}
+
+static int mp_headers_complete(multipart_parser* parser) {
+  static VALUE part_class = Qnil;
+  if (part_class == Qnil) {
+    VALUE nyara = rb_const_get(rb_cModule, rb_intern("Nyara"));
+    part_class = rb_const_get(nyara, rb_intern("Part"));
+  }
+
+  Request* p = multipart_parser_get_data(parser);
+  p->last_field = Qnil;
+  p->last_value = Qnil;
+  p->last_part = rb_class_new_instance(1, &p->last_part, part_class);
+  return 0;
+}
+
+static int mp_part_data(multipart_parser* parser, const char* s, size_t len) {
+  Request* p = multipart_parser_get_data(parser);
+  rb_funcall(p->last_part, id_update, 1, rb_str_new(s, len)); // no need encoding
+  return 0;
+}
+
+static int mp_part_data_end(multipart_parser* parser) {
+  Request* p = multipart_parser_get_data(parser);
+  rb_ary_push(p->body, rb_funcall(p->last_part, id_final, 0));
+  p->last_part = Qnil;
+  return 0;
+}
+
+static multipart_parser_settings multipart_settings = {
+  .on_header_field = mp_header_field,
+  .on_header_value = mp_header_value,
+  .on_headers_complete = mp_headers_complete,
+
+  .on_part_data_begin = NULL,
+  .on_part_data = mp_part_data,
+  .on_part_data_end = mp_part_data_end,
+
+  .on_body_end = NULL
+};
 
 static int on_url(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
@@ -79,6 +154,39 @@ static void _parse_path_and_query(Request* p) {
   }
 }
 
+static char* _parse_multipart_boundary(VALUE header) {
+  static regex_t* re = NULL;
+  static OnigRegion region;
+  if (!re) {
+    // rfc2046
+    // regexp copied from rack
+    const char* pattern = "\\Amultipart/.*boundary=\\\"?([^\\\";,]+)\\\"?";
+    onig_new(&re, (const UChar*)pattern, (const UChar*)(pattern + strlen(pattern)),
+             ONIG_OPTION_NONE, ONIG_ENCODING_ASCII, ONIG_SYNTAX_RUBY, NULL);
+    onig_region_init(&region);
+  }
+
+  VALUE content_type = rb_hash_aref(header, str_content_type);
+  if (content_type == Qnil) {
+    return NULL;
+  }
+
+  long len = RSTRING_LEN(content_type);
+  char* s = RSTRING_PTR(content_type);
+
+  long matched_len = onig_match(re, (const UChar*)s, (const UChar*)(s + len), (const UChar*)s, &region, 0);
+  if (matched_len > 0) {
+    // multipart-parser needs a buffer to end with '\0'
+    long boundary_len = region.end[0] - region.beg[0];
+    char* boundary_bytes = ALLOC_N(char, boundary_len + 1);
+    memcpy(boundary_bytes, s + region.beg[0], boundary_len);
+    boundary_bytes[boundary_len] = '\0';
+    return boundary_bytes;
+  } else {
+    return NULL;
+  }
+}
+
 static int on_headers_complete(http_parser* parser) {
   Request* p = (Request*)parser;
   p->last_field = Qnil;
@@ -87,11 +195,28 @@ static int on_headers_complete(http_parser* parser) {
   _parse_path_and_query(p);
   p->accept = ext_parse_accept_value(Qnil, rb_hash_aref(p->header, str_accept));
   p->parse_state = PS_HEADERS_COMPLETE;
+
+  char* boundary = _parse_multipart_boundary(p->header);
+  if (boundary) {
+    p->mparser = multipart_parser_init(boundary, &multipart_settings);
+    xfree(boundary);
+    multipart_parser_set_data(p->mparser, p);
+    p->body = rb_ary_new();
+  } else {
+    p->body = rb_enc_str_new("", 0, u8_encoding);
+  }
+
   return 0;
 }
 
 static int on_body(http_parser* parser, const char* s, size_t len) {
-  // todo
+  Request* p = (Request*)parser;
+  if (p->mparser) {
+    multipart_parser_execute(p->mparser, s, len);
+    // todo sum total length, if too big, trigger save to tmpfile
+  } else {
+    rb_str_cat(p->body, s, len);
+  }
   return 0;
 }
 
@@ -114,8 +239,12 @@ http_parser_settings nyara_request_parse_settings = {
 };
 
 void Init_request_parse(VALUE nyara) {
+  id_update = rb_intern("update");
+  id_final = rb_intern("final");
   str_accept = rb_enc_str_new("Accept", strlen("Accept"), u8_encoding);
   rb_gc_register_mark_object(str_accept);
+  str_content_type = rb_enc_str_new("Content-Type", strlen("Content-Type"), u8_encoding);
+  rb_gc_register_mark_object(str_content_type);
   method_override_key = rb_enc_str_new("_method", strlen("_method"), u8_encoding);
   OBJ_FREEZE(method_override_key);
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);

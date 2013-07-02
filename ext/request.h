@@ -31,6 +31,8 @@ typedef struct {
   VALUE query;
   VALUE last_field;
   VALUE last_value;
+  VALUE last_part; // multipart last header or body
+  VALUE body; // string when single part, array when multipart
 
   // env
   VALUE cookie;

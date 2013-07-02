@@ -25,6 +25,8 @@ static void request_mark(void* pp) {
     rb_gc_mark_maybe(p->query);
     rb_gc_mark_maybe(p->last_field);
     rb_gc_mark_maybe(p->last_value);
+    rb_gc_mark_maybe(p->last_part);
+    rb_gc_mark_maybe(p->body);
 
     rb_gc_mark_maybe(p->cookie);
     rb_gc_mark_maybe(p->session);
@@ -44,6 +46,10 @@ static void request_free(void* pp) {
     if (p->fd) {
       nyara_detach_fd(p->fd);
       p->fd = 0;
+    }
+    if (p->mparser) {
+      multipart_parser_free(p->mparser);
+      p->mparser = NULL;
     }
     xfree(p);
   }
@@ -72,6 +78,8 @@ static Request* _request_alloc() {
   p->query = query;
   p->last_field = Qnil;
   p->last_value = Qnil;
+  p->last_part = Qnil;
+  p->body = Qnil;
 
   p->cookie = Qnil;
   p->session = Qnil;
@@ -310,6 +318,7 @@ static VALUE ext_request_set_attrs(VALUE _, VALUE self, VALUE attrs) {
   p->scope                       = ATTR("scope");
   p->header                      = ATTR("header");
   p->format                      = ATTR("format");
+  p->body                        = ATTR("body");
   p->cookie                      = ATTR("cookie");
   p->session                     = ATTR("session");
   p->flash                       = ATTR("flash");
