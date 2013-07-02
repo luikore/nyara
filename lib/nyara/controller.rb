@@ -328,6 +328,8 @@ module Nyara
         template_deduced_content_type ||
         'text/html'
 
+      header['Date'] = Time.now.gmtime.rfc2822
+
       header.reverse_merge! OK_RESP_HEADER
 
       data = header.serialize
