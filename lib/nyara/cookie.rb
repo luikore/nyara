@@ -1,5 +1,5 @@
 module Nyara
-  # http://www.ietf.org/rfc/rfc6265.txt (don't look at rfc2109)
+  # rfc6265 (don't look at rfc2109)
   module Cookie
     extend self
 
@@ -10,6 +10,7 @@ module Nyara
       end.join '; '
     end
 
+    # for test
     def decode header
       res = ParamHash.new
       if data = header['Cookie']

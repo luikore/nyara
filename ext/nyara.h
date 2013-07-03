@@ -34,6 +34,7 @@ void Init_test_response(VALUE nyara);
 void Init_url_encoded(VALUE ext);
 long nyara_parse_path(VALUE path, const char*s, long len);
 void nyara_parse_param(VALUE output, const char* s, long len);
+VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str);
 
 
 /* accept.c */

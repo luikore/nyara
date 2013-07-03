@@ -24,6 +24,7 @@ module Nyara
     extend self
 
     CIPHER_BLOCK_SIZE = 256/8
+    JSON_DECODE_OPTS = {create_additions: false, object_class: ParamHash}
 
     # init from config
     def init
@@ -82,9 +83,8 @@ module Nyara
       begin
         sig = decode64 sig
         str = decode64 str
-        verified = @dsa.sysverify @dss.digest(str), sig
-        if verified
-          h = JSON.parse str, create_additions: false, object_class: ParamHash
+        if @dsa.sysverify(@dss.digest(str), sig)
+          h = JSON.parse str, JSON_DECODE_OPTS
         end
       ensure
         return empty_hash unless h

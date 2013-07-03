@@ -106,20 +106,25 @@ VALUE nyara_request_new(int fd) {
 }
 
 void nyara_request_init_env(VALUE self) {
-  static VALUE cookie_mod = Qnil;
   static VALUE session_mod = Qnil;
   static VALUE flash_class = Qnil;
+  static VALUE str_cookie = Qnil;
   static ID id_decode = 0;
-  if (cookie_mod == Qnil) {
+  if (session_mod == Qnil) {
     VALUE nyara = rb_const_get(rb_cModule, rb_intern("Nyara"));
-    cookie_mod = rb_const_get(nyara, rb_intern("Cookie"));
     session_mod = rb_const_get(nyara, rb_intern("Session"));
     flash_class = rb_const_get(nyara, rb_intern("Flash"));
+    str_cookie = rb_enc_str_new("Cookie", strlen("Cookie"), u8_encoding);
+    rb_gc_register_mark_object(str_cookie);
     id_decode = rb_intern("decode");
   }
 
   P;
-  p->cookie = rb_funcall(cookie_mod, id_decode, 1, p->header);
+  p->cookie = rb_class_new_instance(0, NULL, nyara_param_hash_class);
+  VALUE cookie = rb_hash_aref(p->header, str_cookie);
+  if (cookie != Qnil) {
+    ext_parse_cookie(Qnil, p->cookie, cookie);
+  }
   p->session = rb_funcall(session_mod, id_decode, 1, p->cookie);
   p->flash = rb_class_new_instance(1, &p->session, flash_class);
 }

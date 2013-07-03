@@ -319,7 +319,7 @@ static VALUE _cookie_seg_str_new(const char* s, long len) {
   return rb_enc_str_new(s, len, u8_encoding);
 }
 
-static VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str) {
+VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str) {
   volatile VALUE arr = rb_ary_new();
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
