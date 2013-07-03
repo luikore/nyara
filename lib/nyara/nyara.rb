@@ -8,6 +8,7 @@ require "uri"
 require "openssl"
 require "socket"
 require "tilt"
+require "time"
 
 require_relative "../../ext/nyara"
 require_relative "hashes/param_hash"
