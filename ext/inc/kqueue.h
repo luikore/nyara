@@ -74,5 +74,7 @@ static void LOOP_E() {
     }
     // execute other thread / interrupts
     rb_thread_schedule();
+    // wakeup if there are actions finished sleeping
+    wakeup_actions();
   }
 }

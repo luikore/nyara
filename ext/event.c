@@ -18,6 +18,7 @@ extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
 #define ETYPE_CONNECT 2
 #define MAX_E 1024
 static void loop_body(int fd, int etype);
+static void wakeup_actions();
 static int qfd = 0;
 
 #define MAX_RECEIVE_DATA 65536 * 2
@@ -44,6 +45,52 @@ static VALUE _fiber_func(VALUE _, VALUE args) {
   VALUE meth = rb_ary_pop(args);
   rb_apply(instance, SYM2ID(meth), args);
   return Qnil;
+}
+
+static void _resume_action(Request* p) {
+  VALUE state = rb_fiber_resume(p->fiber, 0, NULL);
+  if (state == Qnil) { // _fiber_func always returns Qnil
+    // terminated (todo log raised error ?)
+    nyara_request_term_close(p->self);
+  } else if (state == sym_term_close) {
+    nyara_request_term_close(p->self);
+  } else if (state == sym_writing) {
+    // do nothing
+  } else if (state == sym_reading) {
+    // do nothing
+  } else if (state == sym_sleep) {
+    // do nothing
+  }
+}
+
+static VALUE to_resume_actions;
+static void wakeup_actions() {
+  long len = RARRAY_LEN(to_resume_actions);
+  if (len) {
+    VALUE* ptr = RARRAY_PTR(to_resume_actions);
+    for (long i = 0; i < len; i++) {
+      VALUE request = ptr[i];
+      Request* p;
+      Data_Get_Struct(request, Request, p);
+
+      p->sleeping = false;
+      if (!rb_fiber_alive_p(p->fiber)) {
+        continue;
+      }
+
+      _resume_action(p);
+      if (qfd) {
+        VALUE* v_fds = RARRAY_PTR(p->watched_fds);
+        long v_fds_len = RARRAY_LEN(p->watched_fds);
+        for (long i = 0; i < v_fds_len; i++) {
+          ADD_E(FIX2INT(v_fds[i]), ETYPE_CONNECT);
+        }
+        ADD_E(p->fd, ETYPE_HANDLE_REQUEST);
+      } else {
+        // we are in a test, no queue
+      }
+    }
+  }
 }
 
 static void _handle_request(VALUE request) {
@@ -104,20 +151,7 @@ static void _handle_request(VALUE request) {
     }
   }
 
-  // resume action
-  VALUE state = rb_fiber_resume(p->fiber, 0, NULL);
-  if (state == Qnil) { // _fiber_func always returns Qnil
-    // terminated (todo log raised error ?)
-    nyara_request_term_close(request);
-  } else if (state == sym_term_close) {
-    nyara_request_term_close(request);
-  } else if (state == sym_writing) {
-    // do nothing
-  } else if (state == sym_reading) {
-    // do nothing
-  } else if (state == sym_sleep) {
-    // do nothing
-  }
+  _resume_action(p);
 }
 
 // platform independent, invoked by LOOP_E()
@@ -197,23 +231,10 @@ static VALUE ext_request_sleep(VALUE _, VALUE request) {
   return Qnil;
 }
 
+// NOTE this will be executed in another thread, resuming fiber in a non-main thread will stuck
 static VALUE ext_request_wakeup(VALUE _, VALUE request) {
   // NOTE should not use curr_request
-  Request* p;
-  Data_Get_Struct(request, Request, p);
-
-  p->sleeping = false;
-  if (!qfd) {
-    // we are in a test
-    return Qnil;
-  }
-
-  VALUE* v_fds = RARRAY_PTR(p->watched_fds);
-  long v_fds_len = RARRAY_LEN(p->watched_fds);
-  for (long i = 0; i < v_fds_len; i++) {
-    ADD_E(FIX2INT(v_fds[i]), ETYPE_CONNECT);
-  }
-  ADD_E(p->fd, ETYPE_HANDLE_REQUEST);
+  rb_ary_push(to_resume_actions, request);
   return Qnil;
 }
 
@@ -334,6 +355,9 @@ void Init_event(VALUE ext) {
   sym_writing = ID2SYM(rb_intern("writing"));
   sym_reading = ID2SYM(rb_intern("reading"));
   sym_sleep = ID2SYM(rb_intern("sleep"));
+
+  to_resume_actions = rb_ary_new();
+  rb_gc_register_mark_object(to_resume_actions);
 
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
