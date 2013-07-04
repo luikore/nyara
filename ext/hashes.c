@@ -112,8 +112,13 @@ static VALUE header_hash_reverse_merge_bang(VALUE self, VALUE other) {
 }
 
 static int header_hash_serialize_func(VALUE k, VALUE v, VALUE arr) {
-  long klen = RSTRING_LEN(k);
   long vlen = RSTRING_LEN(v);
+  // deleted field
+  if (vlen == 0) {
+    return ST_CONTINUE;
+  }
+
+  long klen = RSTRING_LEN(k);
   long capa = klen + vlen + 4;
   volatile VALUE s = rb_str_buf_new(capa);
   sprintf(RSTRING_PTR(s), "%.*s: %.*s\r\n", (int)klen, RSTRING_PTR(k), (int)vlen, RSTRING_PTR(v));
