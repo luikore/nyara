@@ -28,10 +28,19 @@ module Nyara
       assert_equal 3000, Config['port']
     end
 
+    it "views and public default" do
+      Config.reset
+      Config[:root] = '/root'
+      Config.init
+      assert_equal '/root/public', Config['public']
+      assert_equal '/root/views', Config['views']
+    end
+
     context "#project_path" do
       before :all do
         Config.configure do
           set :root, '/a'
+          init
         end
       end
 
@@ -53,15 +62,19 @@ module Nyara
 
     it "#public_path" do
       Config.configure do
-        set :public, '/a'
+        set :root, '/root'
+        set :public, 'a'
+        init
       end
       path = Config.public_path '/b'
-      assert_equal '/a/b', path
+      assert_equal '/root/a/b', path
     end
 
     it "#views_path" do
       Config.configure do
+        set :root, '/'
         set :views, '/a'
+        init
       end
       path = Config.views_path '../..', false
       assert_equal '/', path
