@@ -360,20 +360,76 @@ module Nyara
     end
     alias send_string send_chunk
 
-    # Send file
-    def send_file file
-      if behind_proxy? # todo
-        header['X-Sendfile'] = file # todo escape name?
-        # todo content type and disposition
-        header['Content-Type'] = determine_ct_by_file_name
+    # Set aproppriate headers and send the file<br>
+    # :call-seq:
+    #
+    #   send_file '/home/www/no-virus-inside.exe', disposition: 'attachment'
+    #
+    # options are:
+    #
+    # [disposition]  'inline' by default, if set to 'attachment', the file is presented as a download item in browser.
+    # [x_send_file]  if not false/nil, it is considered to be behind a web server.
+    #                Then the app sends file with only header configures,
+    #                which proxies the actual action to the web server,
+    #                which can take the advantage of system calls and reduce transfered data,
+    #                thus faster.
+    # [filename]     name for the downloaded file, will use basename of +file+ if not set.
+    # [content_type] defaults to the MIME type matching +file+ or +filename+.
+    #
+    # To configure for lighttpd and apache2 mod_xsendfile (https://tn123.org/mod_xsendfile/):
+    #
+    #   configure do
+    #     set :x_send_file, 'X-Sendfile'
+    #   end
+    #
+    # To configure for nginx (http://wiki.nginx.org/XSendfile):
+    #
+    #   configure do
+    #     set :x_send_file, 'X-Accel-Redirect'
+    #   end
+    #
+    # To disable x_send_file while configured:
+    #
+    #   send_file '/some/file', x_send_file: false
+    #
+    # To enable x_send_file while not configured:
+    #
+    #   send_file '/some/file', x_send_file: 'X-Sendfile'
+    #
+    def send_file file, disposition: 'inline', x_send_file: Config['x_send_file'], filename: nil, content_type: nil
+      header = request.response_header
+
+      unless header['Content-Type']
+        unless content_type
+          extname = File.extname(file)
+          extname = File.extname(filename) if extname.blank? and file
+          content_type = MIME_TYPES[extname] || 'application/octet-stream'
+        end
+        header['Content-Type'] = content_type
+      end
+
+      disposition = disposition.to_s
+      if disposition != 'inline'
+        if disposition != 'attachment'
+          raise ArgumentError, "disposition should be inline or attachment, but got #{disposition.inspect}"
+        end
+      end
+
+      filename ||= File.basename file
+      header['Content-Disposition'] = "#{disposition}; filename=#{CGI.escape filename}"
+
+      header['Transfer-Encoding'] = '' # delete it
+
+      if x_send_file
+        header[x_send_file] = file # todo escape name?
         send_header unless request.response_header.frozen?
       else
+        # todo nonblock?
         data = File.binread file
-        header['Content-Type'] = determine_ct_by_file_name
         send_header unless request.response_header.frozen?
         send_data data
       end
-      Fiber.yield :term_close # is it right? content type changed
+      Fiber.yield :term_close
     end
 
     # Resume action after +seconds+
@@ -383,10 +439,10 @@ module Nyara
 
       # NOTE request_wake requires request as param, so this method can not be generalized to Fiber.sleep
 
-      Ext.request_sleep self # place sleep actions before wake
+      Ext.request_sleep request # place sleep actions before wake
       Thread.new do
-        sleep seconds
-        Ext.request_wakeup self
+        Kernel.sleep seconds
+        Ext.request_wakeup request
       end
       Fiber.yield :sleep # see event.c for the handler
     end
