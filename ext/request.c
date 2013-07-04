@@ -237,7 +237,7 @@ static VALUE ext_request_set_status(VALUE _, VALUE self, VALUE n) {
 }
 
 // return true if success
-static bool _send_data(int fd, const char* buf, long len) {
+bool nyara_send_data(int fd, const char* buf, long len) {
   while(len) {
     long written = write(fd, buf, len);
     if (written <= 0) {
@@ -261,7 +261,7 @@ static VALUE ext_request_send_data(VALUE _, VALUE self, VALUE data) {
   P;
   char* buf = RSTRING_PTR(data);
   long len = RSTRING_LEN(data);
-  _send_data(p->fd, buf, len);
+  nyara_send_data(p->fd, buf, len);
   return Qnil;
 }
 
@@ -278,9 +278,9 @@ static VALUE ext_request_send_chunk(VALUE _, VALUE self, VALUE str) {
     rb_raise(rb_eRuntimeError, "fail to format chunk length for len: %ld", len);
   }
   bool success = \
-    _send_data(p->fd, pre_buf, pre_len) &&
-    _send_data(p->fd, RSTRING_PTR(str), len) &&
-    _send_data(p->fd, "\r\n", 2);
+    nyara_send_data(p->fd, pre_buf, pre_len) &&
+    nyara_send_data(p->fd, RSTRING_PTR(str), len) &&
+    nyara_send_data(p->fd, "\r\n", 2);
 
   if (!success) {
     rb_sys_fail("write(2)");

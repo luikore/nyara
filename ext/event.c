@@ -92,7 +92,12 @@ static void _handle_request(VALUE request) {
       p->response_header_extra_lines = rb_ary_new();
       nyara_request_init_env(request);
     } else {
-      rb_funcall(p->self, id_not_found, 0);
+      static const char* not_found = "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n";
+      static long not_found_len = 0;
+      if (!not_found_len) {
+        not_found_len = strlen(not_found);
+      }
+      nyara_send_data(p->fd, not_found, not_found_len);
       nyara_detach_fd(p->fd);
       p->fd = 0;
       return;

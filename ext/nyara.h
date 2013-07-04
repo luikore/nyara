@@ -24,6 +24,7 @@ void Init_request(VALUE nyara, VALUE ext);
 VALUE nyara_request_new(int fd);
 void nyara_request_init_env(VALUE request);
 void nyara_request_term_close(VALUE request);
+bool nyara_send_data(int fd, const char* s, long len);
 
 
 /* test_response.c */
