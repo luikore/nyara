@@ -40,7 +40,7 @@ module Nyara
     it "redirect" do
       @test.post @test.path_to('test#create')
       assert @test.response.success?
-      assert_equal 'http://localhost/', @test.redirect_location
+      assert_equal 'http://localhost:3000/', @test.redirect_location
       @test.follow_redirect
       assert_equal '/', @test.request.path
     end

@@ -27,6 +27,9 @@ require_relative "view"
 require_relative "cpu_counter"
 require_relative "part"
 
+# default controllers
+require_relative "controllers/public_controller"
+
 module Nyara
   HTTP_STATUS_FIRST_LINES = Hash[HTTP_STATUS_CODES.map{|k,v|[k, "HTTP/1.1 #{k} #{v}\r\n".freeze]}].freeze
 
@@ -50,12 +53,13 @@ module Nyara
 
     def setup
       Session.init
+      Config.init
       Route.compile
       View.init
     end
 
     def start_server
-      port = Config[:port] || 3000
+      port = Config[:port]
 
       puts "starting #{Config[:env]} server at 0.0.0.0:#{port}"
       case Config[:env].to_s
@@ -76,7 +80,7 @@ module Nyara
     end
 
     def start_production_server port
-      workers = Config[:workers] || ((CpuCounter.count + 1)/ 2)
+      workers = Config[:workers]
 
       puts "workers: #{workers}"
       server = TCPServer.new '0.0.0.0', port

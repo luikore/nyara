@@ -8,7 +8,7 @@ module Nyara
         raise ArgumentError, "route prefix should be a string"
       end
       scope = scope.dup.freeze
-      (@controllers ||= {})[scope] = controller
+      (@controllers ||= []) << [scope, controller]
     end
 
     def compile
@@ -51,7 +51,7 @@ module Nyara
     def clear
       # gc mark fail if wrong order?
       Ext.clear_route
-      @controllers = {}
+      @controllers = []
     end
 
     # private

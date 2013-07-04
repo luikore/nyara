@@ -5,7 +5,7 @@ require "pry"
 require "open-uri"
 
 configure do
-  port 3003
+  set :port, 3003
 end
 
 get '/' do
