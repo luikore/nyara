@@ -339,8 +339,8 @@ module Nyara
 
       # forbid further modification
       header.freeze
-      session.freeze
-      flash.next.freeze
+      r.session.freeze
+      r.flash.next.freeze
     end
 
     # Send raw data, that is, not wrapped in chunked encoding<br>
@@ -424,7 +424,7 @@ module Nyara
         header[x_send_file] = file # todo escape name?
         send_header unless request.response_header.frozen?
       else
-        # todo nonblock?
+        # todo nonblock read file?
         data = File.binread file
         send_header unless request.response_header.frozen?
         send_data data
