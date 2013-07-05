@@ -1,3 +1,4 @@
+2013-07-06 add worker signal management
 2013-07-05 add static file controller
            Config: remove setter helpers, add path helers
 2013-07-03 add multipart request parsing
