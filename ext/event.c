@@ -18,7 +18,7 @@ extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
 #define ETYPE_CONNECT 2
 #define MAX_E 1024
 static void loop_body(int fd, int etype);
-static void wakeup_actions();
+static void loop_check();
 static int qfd = 0;
 
 #define MAX_RECEIVE_DATA 65536 * 2
@@ -39,6 +39,8 @@ static VALUE sym_writing;
 static VALUE sym_reading;
 static VALUE sym_sleep;
 static Request* curr_request;
+static VALUE to_resume_actions;
+static bool graceful_quit = false;
 
 static VALUE _fiber_func(VALUE _, VALUE args) {
   VALUE instance = rb_ary_pop(args);
@@ -60,36 +62,6 @@ static void _resume_action(Request* p) {
     // do nothing
   } else if (state == sym_sleep) {
     // do nothing
-  }
-}
-
-static VALUE to_resume_actions;
-static void wakeup_actions() {
-  long len = RARRAY_LEN(to_resume_actions);
-  if (len) {
-    VALUE* ptr = RARRAY_PTR(to_resume_actions);
-    for (long i = 0; i < len; i++) {
-      VALUE request = ptr[i];
-      Request* p;
-      Data_Get_Struct(request, Request, p);
-
-      p->sleeping = false;
-      if (!rb_fiber_alive_p(p->fiber)) {
-        continue;
-      }
-
-      _resume_action(p);
-      if (qfd) {
-        VALUE* v_fds = RARRAY_PTR(p->watched_fds);
-        long v_fds_len = RARRAY_LEN(p->watched_fds);
-        for (long i = 0; i < v_fds_len; i++) {
-          ADD_E(FIX2INT(v_fds[i]), ETYPE_CONNECT);
-        }
-        ADD_E(p->fd, ETYPE_HANDLE_REQUEST);
-      } else {
-        // we are in a test, no queue
-      }
-    }
   }
 }
 
@@ -184,6 +156,45 @@ static void loop_body(int fd, int etype) {
   }
 }
 
+static void loop_check() {
+  // execute other thread / interrupts
+  rb_thread_schedule();
+
+  // wakeup actions which finished sleeping
+  long len = RARRAY_LEN(to_resume_actions);
+  if (len) {
+    VALUE* ptr = RARRAY_PTR(to_resume_actions);
+    for (long i = 0; i < len; i++) {
+      VALUE request = ptr[i];
+      Request* p;
+      Data_Get_Struct(request, Request, p);
+
+      p->sleeping = false;
+      if (!rb_fiber_alive_p(p->fiber)) {
+        continue;
+      }
+
+      _resume_action(p);
+      if (qfd) {
+        VALUE* v_fds = RARRAY_PTR(p->watched_fds);
+        long v_fds_len = RARRAY_LEN(p->watched_fds);
+        for (long i = 0; i < v_fds_len; i++) {
+          ADD_E(FIX2INT(v_fds[i]), ETYPE_CONNECT);
+        }
+        ADD_E(p->fd, ETYPE_HANDLE_REQUEST);
+      } else {
+        // we are in a test, no queue
+      }
+    }
+  }
+
+  if (graceful_quit) {
+    if (RTEST(rb_funcall(fd_request_map, rb_intern("empty?"), 0))) {
+      _Exit(0);
+    }
+  }
+}
+
 void nyara_detach_fd(int fd) {
   VALUE request = rb_hash_delete(fd_request_map, INT2FIX(fd));
   if (request != Qnil) {
@@ -203,8 +214,9 @@ static VALUE ext_init_queue(VALUE _) {
   return Qnil;
 }
 
-static VALUE ext_run_queue(VALUE _, VALUE v_fd) {
-  int fd = FIX2INT(v_fd);
+// run queue loop with server_fd
+static VALUE ext_run_queue(VALUE _, VALUE v_server_fd) {
+  int fd = FIX2INT(v_server_fd);
   nyara_set_nonblock(fd);
   ADD_E(fd, ETYPE_CAN_ACCEPT);
 
@@ -212,6 +224,15 @@ static VALUE ext_run_queue(VALUE _, VALUE v_fd) {
   return Qnil;
 }
 
+// set graceful quit flag and do not accept server_fd anymore
+static VALUE ext_graceful_quit(VALUE _, VALUE v_server_fd) {
+  graceful_quit = true;
+  int fd = FIX2INT(v_server_fd);
+  DEL_E(fd);
+  return Qnil;
+}
+
+// put request into sleep
 static VALUE ext_request_sleep(VALUE _, VALUE request) {
   Request* p;
   Data_Get_Struct(request, Request, p);
@@ -361,6 +382,7 @@ void Init_event(VALUE ext) {
 
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
+  rb_define_singleton_method(ext, "graceful_quit", ext_graceful_quit, 1);
 
   rb_define_singleton_method(ext, "request_sleep", ext_request_sleep, 1);
   rb_define_singleton_method(ext, "request_wakeup", ext_request_wakeup, 1);

@@ -57,8 +57,6 @@ static void LOOP_E() {
         break;
       }
     }
-    // execute other thread / interrupts
-    rb_thread_schedule();
-    wakeup_actions();
+    loop_check();
   }
 }
