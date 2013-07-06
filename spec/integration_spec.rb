@@ -28,6 +28,7 @@ module Nyara
         reset
         set :env, 'test'
         map '/', TestController
+        set :root, __dir__
       end
       Nyara.setup
       @test = MyTest.new

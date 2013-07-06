@@ -70,7 +70,7 @@ module Nyara
     def compile_re suffix
       return ['', []] unless suffix
       conv = []
-      re_segs = suffix.split(/(?<=%[dfsux])|(?=%[dfsux])/).map do |s|
+      re_segs = suffix.split(/(?<=%[dfsuxz])|(?=%[dfsuxz])/).map do |s|
         case s
         when '%d'
           conv << :to_i
@@ -98,13 +98,14 @@ module Nyara
       ["^#{re_segs.join}$", conv]
     end
 
-    # split the path into parts
+    # split the path into 2 parts: <br>
+    # fixed prefix and variable suffix
     def analyse_path path
       raise 'path must contain no new line' if path.index "\n"
       raise 'path must start with /' unless path.start_with? '/'
       path = path.sub(/\/$/, '') if path != '/'
 
-      path.split(/(?=%[dfsux])/, 2)
+      path.split(/(?=%[dfsuxz])/, 2)
     end
   end
 end

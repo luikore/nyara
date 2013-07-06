@@ -44,6 +44,13 @@ module Nyara
       assert_equal [], conv
     end
 
+    it "#compile %z" do
+      re, conv = @r.compile_re '/%z'
+      assert_equal [:to_s], conv
+      s = '/foo bar.baz'
+      assert_equal [s, s[1..-1]], s.match(Regexp.new re).to_a
+    end
+
     it "#compile_re with utf-8 chars" do
       re, conv = @r.compile_re '/目录/%da/也可以'
       assert_equal [:to_i], conv
