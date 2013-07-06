@@ -6,6 +6,13 @@ module Nyara
       Config.reset
     end
 
+    it "Nyara.config forbids block" do
+      Nyara.config
+      assert_raise ArgumentError do
+        Nyara.config{}
+      end
+    end
+
     it "convert workers" do
       Config.configure do
         set :workers, '3'
@@ -87,6 +94,7 @@ module Nyara
 
       Config.set :env, 'production'
       assert_equal false, Config.test?
+      assert_equal true, Config.production?
     end
   end
 end
