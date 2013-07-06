@@ -4,6 +4,7 @@ require 'rspec/autorun'
 require "pry"
 require "slim"
 require "erb"
+require "erubis"
 require "haml"
 require "liquid"
 require "open-uri"

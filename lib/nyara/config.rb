@@ -10,6 +10,7 @@ module Nyara
   # [public]      static files directory, relative to root, default is +"public"+
   # [x_send_file] header field name for X-Sendfile or X-Accel-Redirect, see Nyara::Controller#send_file for details
   # [session]     see Nyara::Session for sub options
+  # [prefer_erb]  use ERB instead of ERubis for +.erb+ templates
   Config = ConfigHash.new
   class << Config
     # clear all settings

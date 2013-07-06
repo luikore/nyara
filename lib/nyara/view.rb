@@ -26,7 +26,18 @@ module Nyara
     # ext (without dot) => stream friendly
     ENGINE_STREAM_FRIENDLY = ParamHash.new
 
+    autoload :ERB,    File.join(__dir__, "view_handlers/erb")
+    autoload :Erubis, File.join(__dir__, "view_handlers/erubis")
+    autoload :Haml,   File.join(__dir__, "view_handlers/haml")
+    autoload :Slim,   File.join(__dir__, "view_handlers/slim")
+
     class Buffer < Array
+      alias safe_append= <<
+
+      def append= thingy
+        self << CGI.escape_html(thingy.to_s)
+      end
+
       def join
         r = super
         clear
@@ -157,53 +168,18 @@ module Nyara
 
       # Block is lazy invoked when it's ok to read the template source.
       def precompile ext
-        src_method =\
-          case ext
-          when 'slim'
-            :slim_src
-          when 'erb', 'rhtml'
-            :erb_src
-          when 'haml'
-            :haml_src
+        case ext
+        when 'slim'
+          Slim.src yield
+        when 'erb', 'rhtml'
+          if Config['prefer_erb']
+            ERB.src yield
+          else
+            Erubis.src yield
           end
-        return unless src_method
-
-        send src_method, yield
-      end
-
-      def erb_src template
-        @erb_compiler ||= begin
-          c            = ERB::Compiler.new '<>' # trim mode
-          c.pre_cmd    = ["_erbout = @_nyara_view.out"]
-          c.put_cmd    = "_erbout.push"   # after newline
-          c.insert_cmd = "_erbout.push"   # before newline
-          c.post_cmd   = ["_erbout.join"]
-          c
+        when 'haml'
+          Haml.src yield
         end
-        src, enc = @erb_compiler.compile template
-        # todo do sth with enc?
-        src
-      end
-
-      def slim_src template
-        # todo pretty by env
-        t = Slim::Template.new(nil, nil, pretty: false){ template }
-        src = t.instance_variable_get :@src
-        if src.start_with?('_buf = []')
-          src.sub! '_buf = []', '_buf = @_nyara_view.out'
-        end
-        src
-      end
-
-      def haml_src template
-        e = Haml::Engine.new template
-        # todo trim mode
-        <<-RUBY
-_hamlout = Haml::Buffer.new(nil, encoding: 'utf-8')
-_hamlout.buffer = @_nyara_view.out
-#{e.precompiled}
-_hamlout.buffer.join
-RUBY
       end
 
       def path2meth path

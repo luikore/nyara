@@ -8,6 +8,7 @@ gem 'simplecov'
 gem 'slim'
 gem 'haml'
 gem 'liquid'
+gem 'erubis'
 gem 'pry'
 
 # for performance comparison
