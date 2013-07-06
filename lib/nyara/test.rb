@@ -39,14 +39,17 @@ module Nyara
         response_data = client.read_nonblock response_size_limit
         self.response = Response.new response_data
 
-        # merge session
-        session.clear
-        session.merge! request.session
+        # no env when route not found
+        if request.session
+          # merge session
+          session.clear
+          session.merge! request.session
 
-        # merge Set-Cookie
-        response.set_cookies.each do |cookie_seg|
-          # todo distinguish delete, value and set
-          Ext.parse_url_encoded_seg cookie, cookie_seg, false
+          # merge Set-Cookie
+          response.set_cookies.each do |cookie_seg|
+            # todo distinguish delete, value and set
+            Ext.parse_url_encoded_seg cookie, cookie_seg, false
+          end
         end
 
         server.close

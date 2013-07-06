@@ -11,6 +11,10 @@ class TestController < Nyara::Controller
   post '/create' do
     redirect_to '#index'
   end
+
+  put '/%z' do |name|
+    send_file Nyara.config.views_path name
+  end
 end
 
 class MyTest
@@ -18,7 +22,7 @@ class MyTest
 end
 
 module Nyara
-  describe Nyara::Test do
+  describe Nyara::Test, 'integration' do
     before :all do
       configure do
         reset
@@ -53,6 +57,12 @@ module Nyara
       @test.get "/"
       assert_equal '4', @test.session['b']
       assert_equal '3', @test.session['a']
+    end
+
+    it "send file" do
+      @test.put "/layout.erb"
+      data = File.read Nyara.config.views_path('layout.erb')
+      assert_equal data, @test.response.body
     end
   end
 end

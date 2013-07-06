@@ -6,11 +6,7 @@ module Nyara
     end
 
     before :all do
-      Config.reset
-      Config.set :root, __dir__
-      Config.init
       Session.init
-      View.init
     end
 
     before :each do
@@ -90,17 +86,6 @@ module Nyara
         @c.clear_cookie
         cookie_lines = receive_header.lines
         assert_equal 2, cookie_lines.grep(/Set-Cookie: (key1|key2);/).size, cookie_lines.inspect
-      end
-
-      it "send_file" do
-        file = Nyara.config.views_path 'layout.erb'
-        Fiber.new{ @c.send_file file }.resume
-        @server.close_write
-        head, body = @client.read.split("\r\n\r\n", 2)
-
-        data = File.read(file)
-        assert_equal data.bytesize, head.lines.grep(/Content-Length/).first[/\d+/].to_i
-        assert_equal data, body
       end
     end
   end
