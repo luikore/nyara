@@ -24,12 +24,13 @@ module Nyara
     extend self
 
     CIPHER_BLOCK_SIZE = 256/8
+    CIPHER_RAND_MAX = 36**CIPHER_BLOCK_SIZE
     JSON_DECODE_OPTS = {create_additions: false, object_class: ParamHash}
 
     # init from config
     def init
       c = Config['session'] ? Config['session'].dup : {}
-      @name = (c.delete('name') || 'spare_me_plz').to_s
+      @name = Ext.escape (c.delete('name') || 'spare_me_plz').to_s, false
 
       if c['key']
         @dsa = OpenSSL::PKey::DSA.new c.delete 'key'
@@ -60,12 +61,9 @@ module Nyara
     # encode to value
     def encode h
       str = h.to_json
+      str = @cipher_key ? cipher(str) : encode64(str)
       sig = @dsa.syssign @dss.digest str
-      if @cipher_key
-        str = "#{encode64 sig}/#{cipher str}"
-      else
-        str = "#{encode64 sig}/#{encode64 str}"
-      end
+      "#{encode64 sig}/#{str}"
     end
 
     # encode as header line
@@ -84,8 +82,8 @@ module Nyara
 
       begin
         sig = decode64 sig
-        str = @cipher_key ? decipher(str) : decode64(str)
         if @dsa.sysverify(@dss.digest(str), sig)
+          str = @cipher_key ? decipher(str) : decode64(str)
           h = JSON.parse str, JSON_DECODE_OPTS
         end
       ensure
@@ -114,7 +112,7 @@ module Nyara
     end
 
     def cipher str
-      iv = rand(36**CIPHER_BLOCK_SIZE).to_s(36).ljust CIPHER_BLOCK_SIZE
+      iv = rand(CIPHER_RAND_MAX).to_s(36).ljust CIPHER_BLOCK_SIZE
       c = new_cipher true, iv
       encode64(iv.dup << c.update(str) << c.final)
     end
