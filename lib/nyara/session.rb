@@ -61,8 +61,11 @@ module Nyara
     def encode h
       str = h.to_json
       sig = @dsa.syssign @dss.digest str
-      str = "#{encode64 sig}/#{encode64 str}"
-      @cipher_key ? cipher(str) : str
+      if @cipher_key
+        str = "#{encode64 sig}/#{cipher str}"
+      else
+        str = "#{encode64 sig}/#{encode64 str}"
+      end
     end
 
     # encode as header line
@@ -76,13 +79,12 @@ module Nyara
       str = cookie[@name].to_s
       return empty_hash if str.empty?
 
-      str = decipher(str) if @cipher_key
       sig, str = str.split '/', 2
       return empty_hash unless str
 
       begin
         sig = decode64 sig
-        str = decode64 str
+        str = @cipher_key ? decipher(str) : decode64(str)
         if @dsa.sysverify(@dss.digest(str), sig)
           h = JSON.parse str, JSON_DECODE_OPTS
         end
