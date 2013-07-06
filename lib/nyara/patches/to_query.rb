@@ -1,5 +1,4 @@
 # copied from activesupport
-require "cgi"
 
 =begin
 Copyright (c) 2005-2013 David Heinemeier Hansson
@@ -93,7 +92,7 @@ class Object
   #
   # Note: This method is defined as a default implementation for all Objects for Hash#to_query to work.
   def to_query(key)
-    "#{CGI.escape(key.to_param)}=#{CGI.escape(to_param.to_s)}"
+    "#{Nyara::Ext.escape key.to_param, false}=#{Nyara::Ext.escape to_param.to_s, false}"
   end
 end
 
