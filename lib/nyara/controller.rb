@@ -458,6 +458,9 @@ module Nyara
     #   # with template source, set content type to +text/html+ if not given
     #   render erb: "<%= 1 + 1 %>"
     #
+    #   # layout can be string or array
+    #   render 'index', ['inner_layout', 'outer_layout']
+    #
     # For steam rendering, see #stream
     def render view_path=nil, layout: self.class.default_layout, locals: nil, **opts
       view = View.new self, view_path, layout, locals, opts

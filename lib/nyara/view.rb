@@ -17,8 +17,6 @@ module Nyara
   #
   # Friend layout and friend page shares one buffer, but enemy layout just concats +buffer.join+ before we flush friend layout.
   # So the simple solution is: templates other than stream-friendly ones are not allowed to be a layout.
-  #
-  # Note on Erubis: to support streaming, Erubis is disabled even loaded.
   class View
     # ext (without dot) => most preferrable content type (e.g. "text/html")
     ENGINE_DEFAULT_CONTENT_TYPES = ParamHash.new
