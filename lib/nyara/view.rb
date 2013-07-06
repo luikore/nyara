@@ -96,7 +96,7 @@ module Nyara
           sig = @meth2sig[meth].map{|k| "#{k}: nil" }.join ','
           sig = '_={}' if sig.empty?
           sig = "(#{sig})" # 2.0.0-p0 requirement
-          Renderable.class_eval <<-RUBY, path, 1
+          Renderable.class_eval <<-RUBY, path, 0
             def render#{sig}
               #{src}
             end
