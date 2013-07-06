@@ -21,7 +21,7 @@ module Nyara
   #   end
   #
   class Session < ParamHash
-    attr_reader :init_digest
+    attr_reader :init_digest, :init_data
 
     # if the session is init with nothing, and flash is clear
     def vanila?
@@ -64,7 +64,6 @@ module Nyara
 
     # encode into a cookie hash, for test environment
     def encode_to_cookie h, cookie
-      h.instance_variable_set :@init_digest, true # always encode an item
       cookie[@name] = encode h
     end
 
@@ -75,7 +74,7 @@ module Nyara
       str = h.to_json
       str = @cipher_key ? cipher(str) : encode64(str)
       digest = @dss.digest str
-      return if digest == h.init_digest
+      return h.init_data if digest == h.init_digest
 
       sig = @dsa.syssign digest
       "#{encode64 sig}/#{str}"
@@ -83,20 +82,17 @@ module Nyara
 
     # encode as header line
     def encode_set_cookie h, secure
-      data = encode h
-      return unless data
-
       secure = @secure unless @secure.nil?
       expire = (Time.now + @expire).gmtime.rfc2822 if @expire
-      "Set-Cookie: #{@name}=#{data}; Path=/; HttpOnly#{'; Secure' if secure}#{"; Expires=#{expire}" if expire}\r\n"
+      "Set-Cookie: #{@name}=#{encode h}; Path=/; HttpOnly#{'; Secure' if secure}#{"; Expires=#{expire}" if expire}\r\n"
     end
 
     # decode the session hash from cookie
     def decode cookie
-      str = cookie[@name].to_s
-      return empty_hash if str.empty?
+      data = cookie[@name].to_s
+      return empty_hash if data.empty?
 
-      sig, str = str.split '/', 2
+      sig, str = data.split '/', 2
       return empty_hash unless str
 
       h = nil
@@ -114,6 +110,7 @@ module Nyara
 
       if h.is_a?(Session)
         h.instance_variable_set :@init_digest, digest
+        h.instance_variable_set :@init_data, data
         h
       else
         empty_hash
