@@ -1,6 +1,7 @@
 /* url-encoded parsing */
 
 #include "nyara.h"
+#include <ctype.h>
 
 static char _half_octet(char c) {
   // there's a faster way but not validating the range:
@@ -350,9 +351,51 @@ VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str) {
   return output;
 }
 
+static bool _should_escape(char c) {
+  return !isalnum(c) && c != '_' && c != '.' && c != '-';
+}
+
+// prereq: n always < 16
+static char _hex_char(unsigned char n) {
+  if (n < 10) {
+    return '0' + n;
+  } else {
+    return 'A' + (n - 10);
+  }
+}
+
+static void _concat_char(VALUE s, char c, bool ispath) {
+  static char buf[3] = {'%', 0, 0};
+  static char plus[1] = {'+'};
+
+  if (c == ' ') {
+    rb_str_cat(s, plus, 1);
+  } else if (ispath ? (_should_escape(c) && c != '+' && c != '/') : _should_escape(c)) {
+    buf[1] = _hex_char((unsigned char)c / 16);
+    buf[2] = _hex_char((unsigned char)c % 16);
+    rb_str_cat(s, buf, 3);
+  } else {
+    rb_str_cat(s, &c, 1);
+  }
+}
+
+// escape for uri path ('/', '+' are not changed) or component ('/', '+' are changed)
+static VALUE ext_escape(VALUE _, VALUE s, VALUE v_ispath) {
+  long len = RSTRING_LEN(s);
+  const char* ptr = RSTRING_PTR(s);
+  volatile VALUE res = rb_str_buf_new(len);
+  bool ispath = RTEST(v_ispath);
+  for (long i = 0; i < len; i++) {
+    _concat_char(res, ptr[i], ispath);
+  }
+  rb_enc_associate(res, u8_encoding);
+  return res;
+}
+
 void Init_url_encoded(VALUE ext) {
   rb_define_singleton_method(ext, "parse_param", ext_parse_param, 2);
   rb_define_singleton_method(ext, "parse_cookie", ext_parse_cookie, 2);
+  rb_define_singleton_method(ext, "escape", ext_escape, 2);
   // for test
   rb_define_singleton_method(ext, "parse_url_encoded_seg", ext_parse_url_encoded_seg, 3);
   rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);

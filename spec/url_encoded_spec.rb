@@ -1,9 +1,21 @@
 require_relative "spec_helper"
 
 module Nyara
-  describe "url_encoded.c" do
+  describe Ext, "url_encoded.c" do
+    context "Ext.escape" do
+      it "escapes path" do
+        s = "/a/path.js"
+        assert_equal s, Ext.escape(s, true)
+      end
+
+      it "escapes uri component" do
+        s = "/a/path.js"
+        assert_equal CGI.escape(s), Ext.escape(s, false)
+      end
+    end
+
     # note: this method is only used in C code
-    context "#parse_url_encoded_seg" do
+    context "Ext.parse_url_encoded_seg" do
       [false, true].each do |nested|
         context (nested ? 'nested mode' : 'flat mode') do
           it "normal parse" do
@@ -58,7 +70,7 @@ module Nyara
       end
     end
 
-    context "#parse_path" do
+    context "Ext.parse_path" do
       before :each do
         @output = ''
       end
@@ -128,7 +140,7 @@ module Nyara
       end
     end
 
-    context ".parse_cookie" do
+    context "Ext.parse_cookie" do
       it "parses complex cookie" do
         history = CGI.escape '历史'
         cookie = "pgv_pvi; pgv_si= ; pgv_pvi=som; sid=1d6c75f0 ; PLHistory=<#{history}>;"
@@ -146,7 +158,7 @@ module Nyara
       end
     end
 
-    context ".parse_param" do
+    context "Ext.parse_param" do
       it "parses param with non-utf-8 chars" do
         bad_s = CGI.escape "\xE2"
         h = Ext.parse_param ParamHash.new, bad_s

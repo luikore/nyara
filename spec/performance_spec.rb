@@ -19,7 +19,7 @@ describe 'performance' do
 
   it "[parse_accept_value] faster than sinatra" do
     res = bm 'parse_accept_value'
-    assert res[:nyara] * 1.7 < res[:sinatra], res.inspect
+    assert res[:nyara] * 1.5 < res[:sinatra], res.inspect
   end
 
   it "[parse_param] faster than parse in pure ruby" do
@@ -30,6 +30,11 @@ describe 'performance' do
   it "[layout_render] faster than using tilt" do
     res = bm 'layout_render'
     assert res[:nyara] * 1.1 < res[:tilt], res.inspect
+  end
+
+  it "[escape] faster than CGI.escape" do
+    res = bm 'escape'
+    assert res[:nyara] * 8 < res[:cgi], res.inspect
   end
 end
 
