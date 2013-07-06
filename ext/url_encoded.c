@@ -368,14 +368,24 @@ static void _concat_char(VALUE s, char c, bool ispath) {
   static char buf[3] = {'%', 0, 0};
   static char plus[1] = {'+'};
 
-  if (c == ' ') {
-    rb_str_cat(s, plus, 1);
-  } else if (ispath ? (_should_escape(c) && c != '+' && c != '/') : _should_escape(c)) {
-    buf[1] = _hex_char((unsigned char)c / 16);
-    buf[2] = _hex_char((unsigned char)c % 16);
-    rb_str_cat(s, buf, 3);
+  if (ispath) {
+    if (_should_escape(c) && c != '+' && c != '/') {
+      buf[1] = _hex_char((unsigned char)c / 16);
+      buf[2] = _hex_char((unsigned char)c % 16);
+      rb_str_cat(s, buf, 3);
+    } else {
+      rb_str_cat(s, &c, 1);
+    }
   } else {
-    rb_str_cat(s, &c, 1);
+    if (c == ' ') {
+      rb_str_cat(s, plus, 1);
+    } else if (_should_escape(c)) {
+      buf[1] = _hex_char((unsigned char)c / 16);
+      buf[2] = _hex_char((unsigned char)c % 16);
+      rb_str_cat(s, buf, 3);
+    } else {
+      rb_str_cat(s, &c, 1);
+    }
   }
 }
 

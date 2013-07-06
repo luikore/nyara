@@ -12,8 +12,12 @@ class TestController < Nyara::Controller
     redirect_to '#index'
   end
 
-  put '/%z' do |name|
+  put '/send_file/%z' do |name|
     send_file Nyara.config.views_path name
+  end
+
+  delete '/render' do
+    render 'edit.slim'
   end
 end
 
@@ -26,7 +30,7 @@ module Nyara
     before :all do
       configure do
         reset
-        set :env, 'test'
+        # set :env, 'test'
         map '/', TestController
         set :root, __dir__
       end
@@ -61,9 +65,38 @@ module Nyara
     end
 
     it "send file" do
-      @test.put "/layout.erb"
+      @test.put "/send_file/layout.erb"
       data = File.read Nyara.config.views_path('layout.erb')
       assert_equal data, @test.response.body
+    end
+
+    it "render" do
+      @test.delete "/render"
+      assert_include @test.response.body, "slim:edit"
+    end
+
+    context "public static content" do
+      it "found file" do
+        @test.get "/index.html"
+        assert_equal 200, @test.response.status
+        assert_equal "index.html", @test.response.body
+      end
+
+      it "found empty file" do
+        @test.get "/empty file.html"
+        assert_equal 200, @test.response.status
+        assert_empty @test.response.body
+      end
+
+      it "missing file" do
+        @test.get "/missing.html"
+        assert_equal 404, @test.response.status
+      end
+
+      it "found but directory" do
+        @test.get "/empty"
+        assert_equal 404, @test.response.status
+      end
     end
   end
 end

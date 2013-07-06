@@ -402,7 +402,7 @@ module Nyara
       unless header['Content-Type']
         unless content_type
           extname = File.extname(file)
-          extname = File.extname(filename) if extname.blank? and file
+          extname = File.extname(filename) if extname.blank? and filename
           content_type = MIME_TYPES[extname] || 'application/octet-stream'
         end
         header['Content-Type'] = content_type
@@ -416,7 +416,7 @@ module Nyara
       end
 
       filename ||= File.basename file
-      header['Content-Disposition'] = "#{disposition}; filename=#{CGI.escape filename}"
+      header['Content-Disposition'] = "#{disposition}; filename=#{Ext.escape filename, true}"
 
       header['Transfer-Encoding'] = '' # delete it
 

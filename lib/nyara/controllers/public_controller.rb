@@ -3,7 +3,7 @@ module Nyara
   class PublicController < Controller
     get '/%z' do |path|
       path = Config.public_path path
-      if path and File.exist?(path)
+      if path and File.file?(path)
         send_file path
       else
         status 404

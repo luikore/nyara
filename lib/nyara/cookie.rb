@@ -6,7 +6,7 @@ module Nyara
     # encode to string value
     def encode h
       h.map do |k, v|
-        "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"
+        "#{Ext.escape k.to_s, false}=#{Ext.escape v.to_s, false}"
       end.join '; '
     end
 
@@ -22,9 +22,9 @@ module Nyara
     def add_set_cookie header_lines, k, v, expires: nil, max_age: nil, domain: nil, path: nil, secure: nil, httponly: true
       r = "Set-Cookie: "
       if v.nil? or v == true
-        r << "#{CGI.escape k.to_s}; "
+        r << "#{Ext.escape k.to_s, false}; "
       else
-        r << "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}; "
+        r << "#{Ext.escape k.to_s, false}=#{Ext.escape v.to_s, false}; "
       end
       r << "Expires=#{expires.to_time.gmtime.rfc2822}; " if expires
       r << "Max-Age=#{max_age.to_i}; " if max_age
