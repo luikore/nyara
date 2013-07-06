@@ -72,9 +72,9 @@ module Nyara
     end
 
     # encode to value<br>
-    # return nil if not changed
+    # return h.init_data if not changed
     def encode h
-      return if h.vanila?
+      return h.init_data if h.vanila?
       str = h.to_json
       str = @cipher_key ? cipher(str) : encode64(str)
       digest = @dss.digest str
@@ -88,6 +88,7 @@ module Nyara
     def encode_set_cookie h, secure
       secure = @secure unless @secure.nil?
       expire = (Time.now + @expire).gmtime.rfc2822 if @expire
+      # NOTE +encode h+ may return empty value, but it's still fine
       "Set-Cookie: #{@name}=#{encode h}; Path=/; HttpOnly#{'; Secure' if secure}#{"; Expires=#{expire}" if expire}\r\n"
     end
 
