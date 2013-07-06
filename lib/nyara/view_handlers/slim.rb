@@ -4,7 +4,6 @@ module Nyara
   class View
     class Slim
       def self.src template
-        # todo line mapping
         t = ::Slim::Template.new(nil, nil, pretty: false){ template }
         src = t.instance_variable_get :@src
         if src.start_with?('_buf = []')

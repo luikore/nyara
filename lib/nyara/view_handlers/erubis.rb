@@ -13,6 +13,7 @@ module Nyara
         src << "_erbout = @_nyara_view.out;"
       end
 
+      # ensure 1:1 mapping of "\n" between template and output
       def add_text(src, text)
         return if text.empty?
 
