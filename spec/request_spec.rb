@@ -38,6 +38,26 @@ module Nyara
       assert_equal 3000, @request.port
     end
 
+    it "#host_with_port ignores port on 80" do
+      @request.header['Host'] = '127.0.0.1'
+      assert_equal '127.0.0.1', @request.host_with_port
+    end
+
+    it "#accept_language" do
+      @request.header['accept-language'] = "en-US,en;q=0.8"
+      assert_equal ['en-US', 'en'], @request.accept_language
+    end
+
+    it "#accept_encoding with blank header" do
+      @request.header.delete 'Accept-Encoding'
+      assert_equal [], @request.accept_encoding
+    end
+
+    it "#accept_charset" do
+      @request.header['ACCEPT-CHARSET'] = "iso-8859-1;q=0.2, utf-8"
+      assert_equal %w[utf-8 iso-8859-1], @request.accept_charset
+    end
+
     def request_set_attrs
       Ext.request_set_attrs @request, @request_attrs
     end
