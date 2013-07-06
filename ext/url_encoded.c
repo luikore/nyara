@@ -391,6 +391,7 @@ static void _concat_char(VALUE s, char c, bool ispath) {
 
 // escape for uri path ('/', '+' are not changed) or component ('/', '+' are changed)
 static VALUE ext_escape(VALUE _, VALUE s, VALUE v_ispath) {
+  Check_Type(s, T_STRING);
   long len = RSTRING_LEN(s);
   const char* ptr = RSTRING_PTR(s);
   volatile VALUE res = rb_str_buf_new(len);
