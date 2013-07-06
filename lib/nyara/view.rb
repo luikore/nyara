@@ -50,6 +50,11 @@ module Nyara
         @root = Config['views']
         @meth2ext = {} # meth => ext (without dot)
         @meth2sig = {}
+        @ext_list = Tilt.mappings.keys.delete_if(&:empty?).join ','
+        if @ext_list !~ /\bslim\b/
+          @ext_list = "slim,#{@ext_list}"
+        end
+        @ext_list = "{#{@ext_list}}"
       end
       attr_reader :root
 
@@ -144,7 +149,6 @@ module Nyara
       # returns +[meth, ext_without_dot]+
       def template path, locals={}
         if File.extname(path).empty?
-          @ext_list ||= Tilt.mappings.keys.delete_if(&:empty?).join ','
           Dir.chdir @root do
             paths = Dir.glob("#{path}.{#@ext_list}")
             if paths.size > 1
