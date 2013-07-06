@@ -56,11 +56,7 @@ static int on_headers_complete(http_parser* parser) {
 
 static int on_body(http_parser* parser, const char* s, size_t len) {
   Response* p = (Response*)parser;
-  if (p->body == Qnil) {
-    p->body = rb_enc_str_new(s, len, u8_encoding);
-  } else {
-    rb_str_cat(p->body, s, len);
-  }
+  rb_str_cat(p->body, s, len);
   return 0;
 }
 
@@ -111,6 +107,7 @@ static VALUE response_initialize(VALUE self, VALUE data) {
   Data_Get_Struct(self, Response, p);
   p->header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
   p->set_cookies = rb_ary_new();
+  p->body = rb_enc_str_new("", 0, u8_encoding);
   http_parser_execute(&(p->hparser), &response_parse_settings, RSTRING_PTR(data), RSTRING_LEN(data));
   return self;
 }
