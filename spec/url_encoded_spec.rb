@@ -1,7 +1,7 @@
 require_relative "spec_helper"
 
 module Nyara
-  describe Ext, "parse" do
+  describe "url_encoded.c" do
     # note: this method is only used in C code
     context "#parse_url_encoded_seg" do
       [false, true].each do |nested|
