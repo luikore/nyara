@@ -426,6 +426,7 @@ module Nyara
       else
         # todo nonblock read file?
         data = File.binread file
+        header['Content-Length'] = data.bytesize
         send_header unless request.response_header.frozen?
         send_data data
       end
