@@ -12,7 +12,7 @@ class FooController < Nyara::Controller
   end
 
   class BazController < Nyara::Controller
-    set_name 'baz'
+    set_controller_name 'baz'
 
     meta '#index'
     get '/%d' do |id|

@@ -93,13 +93,13 @@ module Nyara
       # +++
 
       # Set default layout
-      def layout l
+      def set_default_layout l
         @default_layout = l
       end
       attr_reader :default_layout
 
       # Set controller name, so you can use a shorter name to reference the controller in path helper
-      def set_name n
+      def set_controller_name n
         @controller_name = n
       end
       attr_reader :controller_name
