@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = "nyara"
-  s.version = "0.0.1.pre.7"
+  s.version = "0.0.1.pre.8"
   s.author = "Zete Lui"
   s.email = "nobody@example.com"
   s.homepage = "https://github.com/luikore/nyara"
@@ -11,8 +11,10 @@ Gem::Specification.new do |s|
   s.licenses = ['BSD 3-Clause']
 
   s.files = Dir.glob('{rakefile,nyara.gemspec,readme.md,**/*.{rb,h,c,cc,inc}}')
+  s.files += Dir.glob('spec/**/*')
   s.files += Dir.glob('ext/http-parser/{AUTHORS,CONTRIBUTIONS,LICENSE-MIT}')
   s.files += Dir.glob('ext/multipart-parser-c/README.md')
+  s.files.uniq!
   s.require_paths = ["lib"]
   s.extensions = ["ext/extconf.rb"]
   s.rubygems_version = '2.0.3'
