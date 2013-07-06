@@ -10,8 +10,11 @@ module Nyara
   #              - +true+: always add +Secure+
   #              - +false+: always no +Secure+
   # [key]        DSA private key string, in der or pem format, use random if not given
-  # [cipher_key] if exist, use aes-256-cbc to cipher the "sig/json"<br>
-  #              NOTE: it's no need to set +cipher_key+ if using https
+  # [cipher_key] if exist, use aes-256-cbc to cipher the json instead of just base64 it<br>
+  #              it's useful if you need to hide something but can't stop yourself from putting it into session,<br>
+  #              and one of the following condition matches:
+  #              - not using http, and need to hide the info from middlemen
+  #              - you've put something in session current_user should not see
   #
   # = example
   #
@@ -20,6 +23,7 @@ module Nyara
   #     set 'session', 'expire', 30 * 60
   #   end
   #
+  # Please be careful with session key and cipher key, they should be separated from source code, and never shown to public.
   class Session < ParamHash
     attr_reader :init_digest, :init_data
 
