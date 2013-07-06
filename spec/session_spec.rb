@@ -4,7 +4,8 @@ module Nyara
   describe Session do
     context ".encode_set_cookie options" do
       before :all do
-        @session = {'hello' => 'world'}
+        @session = Session.new
+        @session['hello'] = 'world'
       end
 
       it "is HttpOnly" do
@@ -65,7 +66,8 @@ module Nyara
 
       it "should encode and decode" do
         cookie = {}
-        session = {'hello' => 'world'}
+        session = Session.new
+        session['hello'] = 'world'
         Session.encode_to_cookie session, cookie
 
         session_data = cookie[Session.name].split('/')[1]
@@ -77,7 +79,8 @@ module Nyara
 
       it "drops bad signature" do
         cookie = {}
-        session = {'hello' => 'world'}
+        session = Session.new
+        session['hello'] = 'world'
         Session.encode_to_cookie session, cookie
 
         cookie[Session.name].sub!(/\w/, &:swapcase)
@@ -98,7 +101,8 @@ module Nyara
 
       it "encode and decode" do
         cookie = {}
-        session = {'hello' => 'world'}
+        session = Session.new
+        session['hello'] = 'world'
         Session.encode_to_cookie session, cookie
 
         session_data = cookie[Session.name].split('/')[1]

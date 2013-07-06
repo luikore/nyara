@@ -1,5 +1,5 @@
 module Nyara
-  # helper module for session management, cookie based<br>
+  # cookie based session<br>
   # (usually it's no need to call cache or database data a "session")<br><br>
   # session is by default DSA + SHA2/SHA1 signed, sub config options are:
   #
@@ -20,12 +20,21 @@ module Nyara
   #     set 'session', 'expire', 30 * 60
   #   end
   #
-  module Session
-    extend self
+  class Session < ParamHash
+    attr_reader :init_digest
 
+    # if the session is init with nothing, and flash is clear
+    def vanila?
+      if @init_digest.nil?
+        empty? or size == 1 && has_key?('flash.next') && self['flash.next'].empty?
+      end
+    end
+  end
+
+  class << Session
     CIPHER_BLOCK_SIZE = 256/8
     CIPHER_RAND_MAX = 36**CIPHER_BLOCK_SIZE
-    JSON_DECODE_OPTS = {create_additions: false, object_class: ParamHash}
+    JSON_DECODE_OPTS = {create_additions: false, object_class: Session}
 
     # init from config
     def init
@@ -55,24 +64,34 @@ module Nyara
 
     # encode into a cookie hash, for test environment
     def encode_to_cookie h, cookie
+      h.instance_variable_set :@init_digest, true # always encode an item
       cookie[@name] = encode h
     end
 
-    # encode to value
+    # encode to value<br>
+    # return nil if not changed
     def encode h
+      return if h.vanila?
       str = h.to_json
       str = @cipher_key ? cipher(str) : encode64(str)
-      sig = @dsa.syssign @dss.digest str
+      digest = @dss.digest str
+      return if digest == h.init_digest
+
+      sig = @dsa.syssign digest
       "#{encode64 sig}/#{str}"
     end
 
     # encode as header line
     def encode_set_cookie h, secure
+      data = encode h
+      return unless data
+
       secure = @secure unless @secure.nil?
       expire = (Time.now + @expire).gmtime.rfc2822 if @expire
-      "Set-Cookie: #{@name}=#{encode h}; HttpOnly#{'; Secure' if secure}#{"; Expires=#{expire}" if expire}\r\n"
+      "Set-Cookie: #{@name}=#{data}; Path=/; HttpOnly#{'; Secure' if secure}#{"; Expires=#{expire}" if expire}\r\n"
     end
 
+    # decode the session hash from cookie
     def decode cookie
       str = cookie[@name].to_s
       return empty_hash if str.empty?
@@ -80,9 +99,12 @@ module Nyara
       sig, str = str.split '/', 2
       return empty_hash unless str
 
+      h = nil
+      digest = nil
       begin
         sig = decode64 sig
-        if @dsa.sysverify(@dss.digest(str), sig)
+        digest = @dss.digest str
+        if @dsa.sysverify(digest, sig)
           str = @cipher_key ? decipher(str) : decode64(str)
           h = JSON.parse str, JSON_DECODE_OPTS
         end
@@ -90,7 +112,8 @@ module Nyara
         return empty_hash unless h
       end
 
-      if h.is_a?(ParamHash)
+      if h.is_a?(Session)
+        h.instance_variable_set :@init_digest, digest
         h
       else
         empty_hash
@@ -135,7 +158,7 @@ module Nyara
 
     def empty_hash
       # todo invoke hook?
-      ParamHash.new
+      Session.new
     end
 
     def new_cipher encrypt, iv

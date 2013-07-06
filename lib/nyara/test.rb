@@ -26,7 +26,7 @@ module Nyara
       def initialize response_size_limit=5_000_000
         self.response_size_limit = response_size_limit
         self.cookie = ParamHash.new
-        self.session = ParamHash.new
+        self.session = Session.new
       end
 
       def process_request_data data

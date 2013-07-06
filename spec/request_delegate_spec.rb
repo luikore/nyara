@@ -11,7 +11,7 @@ module Nyara
 
     before :each do
       @request = Ext.request_new
-      session = ParamHash.new
+      session = Session.new
       Ext.request_set_attrs @request, {
         method_num: HTTP_METHODS['GET'],
         path: '/search',
