@@ -1,4 +1,6 @@
 module Nyara
+  # convenient thingy that let you can pass instant message to next request<br>
+  # it is consumed as soon as next request arrives
   class Flash
     def initialize session
       # NOTE no need to convert hash type because Session uses ParamHash for json parsing
