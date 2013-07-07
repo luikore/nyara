@@ -4,15 +4,15 @@ module Nyara
   #
   # Session is by default DSA + SHA2/SHA1 signed, sub config options are:
   #
-  # * `name`    - session entry name in cookie, default is +'spare_me_plz'+
-  # * `expire`  - expire session after seconds. default is +nil+, which means session expires when browser is closed<br>
-  # * `expires` - same as +expire+
+  # * `name`    - session entry name in cookie, default is `'spare_me_plz'`
+  # * `expire`  - expire session after seconds. default is `nil`, which means session expires when browser is closed<br>
+  # * `expires` - same as `expire`
   # * `secure`
-  #   - +nil+(default): if request is https, add +Secure+ option to it
-  #   - +true+: always add +Secure+
-  #   - +false+: always no +Secure+
+  #   - `nil`(default): if request is https, add `Secure` option to it
+  #   - `true`: always add `Secure`
+  #   - `false`: always no `Secure`
   # * `key` - DSA private key string, in der or pem format, use random if not given
-  # * `cipher_key - if exist, use aes-256-cbc to cipher the json instead of just base64 it<br>
+  # * `cipher_key` - if exist, use aes-256-cbc to cipher the json instead of just base64 it<br>
   #   it's useful if you need to hide something but can't stop yourself from putting it into session,<br>
   #   and one of the following condition matches:
   #   - not using http, and need to hide the info from middlemen
