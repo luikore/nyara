@@ -1,6 +1,12 @@
 --markup-provider=redcarpet
 --markup=markdown
 --no-private
-lib/**/*.rb ext/*.c ext/*.cc
+--exclude ext/inc
+--exclude ext/multipart-parser-c
+--exclude ext/http-parser
 -r readme.md
 -o .doc
+-
+readme.md
+copying
+changes
