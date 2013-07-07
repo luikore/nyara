@@ -39,7 +39,7 @@ static VALUE sym_writing;
 static VALUE sym_reading;
 static VALUE sym_sleep;
 static Request* curr_request;
-static VALUE to_resume_actions;
+static VALUE to_resume_requests;
 static bool graceful_quit = false;
 
 static VALUE _fiber_func(VALUE _, VALUE args) {
@@ -161,16 +161,16 @@ static void loop_check() {
   rb_thread_schedule();
 
   // wakeup actions which finished sleeping
-  long len = RARRAY_LEN(to_resume_actions);
+  long len = RARRAY_LEN(to_resume_requests);
   if (len) {
-    VALUE* ptr = RARRAY_PTR(to_resume_actions);
+    VALUE* ptr = RARRAY_PTR(to_resume_requests);
     for (long i = 0; i < len; i++) {
       VALUE request = ptr[i];
       Request* p;
       Data_Get_Struct(request, Request, p);
 
       p->sleeping = false;
-      if (!rb_fiber_alive_p(p->fiber)) {
+      if (!rb_fiber_alive_p(p->fiber) || !p->fd) { // do not wake dead requests
         continue;
       }
 
@@ -255,7 +255,7 @@ static VALUE ext_request_sleep(VALUE _, VALUE request) {
 // NOTE this will be executed in another thread, resuming fiber in a non-main thread will stuck
 static VALUE ext_request_wakeup(VALUE _, VALUE request) {
   // NOTE should not use curr_request
-  rb_ary_push(to_resume_actions, request);
+  rb_ary_push(to_resume_requests, request);
   return Qnil;
 }
 
@@ -377,8 +377,8 @@ void Init_event(VALUE ext) {
   sym_reading = ID2SYM(rb_intern("reading"));
   sym_sleep = ID2SYM(rb_intern("sleep"));
 
-  to_resume_actions = rb_ary_new();
-  rb_gc_register_mark_object(to_resume_actions);
+  to_resume_requests = rb_ary_new();
+  rb_gc_register_mark_object(to_resume_requests);
 
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
