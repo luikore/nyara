@@ -1,4 +1,6 @@
 --markup-provider=redcarpet
 --markup=markdown
+--no-private
+lib/**/*.rb ext/*.c ext/*.cc
 -r readme.md
 -o .doc
