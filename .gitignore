@@ -2,3 +2,5 @@
 *.gem
 Gemfile.lock
 .coverage
+.doc
+.yardoc

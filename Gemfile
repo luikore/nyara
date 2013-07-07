@@ -13,3 +13,8 @@ gem 'pry'
 
 # for performance comparison
 gem 'sinatra', '~>1.4.2'
+
+# for doc
+gem 'yard'
+gem 'redcarpet'
+gem 'github-markup'

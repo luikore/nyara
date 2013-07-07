@@ -1,0 +1,4 @@
+--markup-provider=redcarpet
+--markup=markdown
+-r readme.md
+-o .doc
