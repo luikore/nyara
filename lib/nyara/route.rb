@@ -1,8 +1,12 @@
 module Nyara
-  # provide route preprocessing utils
+  # Provide route preprocessing utils
   module Route; end
   class << Route
-    # note that controller may be not defined yet
+    # #### Param
+    #
+    # * `controller` - string or class which inherits [Nyara::Controller](Controller.html)
+    #
+    # NOTE controller may be not defined when register_controller is called
     def register_controller scope, controller
       unless scope.is_a?(String)
         raise ArgumentError, "route prefix should be a string"

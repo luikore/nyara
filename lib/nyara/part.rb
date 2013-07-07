@@ -1,5 +1,5 @@
 module Nyara
-  # a part in multipart<br>
+  # A **part** in multipart<br>
   # for an easy introduction, http://msdn.microsoft.com/en-us/library/ms526943(v=exchg.10).aspx
   #
   # - todo make it possible to store data into /tmp (this requires memory threshold counting)
@@ -10,28 +10,28 @@ module Nyara
 
     # rfc2616
     #
-    #   token         := 1*<any CHAR except CTLs or separators>
-    #   separators    := "(" | ")" | "<" | ">" | "@"
-    #                  | "," | ";" | ":" | "\" | <">
-    #                  | "/" | "[" | "]" | "?" | "="
-    #                  | "{" | "}" | " " | "\t"
-    #   CTL           := <any US-ASCII control character
+    #     token         := 1*<any CHAR except CTLs or separators>
+    #     separators    := "(" | ")" | "<" | ">" | "@"
+    #                    | "," | ";" | ":" | "\" | <">
+    #                    | "/" | "[" | "]" | "?" | "="
+    #                    | "{" | "}" | " " | "\t"
+    #     CTL           := <any US-ASCII control character
     #                    (octets 0 - 31) and DEL (127)>
     #
     TOKEN = /[^\x00-\x1f\x7f()<>@,;:\\"\/\[\]?=\{\}\ \t]+/ni
 
     # rfc5978
     #
-    #   attr-char   := ALPHA / DIGIT ; rfc5234
-    #               / "!" / "#" / "$" / "&" / "+" / "-" / "."
-    #               / "^" / "_" / "`" / "|" / "~"
+    #     attr-char   := ALPHA / DIGIT ; rfc5234
+    #                 / "!" / "#" / "$" / "&" / "+" / "-" / "."
+    #                 / "^" / "_" / "`" / "|" / "~"
     #
     ATTR_CHAR = /[a-z0-9!#$&+\-\.\^_`|~]/ni
 
     # rfc5978 (NOTE rfc2231 param continuations is not recommended)
     #
-    #   value-chars := pct-encoded / attr-char
-    #   pct-encoded := "%" HEXDIG HEXDIG
+    #     value-chars := pct-encoded / attr-char
+    #     pct-encoded := "%" HEXDIG HEXDIG
     #
     EX_PARAM = /\s*;\s*(filename|name)\s*(?:
       = \s* "((?>\\"|[^"])*)"         # quoted string - 2
@@ -41,14 +41,14 @@ module Nyara
             ((?>%\h\h|#{ATTR_CHAR})+) # value-chars - 5
     )/xni
 
-    # analyse given +head+ and build a param hash representing the part
+    # Analyse given `head` and build a param hash representing the part
     #
-    # [head]      header
-    # [mechanism] 7bit, 8bit, binary, base64, or quoted-printable
-    # [type]      mime type
-    # [data]      decoded data (incomplete before Part#final called)
-    # [filename]  basename of uploaded data
-    # [name]      param name
+    # * `head`      - header
+    # * `mechanism` - 7bit, 8bit, binary, base64, or quoted-printable
+    # * `type`      - mime type
+    # * `data`      - decoded data (incomplete before Part#final called)
+    # * `filename`  - basename of uploaded data
+    # * `name`      - param name
     #
     def initialize head
       self['head'] = head
@@ -85,7 +85,9 @@ module Nyara
       self['name'] ||= head['Content-Id']
     end
 
-    # prereq: +raw+ in binary encoding
+    # #### Params
+    #
+    # - `raw` in binary encoding
     def update raw
       case self['mechanism']
       when 'base64'
@@ -140,11 +142,8 @@ module Nyara
       self
     end
 
-    # ---
-    # private
-    # +++
-
-    def enc_unescape enc, v
+    # @private
+    def enc_unescape enc, v # :nodoc:
       enc = (Encoding.find enc rescue nil)
       v = CGI.unescape v
       v.force_encoding(enc).encode!('utf-8') if enc

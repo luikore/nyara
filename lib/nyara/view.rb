@@ -3,6 +3,7 @@ module Nyara
   end
 
   # A support class which provides:
+  #
   # - layout / locals for rendering
   # - template search
   # - template default content-type mapping
@@ -13,15 +14,15 @@ module Nyara
   # This adds a bit limitations to the layouts.
   # Consider this case (+friend+ fills into View#out, while +enemy+ doesn't):
   #
-  #   friend layout { enemy layout { friend page } }
+  #     friend_layout { enemy_layout { friend_page } }
   #
   # Friend layout and friend page shares one buffer, but enemy layout just concats +buffer.join+ before we flush friend layout.
   # So the simple solution is: templates other than stream-friendly ones are not allowed to be a layout.
   class View
-    # ext (without dot) => most preferrable content type (e.g. "text/html")
+    # Path extension (without dot) => most preferrable content type (e.g. "text/html")
     ENGINE_DEFAULT_CONTENT_TYPES = ParamHash.new
 
-    # ext (without dot) => stream friendly
+    # Path extension (without dot) => stream friendly
     ENGINE_STREAM_FRIENDLY = ParamHash.new
 
     autoload :ERB,    File.join(__dir__, "view_handlers/erb")
@@ -56,7 +57,7 @@ module Nyara
       end
       attr_reader :root
 
-      # NOTE: +path+ needs extension
+      # NOTE: `path` needs extension
       def on_delete path
         meth = path2meth path
         Renderable.class_eval do
@@ -78,8 +79,11 @@ module Nyara
         @meth2ext.clear
       end
 
-      # NOTE: +path+ needs extension<br>
-      # returns dot_ext for further use
+      # NOTE: `path` needs extension<br>
+      #
+      # #### Returns
+      #
+      # dot_ext for further use
       def on_update path
         meth = path2meth path
         return unless @meth2sig[meth] # has not been searched before, see also View.template
@@ -114,7 +118,7 @@ module Nyara
         @meth2ext[meth] = ext
       end
 
-      # define inline render method and add Content-Type mapping
+      # Define inline render method and add Content-Type mapping
       def register_engine ext, default_content_type, stream_friendly=false
         # todo figure out fname and line
         meth = engine2meth ext
@@ -143,8 +147,11 @@ module Nyara
         ENGINE_DEFAULT_CONTENT_TYPES[ext] = default_content_type
       end
 
-      # local keys are for first-time code generation, values not used
-      # returns +[meth, ext_without_dot]+
+      # Local keys are for first-time code generation, values not used
+      #
+      # #### Returns
+      #
+      # `[meth, ext_without_dot]`
       def template path, locals={}
         if File.extname(path).empty?
           Dir.chdir @root do

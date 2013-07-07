@@ -1,8 +1,8 @@
 module Nyara
-  # test helper
+  # Test helper
   module Test
     class Response
-      # whether request is success
+      # Whether request is success
       def success?
         status < 400
       end
@@ -18,10 +18,10 @@ module Nyara
 
     Env = Struct.new :cookie, :session, :request, :controller, :response, :response_size_limit
     class Env
-      # :call-seq:
+      # #### Call-seq
       #
-      #   # change size limit of response data to 100M:
-      #   @_env = Env.new 10**8
+      #     # change size limit of response data to 100M:
+      #     @_env = Env.new 10**8
       #
       def initialize response_size_limit=5_000_000
         self.response_size_limit = response_size_limit
@@ -94,18 +94,18 @@ module Nyara
       @_env ||= Env.new
     end
 
-    # :call-seq:
+    # #### Call-seq
     #
-    #   get '/', headers
+    #     get '/', headers
     #
     def get path, header={}, body_string_or_hash=""
       env.http 'GET', path, header, body_string_or_hash
     end
 
-    # :call-seq:
+    # #### Call-seq
     #
-    #   post '/', {}, page: 3
-    #   post '/', { 'content-type' => 'application/json' }, '{"page":3}'
+    #     post '/', {}, page: 3
+    #     post '/', { 'content-type' => 'application/json' }, '{"page":3}'
     #
     def post path, header={}, body_string_or_hash=""
       env.http 'POST', path, header, body_string_or_hash

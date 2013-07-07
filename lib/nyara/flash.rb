@@ -1,6 +1,6 @@
 module Nyara
-  # convenient thingy that let you can pass instant message to next request<br>
-  # it is consumed as soon as next request arrives
+  # Convenient thingy that let you can pass instant message to next request.<br>
+  # It is consumed as soon as next request arrives.
   class Flash
     def initialize session
       # NOTE no need to convert hash type because Session uses ParamHash for json parsing
@@ -17,6 +17,7 @@ module Nyara
       @next[key] = value
     end
 
+    # Clear both `flash.now` and `flash.next`
     def clear
       @now.clear
       @next.clear

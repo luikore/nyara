@@ -3,7 +3,7 @@ module Nyara
     REQUIRED_ATTRS = [:http_method, :scope, :prefix, :suffix, :controller, :id, :conv]
     attr_reader *REQUIRED_ATTRS
     attr_writer :http_method, :id
-    # stores symbol for C conenience, and returns string for Ruby side goodness
+    # NOTE `id` is stored in symbol for C-side conenience, but returns as string for Ruby-side goodness
     def id
       @id.to_s
     end
@@ -11,7 +11,7 @@ module Nyara
     # optional
     attr_accessor :accept_exts, :accept_mimes
 
-    # tmp
+    # @private
     attr_accessor :path, :blk
 
     def initialize &p
@@ -22,7 +22,7 @@ module Nyara
       File.join @scope, (@path.gsub '%z', '%s')
     end
 
-    # compute prefix, suffix, conv
+    # Compute prefix, suffix, conv<br>
     # NOTE route_entries may be inherited, so late-setting controller is necessary
     def compile controller, scope
       @controller = controller
@@ -36,7 +36,7 @@ module Nyara
       @suffix, @conv = compile_re suffix
     end
 
-    # compute accept_exts, accept_mimes
+    # Compute accept_exts, accept_mimes
     def set_accept_exts a
       @accept_exts = {}
       @accept_mimes = []
@@ -64,9 +64,14 @@ module Nyara
       raise ArgumentError, "id must be symbol" unless @id.is_a?(Symbol)
     end
 
+    # ---
     # private
+    # +++
 
-    # returns [str_re, conv]
+    # #### Returns
+    #
+    #     [str_re, conv]
+    #
     def compile_re suffix
       return ['', []] unless suffix
       conv = []
@@ -98,8 +103,8 @@ module Nyara
       ["^#{re_segs.join}$", conv]
     end
 
-    # split the path into 2 parts: <br>
-    # fixed prefix and variable suffix
+    # Split the path into 2 parts: <br>
+    # a fixed prefix and a variable suffix
     def analyse_path path
       raise 'path must contain no new line' if path.index "\n"
       raise 'path must start with /' unless path.start_with? '/'

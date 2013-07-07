@@ -3,14 +3,14 @@ module Nyara
   module Cookie
     extend self
 
-    # encode to string value
+    # Encode to string value
     def encode h
       h.map do |k, v|
         "#{Ext.escape k.to_s, false}=#{Ext.escape v.to_s, false}"
       end.join '; '
     end
 
-    # for test
+    # For test
     def decode header
       res = ParamHash.new
       if data = header['Cookie']

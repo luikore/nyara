@@ -1,7 +1,7 @@
 # coding: binary
 
 module Nyara
-  # request and handler
+  # Request and handler
   class Request
     # c-ext: http_method, scope, path, query, path_with_query format, accept, header
     #        cookie, session, flash

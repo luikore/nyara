@@ -1,4 +1,5 @@
 module Nyara
+  # @private
   MIME_TYPES = Hash.[] %w|
     123       application/vnd.lotus-1-2-3
     3dml      text/vnd.in3d.3dml

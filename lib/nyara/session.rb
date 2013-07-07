@@ -1,22 +1,24 @@
 module Nyara
-  # cookie based session<br>
+  # Cookie based session<br>
   # (usually it's no need to call cache or database data a "session")<br><br>
-  # session is by default DSA + SHA2/SHA1 signed, sub config options are:
   #
-  # [name]       session entry name in cookie, default is +'spare_me_plz'+
-  # [expire]     expire session after seconds. default is +nil+, which means session expires when browser is closed<br>
-  # [expires]    same as +expire+
-  # [secure]     - +nil+(default): if request is https, add +Secure+ option to it
-  #              - +true+: always add +Secure+
-  #              - +false+: always no +Secure+
-  # [key]        DSA private key string, in der or pem format, use random if not given
-  # [cipher_key] if exist, use aes-256-cbc to cipher the json instead of just base64 it<br>
-  #              it's useful if you need to hide something but can't stop yourself from putting it into session,<br>
-  #              and one of the following condition matches:
-  #              - not using http, and need to hide the info from middlemen
-  #              - you've put something in session current_user should not see
+  # Session is by default DSA + SHA2/SHA1 signed, sub config options are:
   #
-  # = example
+  # * `name`    - session entry name in cookie, default is +'spare_me_plz'+
+  # * `expire`  - expire session after seconds. default is +nil+, which means session expires when browser is closed<br>
+  # * `expires` - same as +expire+
+  # * `secure`
+  #   - +nil+(default): if request is https, add +Secure+ option to it
+  #   - +true+: always add +Secure+
+  #   - +false+: always no +Secure+
+  # * `key` - DSA private key string, in der or pem format, use random if not given
+  # * `cipher_key - if exist, use aes-256-cbc to cipher the json instead of just base64 it<br>
+  #   it's useful if you need to hide something but can't stop yourself from putting it into session,<br>
+  #   and one of the following condition matches:
+  #   - not using http, and need to hide the info from middlemen
+  #   - you've put something in session current_user should not see
+  #
+  # #### Example
   #
   #   configure do
   #     set 'session', 'key', File.read(project_path 'config/session.key')
@@ -27,7 +29,9 @@ module Nyara
   class Session < ParamHash
     attr_reader :init_digest, :init_data
 
-    # if the session is init with nothing, and flash is clear
+    # #### Returns
+    #
+    # If the session is init with nothing, and flash is clear
     def vanila?
       if @init_digest.nil?
         empty? or size == 1 && has_key?('flash.next') && self['flash.next'].empty?
@@ -40,7 +44,7 @@ module Nyara
     CIPHER_RAND_MAX = 36**CIPHER_BLOCK_SIZE
     JSON_DECODE_OPTS = {create_additions: false, object_class: Session}
 
-    # init from config
+    # Read [Nyara::Config](Config.html) and init session settings
     def init
       c = Config['session'] ? Config['session'].dup : {}
       @name = Ext.escape (c.delete('name') || 'spare_me_plz').to_s, false
@@ -66,13 +70,16 @@ module Nyara
 
     attr_reader :name
 
-    # encode into a cookie hash, for test environment
+    # Encode into a cookie hash, for test environment
     def encode_to_cookie h, cookie
       cookie[@name] = encode h
     end
 
-    # encode to value<br>
-    # return h.init_data if not changed
+    # Encode to value
+    #
+    # #### Returns
+    #
+    # `h.init_data` if not changed
     def encode h
       return h.init_data if h.vanila?
       str = h.to_json
@@ -84,7 +91,7 @@ module Nyara
       "#{encode64 sig}/#{str}"
     end
 
-    # encode as header line
+    # Encode as header line
     def encode_set_cookie h, secure
       secure = @secure unless @secure.nil?
       expire = (Time.now + @expire).gmtime.rfc2822 if @expire
@@ -92,7 +99,7 @@ module Nyara
       "Set-Cookie: #{@name}=#{encode h}; Path=/; HttpOnly#{'; Secure' if secure}#{"; Expires=#{expire}" if expire}\r\n"
     end
 
-    # decode the session hash from cookie
+    # Decode the session hash from cookie
     def decode cookie
       data = cookie[@name].to_s
       return empty_hash if data.empty?

@@ -35,8 +35,8 @@ module Nyara
 
   HTTP_REDIRECT_STATUS = [300, 301, 302, 303, 307]
 
-  # base header response for 200
-  # caveat: these entries can not be deleted
+  # Base header response for 200<br>
+  # Caveat: these entries can not be deleted
   OK_RESP_HEADER = HeaderHash.new
   OK_RESP_HEADER['Content-Type'] = 'text/html; charset=UTF-8'
   OK_RESP_HEADER['Cache-Control'] = 'no-cache'
@@ -108,13 +108,13 @@ module Nyara
 
     # Signals:
     #
-    # [INT]   kill -9 all workers, and exit
-    # [QUIT]  graceful quit all workers, and exit if all children terminated
-    # [TERM]  same as QUIT
-    # [USR1]  restore worker number
-    # [USR2]  graceful spawn a new master and workers, with all content respawned
-    # [TTIN]  increase worker number
-    # [TTOUT] decrease worker number
+    # * `INT`   - kill -9 all workers, and exit
+    # * `QUIT`  - graceful quit all workers, and exit if all children terminated
+    # * `TERM`  - same as QUIT
+    # * `USR1`  - restore worker number
+    # * `USR2`  - graceful spawn a new master and workers, with all content respawned
+    # * `TTIN`  - increase worker number
+    # * `TTOUT` - decrease worker number
     #
     # To make a graceful hot-restart:
     #
@@ -123,12 +123,12 @@ module Nyara
     # 3. if good (requests are working, etc), INT -> old master
     #    else QUIT -> new master and USR1 -> old master to restore workers
     #
-    # NOTE in step 2/3 if an additional fork executed in new master and hangs,
-    #      you may need send an additional INT to terminate it.<br>
-    # NOTE hot-restart reloads almost everything, including Gemfile changes and configures except port.
-    #      but, if some critical environment variable or port configure needs change, you still need cold-restart.<br>
-    # TODO write to a file to show workers are good<br>
-    # TODO detect port config change
+    # * NOTE in step 2/3 if an additional fork executed in new master and hangs,<br>
+    #   you may need send an additional INT to terminate it.
+    # * NOTE hot-restart reloads almost everything, including Gemfile changes and configures except port.<br>
+    #   but, if some critical environment variable or port configure needs change, you still need cold-restart.
+    # * TODO write to a file to show workers are good
+    # * TODO detect port config change
     def start_production_server port
       workers = Config[:workers]
 
@@ -170,7 +170,7 @@ module Nyara
 
     private
 
-    # kill all workers and exit
+    # Kill all workers and exit
     def kill_all sig
       @workers.each do |w|
         Process.kill :KILL, w
@@ -178,7 +178,7 @@ module Nyara
       exit!
     end
 
-    # graceful quit all workers and exit
+    # Graceful quit all workers and exit
     def quit_all sig
       until @workers.empty?
         decr_workers sig
@@ -186,7 +186,7 @@ module Nyara
       # wait will finish the wait-and-quit job
     end
 
-    # spawn a new master
+    # Spawn a new master
     def spawn_new_master sig
       fork do
         @server.close_on_exec = false
@@ -202,21 +202,21 @@ module Nyara
       end
     end
 
-    # restore number of workers as Config
+    # Restore number of workers as Config
     def restore_workers sig
       (Config[:workers] - @workers.size).times do
         incr_workers sig
       end
     end
 
-    # graceful decrease worker number by 1
+    # Graceful decrease worker number by 1
     def decr_workers sig
       w = @workers.shift
       puts "killing worker #{w}"
       Process.kill :QUIT, w
     end
 
-    # increase worker number by 1
+    # Increase worker number by 1
     def incr_workers sig
       pid = fork {
         $0 = "(nyara:worker) ruby #{$0}"
