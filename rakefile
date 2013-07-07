@@ -74,7 +74,7 @@ task :gem => 'gen' do
   end
   sh 'gem', 'build', 'nyara.gemspec'
   gem_package = Dir.glob('*.gem').first
-  sh 'gem', 'install', '--no-rdoc', '--no-ri', gem_package
+  sh 'gem', 'install', '--rdoc', '--ri', gem_package
 end
 
 desc "clean"
