@@ -6,7 +6,12 @@ module Nyara
   Controller = Struct.new :request
   class Controller
     module ClassMethods
-      # Connect HTTP +method+, +path+ with +blk+ action
+      # #### Call-seq
+      #
+      #     http :get, '/' do
+      #       send_string 'hello world'
+      #     end
+      #
       def http method, path, &blk
         @route_entries ||= []
         @used_ids = {}
@@ -104,6 +109,7 @@ module Nyara
       end
       attr_reader :controller_name
 
+      # @private
       def compile_route_entries scope # :nodoc:
         raise "#{self}: no action defined" unless @route_entries
 
@@ -175,13 +181,13 @@ module Nyara
     end
 
     # Redirect to a url or path, terminates action<br>
-    # +status+ can be one of:
+    # `status` can be one of:
     #
-    # - 300 multiple choices (e.g. offer different languages)
-    # - 301 moved permanently
-    # - 302 found (default)
-    # - 303 see other (e.g. for results of cgi-scripts)
-    # - 307 temporary redirect
+    # - 300 - multiple choices (e.g. offer different languages)
+    # - 301 - moved permanently
+    # - 302 - found (default)
+    # - 303 - see other (e.g. for results of cgi-scripts)
+    # - 307 - temporary redirect
     #
     # Caveats: there's no content in a redirect response yet, if you want one, you can configure nginx to add it
     def redirect url_or_path, status=302
@@ -211,7 +217,7 @@ module Nyara
       Fiber.yield :term_close
     end
 
-    # Shortcut for +redirect url_to *xs+
+    # Shortcut for `redirect url_to *xs`
     def redirect_to *xs
       redirect url_to(*xs)
     end
@@ -222,7 +228,7 @@ module Nyara
     end
 
     # Request header<br>
-    # NOTE to change response header, use +set_header+
+    # NOTE to change response header, use `set_header`
     def header
       request.header
     end
@@ -235,9 +241,9 @@ module Nyara
 
     # Append an extra line in reponse header
     #
-    # :call-seq:
+    # #### Call-seq
     #
-    #   add_header_line "X-Myheader: here we are"
+    #     add_header_line "X-Myheader: here we are"
     #
     def add_header_line h
       raise 'can not modify sent header' if request.response_header.frozen?
@@ -259,12 +265,12 @@ module Nyara
 
     # Set cookie, if expires is +Time.now+, will remove the cookie entry
     #
-    # :call-seq:
+    # #### Call-seq
     #
-    #   set_cookie 'JSESSIONID', 'not-exist'
-    #   set_cookie 'key-without-value'
+    #     set_cookie 'JSESSIONID', 'not-exist'
+    #     set_cookie 'key-without-value'
     #
-    # +opt: default_value+ are:
+    # #### Default values in `opts`
     #
     #   expires: nil
     #   max_age: nil
@@ -308,14 +314,14 @@ module Nyara
       Ext.request_set_status request, n
     end
 
-    # Set response Content-Type, if there's no +charset+ in +ty+, and +ty+ is not text, adds default charset
+    # Set response Content-Type, if there's no `charset` in `ty`, and `ty` is not text, adds default charset
     def content_type ty
       mime_ty = MIME_TYPES[ty.to_s]
       raise ArgumentError, "bad content type: #{ty.inspect}" unless mime_ty
       request.response_content_type = mime_ty
     end
 
-    # Send respones first line and header data, and freeze +header+ to forbid further changes
+    # Send respones first line and header data, and freeze `header`, `session`, `flash.next` to forbid further changes
     def send_header template_deduced_content_type=nil
       r = request
       header = r.response_header
@@ -351,9 +357,10 @@ module Nyara
 
     # Send a data chunk, it can send_header first if header is not sent.
     #
-    # :call-seq:
+    # #### Call-seq
     #
-    #   send_chunk 'hello world!'
+    #     send_chunk 'hello world!'
+    #
     def send_chunk data
       send_header unless request.response_header.frozen?
       Ext.request_send_chunk request, data.to_s
@@ -361,40 +368,41 @@ module Nyara
     alias send_string send_chunk
 
     # Set aproppriate headers and send the file<br>
-    # :call-seq:
     #
-    #   send_file '/home/www/no-virus-inside.exe', disposition: 'attachment'
+    # #### Call-seq
     #
-    # options are:
+    #     send_file '/home/www/no-virus-inside.exe', disposition: 'attachment'
     #
-    # [disposition]  'inline' by default, if set to 'attachment', the file is presented as a download item in browser.
-    # [x_send_file]  if not false/nil, it is considered to be behind a web server.
-    #                Then the app sends file with only header configures,
-    #                which proxies the actual action to the web server,
-    #                which can take the advantage of system calls and reduce transfered data,
-    #                thus faster.
-    # [filename]     name for the downloaded file, will use basename of +file+ if not set.
-    # [content_type] defaults to the MIME type matching +file+ or +filename+.
+    # #### Options
+    #
+    # * `disposition` - `'inline'` by default, if set to `'attachment'`, the file is presented as a download item in browser.
+    # * `x_send_file` - if not false/nil, it is considered to be behind a web server.<br>
+    #   Then the app sends file with only header configures,<br>
+    #   which proxies the actual action to the web server,<br>
+    #   which can take the advantage of system calls and reduce transfered data,<br>
+    #   thus faster.
+    # * `filename` - name for the downloaded file, will use basename of `file` if not set.
+    # * `content_type` - defaults to the MIME type matching `file` or `filename`.
     #
     # To configure for lighttpd and apache2 mod_xsendfile (https://tn123.org/mod_xsendfile/):
     #
-    #   configure do
-    #     set :x_send_file, 'X-Sendfile'
-    #   end
+    #     configure do
+    #       set :x_send_file, 'X-Sendfile'
+    #     end
     #
     # To configure for nginx (http://wiki.nginx.org/XSendfile):
     #
-    #   configure do
-    #     set :x_send_file, 'X-Accel-Redirect'
-    #   end
+    #     configure do
+    #       set :x_send_file, 'X-Accel-Redirect'
+    #     end
     #
-    # To disable x_send_file while configured:
+    # To disable `x_send_file` while it is enabled globally:
     #
-    #   send_file '/some/file', x_send_file: false
+    #     send_file '/some/file', x_send_file: false
     #
-    # To enable x_send_file while not configured:
+    # To enable `x_send_file` while it is disabled globally:
     #
-    #   send_file '/some/file', x_send_file: 'X-Sendfile'
+    #     send_file '/some/file', x_send_file: 'X-Sendfile'
     #
     def send_file file, disposition: 'inline', x_send_file: Config['x_send_file'], filename: nil, content_type: nil
       header = request.response_header
@@ -433,7 +441,7 @@ module Nyara
       Fiber.yield :term_close
     end
 
-    # Resume action after +seconds+
+    # Resume action after `seconds`
     def sleep seconds
       seconds = seconds.to_f
       raise ArgumentError, 'bad sleep seconds' if seconds < 0
@@ -450,16 +458,16 @@ module Nyara
 
     # One shot render, and terminate the action.
     #
-    # :call-seq:
+    # #### Call-seq
     #
-    #   # render a template, engine determined by extension
-    #   render 'user/index', locals: {}
+    #     # render a template, engine determined by extension
+    #     render 'user/index', locals: {}
     #
-    #   # with template source, set content type to +text/html+ if not given
-    #   render erb: "<%= 1 + 1 %>"
+    #     # with template source, set content type to +text/html+ if not given
+    #     render erb: "<%= 1 + 1 %>"
     #
-    #   # layout can be string or array
-    #   render 'index', ['inner_layout', 'outer_layout']
+    #     # layout can be string or array
+    #     render 'index', ['inner_layout', 'outer_layout']
     #
     # For steam rendering, see #stream
     def render view_path=nil, layout: self.class.default_layout, locals: nil, **opts
@@ -472,13 +480,14 @@ module Nyara
 
     # Stream rendering
     #
-    # :call-seq:
+    # #### Call-seq
     #
-    #   view = stream erb: "<% 5.times do |i| %>i<% Fiber.yield %><% end %>"
-    #   view.resume # sends "0"
-    #   view.resume # sends "1"
-    #   view.resume # sends "2"
-    #   view.end    # sends "34" and closes connection
+    #     view = stream erb: "<% 5.times do |i| %>i<% Fiber.yield %><% end %>"
+    #     view.resume # sends "0"
+    #     view.resume # sends "1"
+    #     view.resume # sends "2"
+    #     view.end    # sends "34" and closes connection
+    #
     def stream view_path=nil, layout: self.class.default_layout, locals: nil, **opts
       view = View.new self, view_path, layout, locals, opts
       unless request.response_header.frozen?
