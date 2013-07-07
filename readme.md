@@ -5,12 +5,10 @@ Not Yet Another Ruby Async web framework and server.
 - No dependencies, faster than any web framework on rack.
 - Nonblock but no callback hell, very low CPU and memory usage.
 - Simple usage, and you don't have to make everything non-block.
-- Prefork production server, with signal-based graceful restart management.
+- Prefork production server, with signal-based management which enables graceful restart.
 - Route actions with scanf-like DSL.
 - Simple request format matcher.
 - Optimized render and layout helpers, easy to stream the view.
-
-In short: it's server + full stack web framework except the ORM.
 
 # Getting started
 
@@ -43,10 +41,10 @@ ruby nyahaha.rb
 
 # Document
 
-- [Wiki](https://github.com/luikore/nyara/wiki/Home)
 - [Manual](https://github.com/luikore/nyara/wiki/Manual)
 - [API doc](http://rubydoc.info/github/luikore/nyara/master/frames)
-- [FAQ](https://github.com/luikore/nyara/wiki/FAQ)
+- [Q & A](https://github.com/luikore/nyara/wiki/Q-&-A)
+- [Wiki](https://github.com/luikore/nyara/wiki/Home)
 
 # Participate
 
@@ -61,8 +59,8 @@ ruby nyahaha.rb
 - Not based on [rack](https://github.com/rack/rack).
 - Not compatible with [eventmachine](https://github.com/eventmachine/eventmachine). It won't work if you add gems like [em-synchrony](https://github.com/igrigorik/em-synchrony).
 - Not yet another ruby async framework, some features in a common async IO framework are not implemented.
-- Doesn't work on JRuby or Rubinius.
-- Doesn't work on Windows.
+- Doesn't and won't work on JRuby or lower versions of Ruby.
+- Doesn't and won't work on Windows.
 
 # License
 
