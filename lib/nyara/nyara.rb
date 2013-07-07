@@ -67,7 +67,7 @@ module Nyara
       Session.init
       Config.init
       Route.compile
-      # todo lint if SomeController#request is re-defined
+      # todo lint if SomeController#request, send_header are re-defined
       View.init
     end
 

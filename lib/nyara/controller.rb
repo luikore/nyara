@@ -222,7 +222,15 @@ module Nyara
       redirect url_to(*xs)
     end
 
-    # Stop processing and close connection
+    # Stop processing and close connection<br>
+    # Calling `halt` closes the connection at once, you may usually need to set status code and send header before halt.
+    #
+    # #### Example
+    #
+    #     status 500
+    #     send_header
+    #     halt
+    #
     def halt
       Fiber.yield :term_close
     end
@@ -441,7 +449,7 @@ module Nyara
         data = File.binread file
         header['Content-Length'] = data.bytesize
         send_header unless request.response_header.frozen?
-        send_data data
+        Ext.request_send_data request, data
       end
       Fiber.yield :term_close
     end
