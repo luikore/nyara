@@ -48,6 +48,9 @@ ruby nyahaha.rb
 
 - [Building from source](https://github.com/luikore/nyara/wiki/Building)
 - Mailing list [nyara@relist.com](mailto://nyara@relist.com)
+  mails from relist may be marked as spam :(
+- [Mailing list archive](http://librelist.com/browser/nyara)
+  just created, no archives yet
 
 # Caveats
 
