@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.required_ruby_version = ">=2.0.0"
   s.licenses = ['BSD 3-Clause']
 
-  s.files = Dir.glob('{rakefile,nyara.gemspec,readme.md,**/*.{rb,h,c,cc,inc}}')
+  s.files = Dir.glob('{rakefile,nyara.gemspec,readme.md,copying,changes,**/*.{rb,h,c,cc,inc}}')
   s.files += Dir.glob('spec/**/*')
   s.files += Dir.glob('ext/http-parser/{AUTHORS,CONTRIBUTIONS,LICENSE-MIT}')
   s.files += Dir.glob('ext/multipart-parser-c/README.md')
