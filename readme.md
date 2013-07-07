@@ -1,4 +1,4 @@
-Not Yet Another Ruby Async web framework and server.
+ニャラ is **Not Yet Another Ruby Async** web framework and server.
 
 [![Build Status](https://travis-ci.org/luikore/nyara.png)](https://travis-ci.org/luikore/nyara)
 
