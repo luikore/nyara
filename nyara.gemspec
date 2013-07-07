@@ -18,5 +18,16 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
   s.extensions = ["ext/extconf.rb"]
   s.rubygems_version = '2.0.3'
-  s.has_rdoc = false
+
+  s.rdoc_options += %w[
+    -v
+    --markup=markdown
+    --main readme.md
+    --line-numbers
+    -x ext/http-parser/.*
+    -x ext/multipart-parser-c/.*
+    -x ext/inc/.*
+    -x .*\.o
+    -x .*\.bundle
+  ]
 end
