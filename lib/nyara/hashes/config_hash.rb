@@ -1,9 +1,19 @@
 module Nyara
+  # Extended hash class for the use in configuration.
   class ConfigHash
-    alias _aref []
-    alias _aset []=
+    # @private
+    alias _aref [] # :nodoc:
+    # @private
+    alias _aset []= # :nodoc:
 
-    # so you can find with chained keys
+    # #### Call-seq
+    #
+    #     config['a', 'very', 'deep', 'key']
+    #
+    # Equivalent to
+    #
+    #     config['a']['very']['deep']['key'] rescue nil
+    #
     def [] *keys
       h = self
       keys.each do |key|
@@ -20,8 +30,11 @@ module Nyara
       h
     end
 
-    # so you can write:
-    # config['a', 'very', 'deep', 'key'] = 'value
+    # #### Call-seq
+    #
+    #     config['a', 'very', 'deep', 'key'] = value
+    #
+    # All intermediate level ConfigHashes are created automatically
     def []= *keys, last_key, value
       h = self
       keys.each do |key|

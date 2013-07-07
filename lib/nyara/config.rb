@@ -1,25 +1,24 @@
 module Nyara
-  # options:
+  # #### Options
   #
-  # [env]         environment, default is +'development'+
-  # [port]        listen port number
-  # [workers]     number of workers
-  # [host]        host name used in `url_to` helper
-  # [root]        root path, default is +Dir.pwd+
-  # [views]       views (templates) directory, relative to root, default is +"views"+
-  # [public]      static files directory, relative to root, default is +"public"+
-  # [x_send_file] header field name for X-Sendfile or X-Accel-Redirect, see Nyara::Controller#send_file for details
-  # [session]     see Nyara::Session for sub options
-  # [prefer_erb]  use ERB instead of ERubis for +.erb+ templates
-  Config = ConfigHash.new
-  class << Config
-    # clear all settings
+  # * `env`         - environment, default is `'development'`
+  # * `port`        - listen port number
+  # * `workers`     - number of workers
+  # * `host`        - host name used in `url_to` helper
+  # * `root`        - root path, default is `Dir.pwd`
+  # * `views`       - views (templates) directory, relative to root, default is `"views"`
+  # * `public`      - static files directory, relative to root, default is `"public"`
+  # * `x_send_file` - header field name for `X-Sendfile` or `X-Accel-Redirect`, see [Nyara::Controller#send_file](Controller#send_file.html-instance_method) for details
+  # * `session`     - see [Nyara::Session](Session.html) for sub options
+  # * `prefer_erb`  - use ERB instead of ERubis for `.erb` templates
+  class NyaraConfig < ConfigHash
+    # Clear all settings
     def reset
       clear
       Route.clear
     end
 
-    # init and check configures
+    # Init and check configures
     def init
       self['env'] ||= 'development'
 
@@ -44,26 +43,42 @@ module Nyara
       end
     end
 
-    # get absoute path under project path <br>
-    # if +strict+, return nil if path is not under the dir
+    # Get absoute path under project path
+    #
+    # #### Options
+    #
+    # * `strict` - return `nil` if path is not under the dir
+    #
     def project_path path, strict=true
       path_under 'root', path, strict
     end
 
-    # get absoute path under public path <br>
-    # if +strict+, return nil if path is not under the dir
+    # Get absoute path under public path
+    #
+    # #### Options
+    #
+    # * `strict` - return `nil` if path is not under the dir
+    #
     def public_path path, strict=true
       path_under 'public', path, strict
     end
 
-    # get absoute path under views path <br>
-    # if +strict+, return nil if path is not under the dir
+    # Get absoute path under views path
+    #
+    # #### Options
+    #
+    # * `strict` - return `nil` if path is not under the dir
+    #
     def views_path path, strict=true
       path_under 'views', path, strict
     end
 
-    # get path under the dir configured +Nyara.config[key]+ <br>
-    # if +strict+, return nil if path is not under the dir
+    # Get path under the dir configured `Nyara.config[key]`
+    #
+    # #### Options
+    #
+    # * `strict` - return `nil` if path is not under the dir
+    #
     def path_under key, path, strict=true
       dir = self[key]
       path = File.expand_path File.join(dir, path)
@@ -72,12 +87,12 @@ module Nyara
       end
     end
 
-    # pass requests under a prefix to a controller
+    # Pass requests under a prefix to a controller
     def map prefix, controller
       Route.register_controller prefix, controller
     end
 
-    # get environment
+    # Get environment
     def env
       self['env'].to_s
     end
@@ -98,6 +113,7 @@ module Nyara
     alias set []=
     alias get []
 
+    # @private
     def assert expr # :nodoc:
       raise ArgumentError, "expect #{expr.inspect} to be true", caller[1..-1] unless expr
     end
@@ -107,8 +123,12 @@ module Nyara
       instance_eval &blk
     end
   end
+
+  # see [NyaraConfig](Nyara/NyaraConfig.html) for options
+  Config = NyaraConfig.new
 end
 
+# see [NyaraConfig](Nyara/NyaraConfig.html) for options
 def configure *xs, &blk
   Nyara::Config.configure *xs, &blk
 end

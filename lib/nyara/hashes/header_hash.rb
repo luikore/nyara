@@ -1,6 +1,7 @@
 module Nyara
-  # keys ignore case, and values all string<br>
-  # TODO check invalid chars in values
+  # This is a hash that Keys ignore case, and values all string, suitable for use in http header<br>
+  # TODO check invalid chars in values<br>
+  # TODO integrate extra lines
   class HeaderHash
     alias has_key? key?
 
