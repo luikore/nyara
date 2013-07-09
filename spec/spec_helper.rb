@@ -54,9 +54,10 @@ RSpec.configure do |config|
         obj
       end
     end
+  end
 
-  elsif config.formatters.any?{|f|f.class.to_s =~ /Document/}
-    puts "Enabling GC.stress with documentation formatter"
+  if ENV['STRESS']
+    puts "Enabling GC.stress mode"
 
     config.before :each do
       GC.stress = true
@@ -65,7 +66,6 @@ RSpec.configure do |config|
     config.after :each do
       GC.stress = false
     end
-
   end
 end
 
