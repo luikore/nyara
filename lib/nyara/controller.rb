@@ -155,7 +155,7 @@ module Nyara
             method_names = []
             # bind all with instance
             method_body.each_with_index do |blk, idx|
-              method_name = "#{e.id}-#{idx}"
+              method_name = "#{e.id}\##{idx}"
               method_names << method_name
               define_method method_name, &blk
             end
