@@ -1,6 +1,12 @@
 require_relative "spec_helper"
 
 class TestController < Nyara::Controller
+  attr_reader :before_invoked
+
+  before ":delete" do
+    @before_invoked = true
+  end
+
   meta '#index'
   get '/' do
     content_type 'txt'
@@ -96,6 +102,16 @@ module Nyara
       it "found but directory" do
         @test.get "/empty"
         assert_equal 404, @test.response.status
+      end
+    end
+
+    context "before / after" do
+      it "invokes lifecycle callback" do
+        @test.get '/'
+        assert_nil @test.env.controller.before_invoked
+
+        @test.delete "/render"
+        assert @test.env.controller.before_invoked
       end
     end
   end

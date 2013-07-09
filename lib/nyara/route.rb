@@ -18,6 +18,34 @@ module Nyara
       instance_eval &p if p
     end
 
+    # http_method in string form
+    def http_method_to_s
+      m, _ = HTTP_METHODS.find{|k,v| v == http_method}
+      m
+    end
+
+    # enum all combinations of matching selectors
+    def selectors
+      if classes
+        [id, *classes, *classes.map{|k| "#{k}:#{http_method_to_s}"}, ":#{http_method_to_s}"]
+      else
+        [id, ":#{http_method_to_s}"]
+      end
+    end
+
+    # find blocks in filters that match selectors
+    def matched_lifecycle_callbacks filters
+      actions = []
+      selectors = selectors()
+      if selectors and filters
+        # iterate with filter's order to preserve define order
+        filters.each do |sel, blks|
+          actions.concat blks if selectors.include?(sel)
+        end
+      end
+      actions
+    end
+
     def path_template
       File.join @scope, (@path.gsub '%z', '%s')
     end
@@ -145,7 +173,7 @@ module Nyara
         end
         mapped_controllers[c] = true
 
-        c.compile_routes(scope).each do |e|
+        c.nyara_compile_routes(scope).each do |e|
           @global_path_templates[name + e.id] = e.path_template
         end
       end
@@ -164,6 +192,19 @@ module Nyara
 
     def global_path_template id
       @global_path_templates[id]
+    end
+
+    # remove `.klass` and `:method` from selector, and validate selector format
+    def canonicalize_callback_selector selector
+      /\A
+        (?<id>\#\w++(?:\-\w++)*)?
+        (?<klass>\.\w++(?:\-\w++)*)?
+        (?<method>:\w+)?
+      \z/x =~ selector
+      unless id or klass or method
+        raise ArgumentError, "bad selector: #{selector.inspect}", caller[1..-1]
+      end
+      id.presence or selector.sub(/:\w+\z/, &:upcase)
     end
 
     def clear

@@ -70,5 +70,60 @@ module Nyara
       assert_equal '/', prefix
       assert_equal nil, suffix
     end
+
+    context "#matched_lifecycle_callbacks" do
+      before :each do
+        @r.http_method = HTTP_METHODS['DELETE']
+        @r.classes = %w[.foo .bar]
+        @r.id = '#foo'
+      end
+
+      it "returns empty set when filters empty" do
+        cbs = @r.matched_lifecycle_callbacks({})
+        assert_equal [], cbs
+      end
+
+      it "works" do
+        cbs = @r.matched_lifecycle_callbacks ':DELETE' => [:delete], '#foo' => [:foo], '.bar' => [:bar], '#baz' => [:baz]
+        assert_equal [:delete, :foo, :bar], cbs
+      end
+
+      it "when classes not set" do
+        @r.classes = nil
+        cbs = @r.matched_lifecycle_callbacks ':DELETE' => [:delete], '#foo' => [:foo], '.bar' => [:bar], '#baz' => [:baz]
+        assert_equal [:delete, :foo], cbs
+      end
+    end
+
+    context ".canonicalize_callback_selector" do
+      it "works" do
+        s = Route.canonicalize_callback_selector '#a'
+        assert_equal '#a', s
+        s = Route.canonicalize_callback_selector '.b'
+        assert_equal '.b', s
+      end
+
+      it "checks bad selectors" do
+        assert_raise ArgumentError do
+          Route.canonicalize_callback_selector ''
+        end
+        assert_raise ArgumentError do
+          Route.canonicalize_callback_selector '*'
+        end
+        assert_raise ArgumentError do
+          Route.canonicalize_callback_selector 'a#b'
+        end
+      end
+
+      it "removes classes and pseudo classes after id" do
+        s = Route.canonicalize_callback_selector "#a.b:c"
+        assert_equal '#a', s
+      end
+
+      it "does not remove pseudo class after class, and upcases it" do
+        s = Route.canonicalize_callback_selector ".b:c"
+        assert_equal '.b:C', s
+      end
+    end
   end
 end

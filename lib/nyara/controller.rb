@@ -22,6 +22,7 @@ module Nyara
         action.set_accept_exts @formats
         action.id = @curr_id if @curr_id
         action.classes = @curr_classes if @curr_classes
+        # todo validate arity of blk (before/after filters also needs arity validation)
         action.blk = blk
         @routes << action
 
@@ -95,9 +96,9 @@ module Nyara
         http 'OPTIONS', path, &blk
       end
 
-      # #### Call-seq
+      # Add *before* processor, invoke order is the same as definition order
       #
-      # Add before processor
+      # #### Call-seq
       #
       #     before '.foo', '.bar:post', ':get' do
       #       require_login
@@ -105,20 +106,11 @@ module Nyara
       #
       def before *selectors, &p
         raise ArgumentError, "need a block" unless p
-        (@before_filters ||= []) << [selectors, p]
-      end
-
-      # #### Call-seq
-      #
-      # Add after processor
-      #
-      #     after '.foo', '.bar:post', ':get' do
-      #       log_request
-      #     end
-      #
-      def after *selectors, &p
-        raise ArgumentError, "need a block" unless p
-        (@after_filters ||= []) << [selectors, p]
+        @before_filters ||= {}
+        selectors.each do |selector|
+          selector = Route.canonicalize_callback_selector selector
+          (@before_filters[selector] ||= []) << p
+        end
       end
 
       # ---
@@ -138,7 +130,7 @@ module Nyara
       attr_reader :controller_name
 
       # @private
-      def compile_routes scope # :nodoc:
+      def nyara_compile_routes scope # :nodoc:
         raise "#{self}: no action defined" unless @routes
 
         curr_id = :'#0'
@@ -154,7 +146,36 @@ module Nyara
         @path_templates = {}
         @routes.each do |e|
           e.id = next_id[] if e.id.empty?
-          define_method e.id, &e.blk
+
+          before_actions = e.matched_lifecycle_callbacks @before_filters
+          method_body = [*before_actions, e.blk]
+          if method_body.size == 1
+            define_method e.id, &e.blk
+          else
+            method_names = []
+            # bind all with instance
+            method_body.each_with_index do |blk, idx|
+              method_name = "#{e.id}-#{idx}"
+              method_names << method_name
+              define_method method_name, &blk
+            end
+            senders = []
+            method_names.each_with_index do |name, idx|
+              if idx == before_actions.size
+                senders << "send #{name.inspect}, *xs\n"
+              else
+                senders << "send #{name.inspect}\n"
+              end
+            end
+            class_eval <<-RUBY
+              def __nyara_tmp_action *xs
+                #{senders.join}
+              end
+              alias :#{e.id.inspect} __nyara_tmp_action
+              undef __nyara_tmp_action
+            RUBY
+          end
+
           e.compile self, scope
           e.validate
           @path_templates[e.id] = e.path_template
@@ -171,16 +192,13 @@ module Nyara
       # klass will also have this inherited method
       # todo check class name
       klass.extend ClassMethods
-      [:@used_ids, :@default_layout, :@before_filters, :@after_filters].each do |iv|
+      [:@used_ids, :@default_layout, :@before_filters, :@routes].each do |iv|
         if value = klass.superclass.instance_variable_get(iv)
+          if value.is_a? Array
+            value = value.map &:dup
+          end
           klass.instance_variable_set iv, value.dup
         end
-      end
-
-      routes = klass.superclass.instance_variable_get :@routes
-      if routes
-        routes.map! {|e| e.dup }
-        klass.instance_variable_set :@routes, routes
       end
     end
 
