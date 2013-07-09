@@ -128,5 +128,12 @@ module Nyara
         q
       end
     end
+
+    def inspect
+      "#<Nyara::Request%s>" %
+        instance_variables.map { |iv|
+          " #{iv}=#{instance_variable_get(iv).to_s}"
+        }.join
+    end
   end
 end
