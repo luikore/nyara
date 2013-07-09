@@ -4,7 +4,7 @@ module Nyara
   describe Ext, "route" do
     before :each do
       Ext.clear_route
-      @e1 = RouteEntry.new{
+      @e1 = Route.new{
         @http_method = 'GET'
         @scope = '/hello'
         @prefix = '/hello/'
@@ -13,7 +13,7 @@ module Nyara
         @conv = [:to_i]
         @controller = 'stub'
       }
-      @e2 = RouteEntry.new{
+      @e2 = Route.new{
         @http_method = 'GET'
         @scope = '/hello'
         @prefix = '/hello'
@@ -22,7 +22,7 @@ module Nyara
         @conv = []
         @controller = 'stub2'
       }
-      @e3 = RouteEntry.new{
+      @e3 = Route.new{
         @http_method = 'GET'
         @scope = '/a目录'
         @prefix = '/a目录/'

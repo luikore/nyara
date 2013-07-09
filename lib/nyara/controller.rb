@@ -13,17 +13,17 @@ module Nyara
       #     end
       #
       def http method, path, &blk
-        @route_entries ||= []
+        @routes ||= []
         @used_ids = {}
 
-        action = RouteEntry.new
+        action = Route.new
         action.http_method = HTTP_METHODS[method]
         action.path = path
         action.set_accept_exts @formats
         action.id = @curr_id if @curr_id
         action.classes = @curr_classes if @curr_classes
         action.blk = blk
-        @route_entries << action
+        @routes << action
 
         if @curr_id
           raise ArgumentError, "action id #{@curr_id} already in use" if @used_ids[@curr_id]
@@ -138,8 +138,8 @@ module Nyara
       attr_reader :controller_name
 
       # @private
-      def compile_route_entries scope # :nodoc:
-        raise "#{self}: no action defined" unless @route_entries
+      def compile_routes scope # :nodoc:
+        raise "#{self}: no action defined" unless @routes
 
         curr_id = :'#0'
         next_id = proc{
@@ -152,14 +152,14 @@ module Nyara
         next_id[]
 
         @path_templates = {}
-        @route_entries.each do |e|
+        @routes.each do |e|
           e.id = next_id[] if e.id.empty?
           define_method e.id, &e.blk
           e.compile self, scope
           e.validate
           @path_templates[e.id] = e.path_template
         end
-        @route_entries
+        @routes
       end
 
       attr_accessor :path_templates
@@ -177,10 +177,10 @@ module Nyara
         end
       end
 
-      route_entries = klass.superclass.instance_variable_get :@route_entries
-      if route_entries
-        route_entries.map! {|e| e.dup }
-        klass.instance_variable_set :@route_entries, route_entries
+      routes = klass.superclass.instance_variable_get :@routes
+      if routes
+        routes.map! {|e| e.dup }
+        klass.instance_variable_set :@routes, routes
       end
     end
 

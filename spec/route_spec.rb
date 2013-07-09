@@ -1,9 +1,9 @@
 require_relative "spec_helper"
 
 module Nyara
-  describe RouteEntry do
+  describe Route do
     before :each do
-      @r = RouteEntry.new
+      @r = Route.new
     end
 
     it "#compile prefix, suffix and conv" do
@@ -27,7 +27,7 @@ module Nyara
     end
 
     it "#set_accept_exts" do
-      r = RouteEntry.new
+      r = Route.new
       r.set_accept_exts ['html', :js]
       assert_equal [%w"text html html", %w"application javascript js"], r.accept_mimes
       assert_equal ({'html'=>true, 'js'=>true}), r.accept_exts
