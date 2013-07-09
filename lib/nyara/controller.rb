@@ -578,7 +578,7 @@ module Nyara
     def handle_error
       case $!
       when FiberError
-        # XXX
+        # XXX happens in test
         # "fiber called across stack rewinding barrier" when test yields :term_close
         # this fails because the jump tag if the fiber is different from thread's jump tag
         # need investicate cont.c for more
