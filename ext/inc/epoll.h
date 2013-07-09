@@ -48,13 +48,18 @@ static void LOOP_E() {
   while (1) {
     // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
     int sz = epoll_wait(qfd, qevents, MAX_E, 100);
+    FD_ZERO(&handled_request_fds);
 
     for (int i = 0; i < sz; i++) {
-      if (qevents[i].events & (EPOLLIN | EPOLLOUT)) {
-        int fd = (int)(qevents[i].data.u64 & 0xFFFFFFFF);
-        int etype = (int)(qevents[i].data.u64 >> 32);
+      int fd = (int)(qevents[i].data.u64 & 0xFFFFFFFF);
+      int etype = (int)(qevents[i].data.u64 >> 32);
+      if (qevents[i].events & (EPOLLHUP | EPOLLERR)) {
+        nyara_detach_fd(fd);
+        // todo log?
+      } else if (qevents[i].events & (EPOLLIN | EPOLLOUT)) {
         loop_body(fd, etype);
-        break;
+      } else if (qevents[i].events & EPOLLRDHUP) {
+        // do sth?
       }
     }
     loop_check();

@@ -59,6 +59,7 @@ static void LOOP_E() {
   while (1) {
     // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
     int sz = kevent(qfd, NULL, 0, qevents, MAX_E, &ts);
+    FD_ZERO(&handled_request_fds);
 
     for (int i = 0; i < sz; i++) {
       int fd = (int)qevents[i].ident;

@@ -20,6 +20,7 @@ extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
 static void loop_body(int fd, int etype);
 static void loop_check();
 static int qfd = 0;
+static fd_set handled_request_fds;
 
 #define MAX_RECEIVE_DATA 65536 * 2
 static char received_data[MAX_RECEIVE_DATA];
@@ -138,6 +139,14 @@ static void loop_body(int fd, int etype) {
       break;
     }
     case ETYPE_HANDLE_REQUEST: {
+      // epoll_wait can return multiple results on 1 same fd,
+      // and this fd may be closed at previous round.
+      // use an fd_set to prevent re-process the same one
+      if (FD_ISSET(fd, &handled_request_fds)) {
+        break;
+      }
+      FD_SET(fd, &handled_request_fds);
+
       VALUE key = INT2FIX(fd);
       volatile VALUE request = rb_hash_aref(fd_request_map, key);
       if (request == Qnil) {
