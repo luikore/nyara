@@ -36,7 +36,6 @@ module Nyara
     before :all do
       configure do
         reset
-        # set :env, 'test'
         map '/', TestController
         set :root, __dir__
       end

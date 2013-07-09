@@ -556,5 +556,40 @@ module Nyara
       end
       view.stream
     end
+
+    # Handle error, the default is just log it.
+    # You may custom your error handler by re-defining `handle_error` and deal with `$!` (the last raised error).
+    # But remember if this fails, the whole program exits.
+    #
+    # #### Customization Example
+    #
+    #     def handle_error
+    #       case $!
+    #       when ActiveRecord::RecordNotFound
+    #         # if we are lucky that header has not been sent yet
+    #         # we can manage to change response status
+    #         status 404
+    #         send_header rescue nil
+    #       else
+    #         super
+    #       end
+    #     end
+    #
+    def handle_error
+      case $!
+      when FiberError
+        # XXX
+        # "fiber called across stack rewinding barrier" when test yields :term_close
+        # this fails because the jump tag if the fiber is different from thread's jump tag
+        # need investicate cont.c for more
+        return
+      else
+        print $!.class, ': '
+        puts $!.message
+        puts $!.backtrace
+        status 500
+        send_header rescue nil
+      end
+    end
   end
 end

@@ -43,10 +43,21 @@ static Request* curr_request;
 static VALUE to_resume_requests;
 static bool graceful_quit = false;
 
-static VALUE _fiber_func(VALUE _, VALUE args) {
+static VALUE _protect_func(VALUE args) {
   VALUE instance = rb_ary_pop(args);
   VALUE meth = rb_ary_pop(args);
   rb_apply(instance, SYM2ID(meth), args);
+  return Qnil;
+}
+
+static VALUE _fiber_func(VALUE _, VALUE args) {
+  VALUE instance = RARRAY_PTR(args)[RARRAY_LEN(args) - 1];
+  int err;
+  rb_protect(_protect_func, args, &err);
+  if (err) {
+    rb_funcall(instance, rb_intern("handle_error"), 0);
+    rb_fiber_yield(1, &sym_term_close);
+  }
   return Qnil;
 }
 
