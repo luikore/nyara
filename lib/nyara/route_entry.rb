@@ -9,7 +9,7 @@ module Nyara
     end
 
     # optional
-    attr_accessor :accept_exts, :accept_mimes
+    attr_accessor :accept_exts, :accept_mimes, :classes
 
     # @private
     attr_accessor :path, :blk

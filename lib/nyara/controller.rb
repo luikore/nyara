@@ -21,6 +21,7 @@ module Nyara
         action.path = path
         action.set_accept_exts @formats
         action.id = @curr_id if @curr_id
+        action.classes = @curr_classes if @curr_classes
         action.blk = blk
         @route_entries << action
 
@@ -36,7 +37,7 @@ module Nyara
       # Set meta data for next action
       def meta tag=nil, opts=nil
         if @meta_exist
-          raise 'contiguous meta data descriptors, should follow by an action'
+          raise 'contiguous meta data descriptors, should be followed by an action'
         end
         if tag.nil? and opts.nil?
           raise ArgumentError, 'expect tag or options'
@@ -48,9 +49,10 @@ module Nyara
         end
 
         if tag
-          # todo scan class
-          id = tag[/\#\w++(\-\w++)*/]
-          @curr_id = id.to_sym
+          selectors = tag.scan(/[\#\.]\w++(?:\-\w++)*/).to_a
+          @curr_id = selectors.find{|s| s.start_with?('#') }
+          @curr_id = @curr_id.to_sym if @curr_id
+          @curr_classes = selectors.select{|s| s.start_with?('.') }
         end
 
         if opts
@@ -91,6 +93,32 @@ module Nyara
       # see http://tools.ietf.org/html/rfc5789
       def options path, &blk
         http 'OPTIONS', path, &blk
+      end
+
+      # #### Call-seq
+      #
+      # Add before processor
+      #
+      #     before '.foo', '.bar:post', ':get' do
+      #       require_login
+      #     end
+      #
+      def before *selectors, &p
+        raise ArgumentError, "need a block" unless p
+        (@before_filters ||= []) << [selectors, p]
+      end
+
+      # #### Call-seq
+      #
+      # Add after processor
+      #
+      #     after '.foo', '.bar:post', ':get' do
+      #       log_request
+      #     end
+      #
+      def after *selectors, &p
+        raise ArgumentError, "need a block" unless p
+        (@after_filters ||= []) << [selectors, p]
       end
 
       # ---
@@ -143,8 +171,10 @@ module Nyara
       # klass will also have this inherited method
       # todo check class name
       klass.extend ClassMethods
-      [:@used_ids, :@default_layout].each do |iv|
-        klass.instance_variable_set iv, klass.superclass.instance_variable_get(iv)
+      [:@used_ids, :@default_layout, :@before_filters, :@after_filters].each do |iv|
+        if value = klass.superclass.instance_variable_get(iv)
+          klass.instance_variable_set iv, value.dup
+        end
       end
 
       route_entries = klass.superclass.instance_variable_get :@route_entries
