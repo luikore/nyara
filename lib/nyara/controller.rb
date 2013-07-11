@@ -149,32 +149,30 @@ module Nyara
 
           before_actions = e.matched_lifecycle_callbacks @before_filters
           method_body = [*before_actions, e.blk]
-          if method_body.size == 1
-            define_method e.id, &e.blk
-          else
-            method_names = []
-            # bind all with instance
-            method_body.each_with_index do |blk, idx|
-              method_name = "#{e.id}\##{idx}"
-              method_names << method_name
-              define_method method_name, &blk
-            end
-            senders = []
-            method_names.each_with_index do |name, idx|
-              if idx == before_actions.size
-                senders << "send #{name.inspect}, *xs\n"
-              else
-                senders << "send #{name.inspect}\n"
-              end
-            end
-            class_eval <<-RUBY
-              def __nyara_tmp_action *xs
-                #{senders.join}
-              end
-              alias :#{e.id.inspect} __nyara_tmp_action
-              undef __nyara_tmp_action
-            RUBY
+          method_names = []
+          # bind all with instance
+          method_body.each_with_index do |blk, idx|
+            method_name = "#{e.id}\##{idx}"
+            method_names << method_name
+            define_method method_name, &blk
           end
+          senders = []
+          method_names.each_with_index do |name, idx|
+            if idx == before_actions.size
+              senders << "send #{name.inspect}, *xs\n"
+            else
+              senders << "send #{name.inspect}\n"
+            end
+          end
+          class_eval <<-RUBY
+            def __nyara_tmp_action *xs
+              #{senders.join}
+            rescue Exception => e
+              handle_error e
+            end
+            alias :#{e.id.inspect} __nyara_tmp_action
+            undef __nyara_tmp_action
+          RUBY
 
           e.compile self, scope
           e.validate
@@ -562,13 +560,13 @@ module Nyara
     end
 
     # Handle error, the default is just log it.
-    # You may custom your error handler by re-defining `handle_error` and deal with `$!` (the last raised error).
+    # You may custom your error handler by re-defining `handle_error`.
     # But remember if this fails, the whole program exits.
     #
     # #### Customization Example
     #
-    #     def handle_error
-    #       case $!
+    #     def handle_error e
+    #       case e
     #       when ActiveRecord::RecordNotFound
     #         # if we are lucky that header has not been sent yet
     #         # we can manage to change response status
@@ -579,22 +577,14 @@ module Nyara
     #       end
     #     end
     #
-    def handle_error
-      case $!
-      when FiberError
-        # XXX happens in test
-        # "fiber called across stack rewinding barrier" when test yields :term_close
-        # this fails because the jump tag if the fiber is different from thread's jump tag
-        # need investicate cont.c for more
-        return
-      else
-        if l = Nyara.logger
-          l.error "#{$!.class}: #{$!.message}"
-          l.error $!.backtrace
-        end
-        status 500
-        send_header rescue nil
+    def handle_error e
+      if l = Nyara.logger
+        l.error "#{e.class}: #{e.message}"
+        l.error e.backtrace
       end
+      status 500
+      send_header rescue nil
+      # todo send body without Fiber.yield :term_close
     end
   end
 end
