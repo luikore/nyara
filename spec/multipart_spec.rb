@@ -9,7 +9,7 @@ module Nyara
 
       header['Content-Type'] = 'multipart/form-data; boundary=----WebKitFormBoundaryn3ghstHtZs1Z3VTi'
       boundary = Ext.parse_multipart_boundary header
-      assert_equal '----WebKitFormBoundaryn3ghstHtZs1Z3VTi', boundary
+      assert_equal '------WebKitFormBoundaryn3ghstHtZs1Z3VTi', boundary
     end
   end
 
