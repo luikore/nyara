@@ -43,7 +43,6 @@ static void LOOP_E() {
       VALUE rid = (VALUE)qevents[i].data.u64;
       if (qevents[i].events & (EPOLLHUP | EPOLLERR)) {
         nyara_detach_rid(rid);
-        // todo log?
       } else if (qevents[i].events & (EPOLLIN | EPOLLOUT)) {
         loop_body(rid);
       } else if (qevents[i].events & EPOLLRDHUP) {
