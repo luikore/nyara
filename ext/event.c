@@ -34,7 +34,6 @@ extern http_parser_settings nyara_request_parse_settings;
 
 static VALUE fd_request_map;
 static VALUE watch_request_map;
-static ID id_not_found;
 static VALUE sym_term_close;
 static VALUE sym_writing;
 static VALUE sym_reading;
@@ -391,7 +390,6 @@ void Init_event(VALUE ext) {
   rb_gc_register_mark_object(fd_request_map);
   watch_request_map = rb_hash_new();
   rb_gc_register_mark_object(watch_request_map);
-  id_not_found = rb_intern("not_found");
   sym_term_close = ID2SYM(rb_intern("term_close"));
   sym_writing = ID2SYM(rb_intern("writing"));
   sym_reading = ID2SYM(rb_intern("reading"));
