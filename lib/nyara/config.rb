@@ -56,7 +56,7 @@ module Nyara
       self['views'] = project_path(self['views'] || 'views')
       self['public'] = project_path(self['public'] || 'public')
 
-      Nyara.logger = create_logger
+      self.logger = create_logger
 
       assert !self['before_fork'] or self['before_fork'].respond_to?('call')
       assert !self['after_fork'] or self['after_fork'].respond_to?('call')
@@ -65,6 +65,8 @@ module Nyara
         map '/', PublicController
       end
     end
+
+    attr_accessor :logger
 
     # Create a logger with the 'logger' option
     def create_logger

@@ -63,7 +63,13 @@ module Nyara
       Config
     end
 
-    attr_accessor :logger
+    %w[logger env production? test? development? project_path views_path public_path].each do |m|
+      eval <<-RUBY
+        def #{m} *xs
+          Config.#{m} *xs
+        end
+      RUBY
+    end
 
     def setup
       Session.init
@@ -76,7 +82,7 @@ module Nyara
     def start_server
       port = Config[:port]
 
-      if l = Nyara.logger
+      if l = logger
         l.info "starting #{Config[:env]} server at 0.0.0.0:#{port}"
       end
       case Config[:env].to_s
@@ -92,7 +98,7 @@ module Nyara
     end
 
     def patch_tcp_socket
-      if l = Nyara.logger
+      if l = logger
         l.info "patching TCPSocket"
       end
       require_relative "patches/tcp_socket"
