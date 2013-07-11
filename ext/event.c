@@ -7,24 +7,14 @@
 #include <errno.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <ruby/st.h>
 
-#ifndef rb_obj_hide
-extern VALUE rb_obj_hide(VALUE obj);
-extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
-#endif
-
-#define ETYPE_CAN_ACCEPT 0
-#define ETYPE_HANDLE_REQUEST 1
-#define ETYPE_CONNECT 2
 #define MAX_E 1024
-static void loop_body(int fd, int etype);
+static void loop_body(VALUE rid);
 static void loop_check();
 static int qfd = 0;
-static fd_set handled_request_fds;
-
-#define MAX_RECEIVE_DATA 65536 * 2
-static char received_data[MAX_RECEIVE_DATA];
-extern http_parser_settings nyara_request_parse_settings;
+static int tcp_server_fd = 0;
+static st_table* handled_rids; // {rid => nil} for current round
 
 #ifdef HAVE_KQUEUE
 #include "inc/kqueue.h"
@@ -32,14 +22,27 @@ extern http_parser_settings nyara_request_parse_settings;
 #include "inc/epoll.h"
 #endif
 
-static VALUE fd_request_map;
-static VALUE watch_request_map;
+#ifndef rb_obj_hide
+extern VALUE rb_obj_hide(VALUE obj);
+extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
+#endif
+
+#define MAX_RECEIVE_DATA 65536 * 2
+static char received_data[MAX_RECEIVE_DATA];
+extern http_parser_settings nyara_request_parse_settings;
+
+static VALUE rid_request_map;    // {rid(FIXNUM) => request}
+static VALUE to_resume_requests; // [request], for current round
+
+static VALUE sym_accept;
+
+// Fiber.yield
 static VALUE sym_term_close;
 static VALUE sym_writing;
 static VALUE sym_reading;
 static VALUE sym_sleep;
+
 static Request* curr_request;
-static VALUE to_resume_requests;
 static bool graceful_quit = false;
 
 static VALUE _protect_func(VALUE args) {
@@ -93,8 +96,7 @@ static void _handle_request(VALUE request) {
     if (errno != EAGAIN && errno != EWOULDBLOCK) {
       // this can happen when 2 events are fetched, and first event closes the fd, then second event fails
       if (p->fd) {
-        nyara_detach_fd(p->fd);
-        p->fd = 0;
+        nyara_detach_rid(p->rid);
       }
       return;
     }
@@ -128,8 +130,7 @@ static void _handle_request(VALUE request) {
         not_found_len = strlen(not_found);
       }
       nyara_send_data(p->fd, not_found, not_found_len);
-      nyara_detach_fd(p->fd);
-      p->fd = 0;
+      nyara_detach_rid(p->rid);
       return;
     }
   }
@@ -138,39 +139,26 @@ static void _handle_request(VALUE request) {
 }
 
 // platform independent, invoked by LOOP_E()
-static void loop_body(int fd, int etype) {
-  switch (etype) {
-    case ETYPE_CAN_ACCEPT: {
-      int cfd = accept(fd, NULL, NULL);
-      if (cfd > 0) {
-        nyara_set_nonblock(cfd);
-        ADD_E(cfd, ETYPE_HANDLE_REQUEST);
-      }
-      break;
+static void loop_body(VALUE rid) {
+  if (rid == sym_accept) {
+    int cfd = accept(tcp_server_fd, NULL, NULL);
+    if (cfd > 0) {
+      nyara_set_nonblock(cfd);
+      Request* p = nyara_request_new(cfd);
+      rb_hash_aset(rid_request_map, p->rid, p->self);
+      ADD_E(cfd, p->rid);
     }
-    case ETYPE_HANDLE_REQUEST: {
-      // epoll_wait can return multiple results on 1 same fd,
-      // and this fd may be closed at previous round.
-      // use an fd_set to prevent re-process the same one
-      if (FD_ISSET(fd, &handled_request_fds)) {
-        break;
-      }
-      FD_SET(fd, &handled_request_fds);
+  } else {
+    // epoll_wait can return multiple results on a same request,
+    // and this request may be closed at previous round.
+    if (st_lookup(handled_rids, rid, NULL)) {
+      return;
+    }
+    st_insert(handled_rids, rid, Qnil);
 
-      VALUE key = INT2FIX(fd);
-      volatile VALUE request = rb_hash_aref(fd_request_map, key);
-      if (request == Qnil) {
-        request = nyara_request_new(fd);
-        rb_hash_aset(fd_request_map, key, request);
-      }
+    VALUE request = rb_hash_aref(rid_request_map, rid);
+    if (request != Qnil) {
       _handle_request(request);
-      break;
-    }
-    case ETYPE_CONNECT: {
-      VALUE request = rb_hash_aref(watch_request_map, INT2FIX(fd));
-      if (request != Qnil) {
-        _handle_request(request);
-      }
     }
   }
 }
@@ -198,9 +186,9 @@ static void loop_check() {
         VALUE* v_fds = RARRAY_PTR(p->watched_fds);
         long v_fds_len = RARRAY_LEN(p->watched_fds);
         for (long i = 0; i < v_fds_len; i++) {
-          ADD_E(FIX2INT(v_fds[i]), ETYPE_CONNECT);
+          ADD_E(FIX2INT(v_fds[i]), p->rid);
         }
-        ADD_E(p->fd, ETYPE_HANDLE_REQUEST);
+        ADD_E(p->fd, p->rid);
       } else {
         // we are in a test, no queue
       }
@@ -208,24 +196,27 @@ static void loop_check() {
   }
 
   if (graceful_quit) {
-    if (RTEST(rb_funcall(fd_request_map, rb_intern("empty?"), 0))) {
+    if (RTEST(rb_funcall(rid_request_map, rb_intern("empty?"), 0))) {
       _Exit(0);
     }
   }
 }
 
-void nyara_detach_fd(int fd) {
-  VALUE request = rb_hash_delete(fd_request_map, INT2FIX(fd));
+void nyara_detach_rid(VALUE rid) {
+  VALUE request = rb_hash_delete(rid_request_map, rid);
   if (request != Qnil) {
     Request* p;
     Data_Get_Struct(request, Request, p);
     VALUE* watched = RARRAY_PTR(p->watched_fds);
     long watched_len = RARRAY_LEN(p->watched_fds);
     for (long i = 0; i < watched_len; i++) {
-      rb_hash_delete(watch_request_map, watched[i]);
+      close(NUM2INT(watched[i]));
+    }
+    if (p->fd) {
+      close(p->fd);
+      p->fd = 0;
     }
   }
-  close(fd);
 }
 
 static VALUE ext_init_queue(VALUE _) {
@@ -235,9 +226,9 @@ static VALUE ext_init_queue(VALUE _) {
 
 // run queue loop with server_fd
 static VALUE ext_run_queue(VALUE _, VALUE v_server_fd) {
-  int fd = FIX2INT(v_server_fd);
-  nyara_set_nonblock(fd);
-  ADD_E(fd, ETYPE_CAN_ACCEPT);
+  tcp_server_fd = FIX2INT(v_server_fd);
+  nyara_set_nonblock(tcp_server_fd);
+  ADD_E(tcp_server_fd, sym_accept);
 
   LOOP_E();
   return Qnil;
@@ -286,9 +277,15 @@ static VALUE ext_set_nonblock(VALUE _, VALUE v_fd) {
 
 static VALUE ext_fd_watch(VALUE _, VALUE v_fd) {
   int fd = NUM2INT(v_fd);
-  rb_hash_aset(watch_request_map, v_fd, curr_request->self);
   rb_ary_push(curr_request->watched_fds, v_fd);
-  ADD_E(fd, ETYPE_CONNECT);
+  ADD_E(fd, curr_request->rid);
+  return Qnil;
+}
+
+static VALUE ext_fd_unwatch(VALUE _, VALUE v_fd) {
+  int fd = NUM2INT(v_fd);
+  rb_ary_delete(curr_request->watched_fds, v_fd);
+  DEL_E(fd);
   return Qnil;
 }
 
@@ -386,17 +383,17 @@ static VALUE ext_handle_request(VALUE _, VALUE request) {
 }
 
 void Init_event(VALUE ext) {
-  fd_request_map = rb_hash_new();
-  rb_gc_register_mark_object(fd_request_map);
-  watch_request_map = rb_hash_new();
-  rb_gc_register_mark_object(watch_request_map);
+  rid_request_map = rb_hash_new();
+  rb_gc_register_mark_object(rid_request_map);
+  handled_rids = st_init_numtable();
+  to_resume_requests = rb_ary_new();
+  rb_gc_register_mark_object(to_resume_requests);
+
+  sym_accept = ID2SYM(rb_intern("accept"));
   sym_term_close = ID2SYM(rb_intern("term_close"));
   sym_writing = ID2SYM(rb_intern("writing"));
   sym_reading = ID2SYM(rb_intern("reading"));
   sym_sleep = ID2SYM(rb_intern("sleep"));
-
-  to_resume_requests = rb_ary_new();
-  rb_gc_register_mark_object(to_resume_requests);
 
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
@@ -408,6 +405,7 @@ void Init_event(VALUE ext) {
   // fd operations
   rb_define_singleton_method(ext, "set_nonblock", ext_set_nonblock, 1);
   rb_define_singleton_method(ext, "fd_watch", ext_fd_watch, 1);
+  rb_define_singleton_method(ext, "fd_unwatch", ext_fd_unwatch, 1);
   rb_define_singleton_method(ext, "fd_send", ext_fd_send, 3);
   rb_define_singleton_method(ext, "fd_recv", ext_fd_recv, 3);
 

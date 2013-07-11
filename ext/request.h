@@ -19,6 +19,7 @@ typedef struct {
   int status;   // response status
 
   VALUE self;
+  VALUE rid;    // fixnum
 
   // request
   VALUE header;
@@ -49,3 +50,5 @@ typedef struct {
 
   bool sleeping;
 } Request;
+
+Request* nyara_request_new(int fd);

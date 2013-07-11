@@ -12,7 +12,7 @@
 
 /* event.c */
 void Init_event(VALUE ext);
-void nyara_detach_fd(int fd);
+void nyara_detach_rid(VALUE rid);
 
 
 /* request_parse.c */
@@ -21,7 +21,6 @@ void Init_request_parse(VALUE nyara);
 
 /* request.c */
 void Init_request(VALUE nyara, VALUE ext);
-VALUE nyara_request_new(int fd);
 void nyara_request_init_env(VALUE request);
 void nyara_request_term_close(VALUE request);
 bool nyara_send_data(int fd, const char* s, long len);

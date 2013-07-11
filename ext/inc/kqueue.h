@@ -10,32 +10,22 @@
 # include <sys/queue.h>
 #endif
 
-#define MAX_E 1024
-static int qfd;
 static struct kevent qevents[MAX_E];
 
-static void ADD_E(int fd, uint64_t etype) {
+static void ADD_E(int fd, VALUE rid) {
   struct kevent e;
   // without EV_CLEAR, it is level-triggered
   // http://www.cs.helsinki.fi/linux/linux-kernel/2001-38/0547.html
-  EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, (void*)etype);
-# ifdef NDEBUG
-  kevent(qfd, &e, 1, NULL, 0, NULL);
-# else
+  EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, (void*)rid);
   if (kevent(qfd, &e, 1, NULL, 0, NULL))
-    printf("%s: %s\n", __func__, strerror(errno));
-# endif
+    rb_sys_fail("kevent(2) - EV_ADD");
 }
 
 static void DEL_E_WITH_FILTER(int fd, int filter) {
   struct kevent e;
   EV_SET(&e, fd, filter, EV_DELETE, 0, 0, NULL);
-# ifdef NDEBUG
-  kevent(qfd, &e, 1, NULL, 0, NULL);
-# else
   if (kevent(qfd, &e, 1, NULL, 0, NULL))
-    printf("%s: %s\n", __func__, strerror(errno));
-# endif
+    rb_sys_fail("kevent(2) - EV_DELETE");
 }
 
 static void DEL_E(int fd) {
@@ -55,21 +45,21 @@ static void LOOP_E() {
   // EV_DELETE, EV_RECEIPT, EV_ONESHOT,
   // EV_CLEAR, EV_EOF, EV_ERROR);
 
-  struct timespec ts = {0, 1000 * 1000 * 100};
+  static struct timespec ts = {0, 1000 * 1000 * 100};
   while (1) {
     // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
     int sz = kevent(qfd, NULL, 0, qevents, MAX_E, &ts);
-    FD_ZERO(&handled_request_fds);
+    st_clear(handled_rids);
 
     for (int i = 0; i < sz; i++) {
-      int fd = (int)qevents[i].ident;
       if (qevents[i].flags & EV_EOF) {
+        int fd = (int)qevents[i].ident;
         // EV_EOF is set if the read side of the socket is shutdown
         // the event can keep flipping back to consume cpu if we don't remove it
         DEL_E_WITH_FILTER(fd, qevents[i].filter);
       }
       if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
-        loop_body(fd, (int)qevents[i].udata);
+        loop_body((VALUE)qevents[i].udata);
         break;
       }
     }

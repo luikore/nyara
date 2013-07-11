@@ -44,8 +44,7 @@ static void request_free(void* pp) {
   Request* p = pp;
   if (p) {
     if (p->fd) {
-      nyara_detach_fd(p->fd);
-      p->fd = 0;
+      nyara_detach_rid(p->rid);
     }
     if (p->mparser) {
       multipart_parser_free(p->mparser);
@@ -56,6 +55,8 @@ static void request_free(void* pp) {
 }
 
 static Request* _request_alloc() {
+  static int curr_rid = 1;
+
   Request* p = ALLOC(Request);
   http_parser_init(&(p->hparser), HTTP_REQUEST);
   p->mparser = NULL;
@@ -96,13 +97,15 @@ static Request* _request_alloc() {
   p->sleeping = false;
 
   p->self = Data_Wrap_Struct(request_class, request_mark, request_free, p);
+  p->rid = INT2FIX(curr_rid++); // todo synchronize?
+
   return p;
 }
 
-VALUE nyara_request_new(int fd) {
+Request* nyara_request_new(int fd) {
   Request* p = _request_alloc();
   p->fd = fd;
-  return p->self;
+  return p;
 }
 
 void nyara_request_init_env(VALUE self) {
@@ -142,8 +145,7 @@ void nyara_request_term_close(VALUE self) {
     }
   }
   if (p->fd) {
-    nyara_detach_fd(p->fd);
-    p->fd = 0;
+    nyara_detach_rid(p->rid);
   }
 }
 
