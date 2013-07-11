@@ -52,6 +52,8 @@ module Nyara
           end
         end
 
+      ensure
+        Ext.request_unset_fd request
         server.close
         client.close
       end

@@ -108,6 +108,7 @@ module Nyara
       it "invokes lifecycle callback" do
         @test.get '/'
         assert_nil @test.env.controller.before_invoked
+        assert @test.request.message_complete?
 
         @test.delete "/render"
         assert @test.env.controller.before_invoked

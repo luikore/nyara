@@ -56,6 +56,10 @@ module Nyara
         Ext.request_set_fd @request, @server.fileno
       end
 
+      after :each do
+        Ext.request_unset_fd @request
+      end
+
       def receive_header
         @c.send_header
         @server.close_write

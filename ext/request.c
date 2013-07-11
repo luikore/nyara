@@ -215,6 +215,11 @@ static VALUE request_body(VALUE self) {
   return p->body;
 }
 
+static VALUE request_message_complete_p(VALUE self) {
+  P;
+  return (p->parse_state == PS_MESSAGE_COMPLETE) ? Qtrue : Qfalse;
+}
+
 static VALUE request_status(VALUE self) {
   P;
   return INT2FIX(p->status);
@@ -305,14 +310,21 @@ static VALUE ext_request_new(VALUE _) {
   return _request_alloc()->self;
 }
 
+// NOTE: must pair with request_unset_fd
 static VALUE ext_request_set_fd(VALUE _, VALUE self, VALUE vfd) {
   P;
   int fd = NUM2INT(vfd);
   if (fd) {
-    fd = dup(fd);
     nyara_set_nonblock(fd);
     p->fd = fd;
   }
+  return Qnil;
+}
+
+// unset fd so the free won't cause segfault
+static VALUE ext_request_unset_fd(VALUE _, VALUE self) {
+  P;
+  p->fd = 0;
   return Qnil;
 }
 
@@ -378,6 +390,7 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "session", request_session, 0);
   rb_define_method(request_class, "flash", request_flash, 0);
   rb_define_method(request_class, "body", request_body, 0);
+  rb_define_method(request_class, "message_complete?", request_message_complete_p, 0);
 
   rb_define_method(request_class, "status", request_status, 0);
   rb_define_method(request_class, "response_content_type", request_response_content_type, 0);
@@ -392,5 +405,6 @@ void Init_request(VALUE nyara, VALUE ext) {
   // for test
   rb_define_singleton_method(ext, "request_new", ext_request_new, 0);
   rb_define_singleton_method(ext, "request_set_fd", ext_request_set_fd, 2);
+  rb_define_singleton_method(ext, "request_unset_fd", ext_request_unset_fd, 1);
   rb_define_singleton_method(ext, "request_set_attrs", ext_request_set_attrs, 2);
 }
