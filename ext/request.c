@@ -5,6 +5,7 @@
 
 static VALUE str_html;
 static VALUE request_class;
+static VALUE sym_reading;
 static VALUE sym_writing;
 static VALUE str_transfer_encoding;
 
@@ -206,6 +207,14 @@ static VALUE request_flash(VALUE self) {
   return p->flash;
 }
 
+static VALUE request_body(VALUE self) {
+  P;
+  while (p->parse_state != PS_MESSAGE_COMPLETE) {
+    rb_fiber_yield(1, &sym_reading);
+  }
+  return p->body;
+}
+
 static VALUE request_status(VALUE self) {
   P;
   return INT2FIX(p->status);
@@ -331,6 +340,7 @@ static VALUE ext_request_set_attrs(VALUE _, VALUE self, VALUE attrs) {
   p->flash                       = ATTR("flash");
   p->response_header             = ATTR("response_header");
   p->response_header_extra_lines = ATTR("response_header_extra_lines");
+  p->parse_state                 = PS_MESSAGE_COMPLETE;
 
   if (!RTEST(p->header)) p->header = HEADER_HASH_NEW;
   if (!RTEST(p->response_header)) p->response_header = HEADER_HASH_NEW;
@@ -349,6 +359,7 @@ void Init_request(VALUE nyara, VALUE ext) {
   str_html = rb_enc_str_new("html", strlen("html"), u8_encoding);
   OBJ_FREEZE(str_html);
   rb_gc_register_mark_object(str_html);
+  sym_reading = ID2SYM(rb_intern("reading"));
   sym_writing = ID2SYM(rb_intern("writing"));
   str_transfer_encoding = rb_enc_str_new("Transfer-Encoding", strlen("Transfer-Encoding"), u8_encoding);
   rb_gc_register_mark_object(str_transfer_encoding);
@@ -366,6 +377,7 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "cookie", request_cookie, 0);
   rb_define_method(request_class, "session", request_session, 0);
   rb_define_method(request_class, "flash", request_flash, 0);
+  rb_define_method(request_class, "body", request_body, 0);
 
   rb_define_method(request_class, "status", request_status, 0);
   rb_define_method(request_class, "response_content_type", request_response_content_type, 0);

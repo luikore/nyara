@@ -58,6 +58,14 @@ module Nyara
       assert_equal %w[utf-8 iso-8859-1], @request.accept_charset
     end
 
+    it "#param" do
+      @request_attrs[:method_num] = HTTP_METHODS['POST']
+      @request_attrs[:body] = "foo[bar]=baz"
+      request_set_attrs
+      assert_equal({'foo' => {'bar' => 'baz'}}, @request.param)
+      assert_equal 'baz', @request.param[:foo][:bar]
+    end
+
     def request_set_attrs
       Ext.request_set_attrs @request, @request_attrs
     end

@@ -85,6 +85,11 @@ module Nyara
       self['name'] ||= head['Content-Id']
     end
 
+    # Merge self data into params
+    def merge_into params
+      # todo
+    end
+
     # #### Params
     #
     # - `raw` in binary encoding

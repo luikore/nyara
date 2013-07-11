@@ -120,10 +120,19 @@ module Nyara
 
     def param
       @param ||= begin
-        q = query.dup
+        q = query ? query.dup : ParamHash.new
         if form?
-          # todo read body, change encoding
-          Ext.parse_param q, body
+          b = body # read all the message
+          case b
+          when String
+            Ext.parse_param q, body
+          when Array
+            b.each do |part|
+              part.merge_into q
+            end
+          else
+            # nil
+          end
         end
         q
       end
