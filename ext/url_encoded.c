@@ -280,6 +280,7 @@ static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int ne
   return;
 }
 
+// "a[%20][][b]=c" ===> output["a", "\x20", nil, "b"] = "c"
 static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nested_mode) {
   _url_encoded_seg(output, RSTRING_PTR(kv), RSTRING_LEN(kv), RTEST(v_nested_mode));
   return output;
