@@ -11,6 +11,8 @@ module Nyara
   # * `x_send_file` - header field name for `X-Sendfile` or `X-Accel-Redirect`, see [Nyara::Controller#send_file](Controller#send_file.html-instance_method) for details
   # * `session`     - see [Nyara::Session](Session.html) for sub options
   # * `prefer_erb`  - use ERB instead of ERubis for `.erb` templates
+  # * `logger`      - if set, every request is logged, and you can use `Nyara.logger` to do your own logging
+  #
   class NyaraConfig < ConfigHash
     # Clear all settings
     def reset
@@ -118,7 +120,6 @@ module Nyara
       raise ArgumentError, "expect #{expr.inspect} to be true", caller[1..-1] unless expr
     end
 
-    # todo env aware configure
     def configure &blk
       instance_eval &blk
     end

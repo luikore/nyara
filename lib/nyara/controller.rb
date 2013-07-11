@@ -22,7 +22,7 @@ module Nyara
         action.set_accept_exts @formats
         action.id = @curr_id if @curr_id
         action.classes = @curr_classes if @curr_classes
-        # todo validate arity of blk (before/after filters also needs arity validation)
+        # todo validate arity of blk (before filters also needs arity validation)
         action.blk = blk
         @routes << action
 
@@ -189,8 +189,12 @@ module Nyara
     include Renderable
 
     def self.inherited klass
-      # klass will also have this inherited method
-      # todo check class name
+      # note: klass will also have this inherited method
+
+      unless klass.name.end_with?('Controller')
+        raise "class #{klass.name} < Nyara::Controller -- class name must end with `Controller`"
+      end
+
       klass.extend ClassMethods
       [:@used_ids, :@default_layout, :@before_filters, :@routes].each do |iv|
         if value = klass.superclass.instance_variable_get(iv)
