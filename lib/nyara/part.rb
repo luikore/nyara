@@ -88,6 +88,13 @@ module Nyara
     # Merge self data into params
     def merge_into params
       # todo
+
+      # this part is param
+      # Content-Disposition: form-data; name="submit-name"
+
+      # this part is file
+      # Content-Disposition: file; filename="file1.txt"
+      # Content-Type: text/plain
     end
 
     # #### Params

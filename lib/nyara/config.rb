@@ -71,9 +71,13 @@ module Nyara
     # Create a logger with the 'logger' option
     def create_logger
       l = self['logger']
+
       if l == true or l.nil?
+        # see Nyara.summary_request
+        Ext.summary_request true if development?
         ::Logger.new(production? ? project_path('production.log') : STDOUT)
       elsif l.is_a?(Class)
+        Ext.summary_request true if development?
         l.new(production? ? project_path('production.log') : STDOUT)
       elsif l.is_a?(Proc)
         l.call

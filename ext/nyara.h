@@ -74,4 +74,5 @@ extern RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, 
 
 /* nyara.c */
 void nyara_set_nonblock(int fd);
+void nyara_summary_request(int method, VALUE path, VALUE controller);
 extern rb_encoding* u8_encoding;

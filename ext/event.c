@@ -113,6 +113,7 @@ static void _handle_request(VALUE request) {
   // ensure action
   if (p->fiber == Qnil) {
     volatile RouteResult result = nyara_lookup_route(p->method, p->path, p->accept);
+    nyara_summary_request(p->method, p->path, result.controller);
     if (RTEST(result.controller)) {
       rb_ary_push(result.args, rb_class_new_instance(1, &(p->self), result.controller));
       // result.args is on stack, no need to worry gc

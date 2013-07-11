@@ -7,6 +7,7 @@
 #include <sys/fcntl.h>
 
 rb_encoding* u8_encoding;
+static VALUE nyara;
 
 void nyara_set_nonblock(int fd) {
   int flags;
@@ -30,11 +31,24 @@ static void set_fd_limit(int nofiles) {
   }
 }
 
+static bool summary_request = false;
+void nyara_summary_request(int method, VALUE path, VALUE controller) {
+  if (summary_request) {
+    rb_funcall(nyara, rb_intern("summary_request"), 3, INT2NUM(method), path, controller);
+  }
+}
+
+// set whether should log summary of request
+static VALUE ext_summary_request(VALUE _, VALUE toggle) {
+  summary_request = RTEST(toggle);
+  return toggle;
+}
+
 void Init_nyara() {
   u8_encoding = rb_utf8_encoding();
   set_fd_limit(20000);
 
-  VALUE nyara = rb_define_module("Nyara");
+  nyara = rb_define_module("Nyara");
 # include "inc/version.inc"
   rb_const_set(nyara, rb_intern("VERSION"), rb_enc_str_new(NYARA_VERSION, strlen(NYARA_VERSION), u8_encoding));
 
@@ -66,6 +80,7 @@ void Init_nyara() {
   OBJ_FREEZE(status_map);
 
   VALUE ext = rb_define_module_under(nyara, "Ext");
+  rb_define_singleton_method(ext, "summary_request", ext_summary_request, 1);
   Init_accept(ext);
   Init_mime(ext);
   Init_request(nyara, ext);

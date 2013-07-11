@@ -104,6 +104,13 @@ module Nyara
       require_relative "patches/tcp_socket"
     end
 
+    def summary_request method_num, path, controller
+      if l = logger
+        method = HTTP_METHODS.find{|k, v| method_num == v}.first
+        l.info "#{method} #{path} => #{controller}"
+      end
+    end
+
     def start_development_server port
       trap :INT do
         exit!

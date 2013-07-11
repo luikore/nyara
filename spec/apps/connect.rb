@@ -6,6 +6,7 @@ require "open-uri"
 
 configure do
   set :port, 3003
+  set :logger, false
 end
 
 get '/' do
