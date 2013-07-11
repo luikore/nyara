@@ -87,14 +87,21 @@ module Nyara
 
     # Merge self data into params
     def merge_into params
-      # todo
+      unless self['name']
+        warn "looks like bad part: #{self['header'].inspect}"
+        return
+      end
 
-      # this part is param
-      # Content-Disposition: form-data; name="submit-name"
+      # NOTE name is already decoded
+      keys = self['name'].sub(/\]$/, '').split(/\]\[|\[/)
 
-      # this part is file
-      # Content-Disposition: file; filename="file1.txt"
-      # Content-Type: text/plain
+      if self['filename']
+        Ext.param_hash_nested_aset params, keys, self
+      elsif self['type']
+        warn "looks like bad part: #{self['header'].inspect}"
+      else
+        Ext.param_hash_nested_aset params, keys, CGI.unescape(self['data'])
+      end
     end
 
     # #### Params
@@ -162,6 +169,30 @@ module Nyara
       v
     rescue
       nil
+    end
+
+    def to_inspect_h
+      h = {}
+      each do |k, v|
+        if k == 'data'
+          h[k] = "#{v.bytesize}:#{v[0..5]}..."
+        else
+          h[k] = v
+        end
+      end
+      h
+    end
+
+    def inspect
+      "<Nyara::Part #{to_inspect_h.inspect}>"
+    end
+
+    def pretty_inspect
+      "<Nyara::Part #{to_inspect_h.pretty_inspect}>"
+    end
+
+    def pretty_print p
+      "<Nyara::Part #{to_inspect_h.pretty_print p}>"
     end
   end
 end

@@ -139,9 +139,13 @@ static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
 }
 
 static void _error(const char* msg, const char* s, long len, long segment_i) {
-  rb_raise(rb_eRuntimeError,
-    "error parsing \"%.*s\": segments[%ld] is %s",
-    (int)len, s, segment_i, msg);
+  if (s) {
+    rb_raise(rb_eRuntimeError,
+      "error parsing \"%.*s\": segments[%ld] is %s",
+      (int)len, s, segment_i, msg);
+  } else {
+    rb_raise(rb_eRuntimeError, msg);
+  }
 }
 
 static VALUE _new_child(long hash) {
@@ -404,10 +408,19 @@ static VALUE ext_escape(VALUE _, VALUE s, VALUE v_ispath) {
   return res;
 }
 
+// nil in keys will be interpreted as array key
+static VALUE ext_param_hash_nested_aset(VALUE _, VALUE output, VALUE keys, VALUE value) {
+  // todo check output is ParamHash
+  Check_Type(keys, T_ARRAY);
+  _aset_keys(output, keys, value, NULL, 0);
+  return Qnil;
+}
+
 void Init_url_encoded(VALUE ext) {
   rb_define_singleton_method(ext, "parse_param", ext_parse_param, 2);
   rb_define_singleton_method(ext, "parse_cookie", ext_parse_cookie, 2);
   rb_define_singleton_method(ext, "escape", ext_escape, 2);
+  rb_define_singleton_method(ext, "param_hash_nested_aset", ext_param_hash_nested_aset, 3);
   // for test
   rb_define_singleton_method(ext, "parse_url_encoded_seg", ext_parse_url_encoded_seg, 3);
   rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);
