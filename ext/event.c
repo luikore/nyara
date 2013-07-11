@@ -183,6 +183,8 @@ static void loop_check() {
 
       _resume_action(p);
       if (qfd) {
+        // printf("%s\n", "no way!");
+        // _Exit(1);
         VALUE* v_fds = RARRAY_PTR(p->watched_fds);
         long v_fds_len = RARRAY_LEN(p->watched_fds);
         for (long i = 0; i < v_fds_len; i++) {
@@ -193,6 +195,8 @@ static void loop_check() {
         // we are in a test, no queue
       }
     }
+
+    rb_ary_clear(to_resume_requests);
   }
 
   if (graceful_quit) {

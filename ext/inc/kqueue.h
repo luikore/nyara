@@ -60,7 +60,6 @@ static void LOOP_E() {
       }
       if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
         loop_body((VALUE)qevents[i].udata);
-        break;
       }
     }
     loop_check();
