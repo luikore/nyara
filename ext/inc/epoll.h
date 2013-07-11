@@ -6,35 +6,24 @@
 
 static struct epoll_event qevents[MAX_E];
 
-static void ADD_E(int fd, uint64_t etype) {
+static void ADD_E(int fd, VALUE rid) {
   struct epoll_event e;
   // not using edge trigger flag EPOLLET
   // because edge trigger only fire once when fd is readable/writable
   // but the event may not be consumed in our handler
   e.events = EPOLLIN | EPOLLOUT;
-  e.data.u64 = (etype << 32) | (uint64_t)fd;
+  e.data.u64 = (uint64_t)rid;
 
-  // todo timeout
-# ifdef NDEBUG
-  epoll_ctl(qfd, EPOLL_CTL_ADD, fd, &e);
-# else
   if (epoll_ctl(qfd, EPOLL_CTL_ADD, fd, &e))
-    printf("%s: %s\n", __func__, strerror(errno));
-# endif
+    rb_sys_fail("epoll_ctl(2) - EPOLL_CTL_ADD");
 }
 
 // NOTE either epoll or kqueue removes the event watch from queue when fd closed
 static void DEL_E(int fd) {
   struct epoll_event e;
   e.events = EPOLLIN | EPOLLOUT;
-  e.data.ptr = NULL;
-
-# ifdef NDEBUG
-  epoll_ctl(qfd, EPOLL_CTL_DEL, fd, &e);
-# else
   if (epoll_ctl(qfd, EPOLL_CTL_DEL, fd, &e))
-    printf("%s: %s\n", __func__, strerror(errno));
-# endif
+    rb_sys_fail("epoll_ctl(2) - EPOLL_CTL_DEL");
 }
 
 static void INIT_E() {
@@ -48,16 +37,15 @@ static void LOOP_E() {
   while (1) {
     // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
     int sz = epoll_wait(qfd, qevents, MAX_E, 100);
-    FD_ZERO(&handled_request_fds);
+    st_clear(handled_rids);
 
     for (int i = 0; i < sz; i++) {
-      int fd = (int)(qevents[i].data.u64 & 0xFFFFFFFF);
-      int etype = (int)(qevents[i].data.u64 >> 32);
+      VALUE rid = (VALUE)qevents[i].data.u64;
       if (qevents[i].events & (EPOLLHUP | EPOLLERR)) {
-        nyara_detach_fd(fd);
+        nyara_detach_rid(rid);
         // todo log?
       } else if (qevents[i].events & (EPOLLIN | EPOLLOUT)) {
-        loop_body(fd, etype);
+        loop_body(rid);
       } else if (qevents[i].events & EPOLLRDHUP) {
         // do sth?
       }
