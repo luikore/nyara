@@ -238,7 +238,18 @@ http_parser_settings nyara_request_parse_settings = {
   .on_message_complete = on_message_complete
 };
 
-void Init_request_parse(VALUE nyara) {
+static VALUE ext_parse_multipart_boundary(VALUE _, VALUE header) {
+  char* s = _parse_multipart_boundary(header);
+  if (s) {
+    volatile VALUE res = rb_str_new2(s);
+    xfree(s);
+    return res;
+  } else {
+    return Qnil;
+  }
+}
+
+void Init_request_parse(VALUE nyara, VALUE ext) {
   id_update = rb_intern("update");
   id_final = rb_intern("final");
   str_accept = rb_enc_str_new("Accept", strlen("Accept"), u8_encoding);
@@ -249,4 +260,7 @@ void Init_request_parse(VALUE nyara) {
   OBJ_FREEZE(method_override_key);
   rb_const_set(nyara, rb_intern("METHOD_OVERRIDE_KEY"), method_override_key);
   nyara_http_methods = rb_const_get(nyara, rb_intern("HTTP_METHODS"));
+
+  // for test
+  rb_define_singleton_method(ext, "parse_multipart_boundary", ext_parse_multipart_boundary, 1);
 }

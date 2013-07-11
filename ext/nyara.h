@@ -16,7 +16,7 @@ void nyara_detach_rid(VALUE rid);
 
 
 /* request_parse.c */
-void Init_request_parse(VALUE nyara);
+void Init_request_parse(VALUE nyara, VALUE ext);
 
 
 /* request.c */
