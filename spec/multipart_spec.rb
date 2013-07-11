@@ -1,6 +1,18 @@
 require_relative "spec_helper"
 
 module Nyara
+  describe Ext do
+    it ".parse_multipart_boundary" do
+      header = HeaderHash.new
+      boundary = Ext.parse_multipart_boundary header
+      assert_nil boundary
+
+      header['Content-Type'] = 'multipart/form-data; boundary=----WebKitFormBoundaryn3ghstHtZs1Z3VTi'
+      boundary = Ext.parse_multipart_boundary header
+      assert_equal '----WebKitFormBoundaryn3ghstHtZs1Z3VTi', boundary
+    end
+  end
+
   describe Part do
     it "bottom case" do
       p = Part.new({})

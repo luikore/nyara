@@ -177,9 +177,9 @@ static char* _parse_multipart_boundary(VALUE header) {
   long matched_len = onig_match(re, (const UChar*)s, (const UChar*)(s + len), (const UChar*)s, &region, 0);
   if (matched_len > 0) {
     // multipart-parser needs a buffer to end with '\0'
-    long boundary_len = region.end[0] - region.beg[0];
+    long boundary_len = region.end[1] - region.beg[1];
     char* boundary_bytes = ALLOC_N(char, boundary_len + 1);
-    memcpy(boundary_bytes, s + region.beg[0], boundary_len);
+    memcpy(boundary_bytes, s + region.beg[1], boundary_len);
     boundary_bytes[boundary_len] = '\0';
     return boundary_bytes;
   } else {
