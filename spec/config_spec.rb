@@ -2,7 +2,7 @@ require_relative "spec_helper"
 
 module Nyara
   describe Config do
-    after :all do
+    before :each do
       Config.reset
     end
 
@@ -30,13 +30,11 @@ module Nyara
     end
 
     it "port default" do
-      Config.reset
       Config.init
       assert_equal 3000, Config['port']
     end
 
     it "views and public default" do
-      Config.reset
       Config[:root] = '/root'
       Config.init
       assert_equal '/root/public', Config['public']
@@ -44,8 +42,9 @@ module Nyara
     end
 
     context "#project_path" do
-      before :all do
+      before :each do
         Config.configure do
+          reset
           set :root, '/a'
           init
         end
@@ -95,6 +94,17 @@ module Nyara
       Config.set :env, 'production'
       assert_equal false, Config.test?
       assert_equal true, Config.production?
+      Config.reset
+    end
+
+    it "creates logger" do
+      assert Nyara.logger
+    end
+
+    it "not create logger" do
+      Config.set :logger, false
+      Config.init
+      assert_nil Nyara.logger
     end
   end
 end

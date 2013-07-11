@@ -11,7 +11,23 @@ module Nyara
   # * `x_send_file` - header field name for `X-Sendfile` or `X-Accel-Redirect`, see [Nyara::Controller#send_file](Controller#send_file.html-instance_method) for details
   # * `session`     - see [Nyara::Session](Session.html) for sub options
   # * `prefer_erb`  - use ERB instead of ERubis for `.erb` templates
-  # * `logger`      - if set, every request is logged, and you can use `Nyara.logger` to do your own logging
+  # * `logger`      - if set, every request is logged, and you can use `Nyara.logger` to do your own logging.
+  # * `before_fork` - a proc to run before forking
+  # * `after_fork`  - a proc to run after forking
+  #
+  # #### logger example
+  #
+  #     # use default logger
+  #     set :logger, true
+  #
+  #     # use daily logger, the lambda is invoked to create the logger
+  #     set :logger, lambda{ ::Logger.new '/var/server.log', 'daily' }
+  #
+  #     # use other logger class
+  #     set :logger, MySimpleLogger
+  #
+  #     # disable logger
+  #     set :logger, false
   #
   class NyaraConfig < ConfigHash
     # Clear all settings
@@ -40,8 +56,27 @@ module Nyara
       self['views'] = project_path(self['views'] || 'views')
       self['public'] = project_path(self['public'] || 'public')
 
+      Nyara.logger = create_logger
+
+      assert !self['before_fork'] or self['before_fork'].respond_to?('call')
+      assert !self['after_fork'] or self['after_fork'].respond_to?('call')
+
       if self['public']
         map '/', PublicController
+      end
+    end
+
+    # Create a logger with the 'logger' option
+    def create_logger
+      l = self['logger']
+      if l == true or l.nil?
+        ::Logger.new(production? ? project_path('production.log') : STDOUT)
+      elsif l.is_a?(Class)
+        l.new(production? ? project_path('production.log') : STDOUT)
+      elsif l.is_a?(Proc)
+        l.call
+      elsif l
+        raise 'bad logger configure, should be: `true` / `false` / Class / Proc'
       end
     end
 

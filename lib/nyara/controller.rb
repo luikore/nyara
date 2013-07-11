@@ -588,9 +588,10 @@ module Nyara
         # need investicate cont.c for more
         return
       else
-        print $!.class, ': '
-        puts $!.message
-        puts $!.backtrace
+        if l = Nyara.logger
+          l.error "#{$!.class}: #{$!.message}"
+          l.error $!.backtrace
+        end
         status 500
         send_header rescue nil
       end

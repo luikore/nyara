@@ -9,6 +9,7 @@ require "openssl"
 require "socket"
 require "tilt"
 require "time"
+require "logger"
 
 require_relative "../../ext/nyara"
 require_relative "hashes/param_hash"
@@ -62,6 +63,8 @@ module Nyara
       Config
     end
 
+    attr_accessor :logger
+
     def setup
       Session.init
       Config.init
@@ -73,7 +76,9 @@ module Nyara
     def start_server
       port = Config[:port]
 
-      puts "starting #{Config[:env]} server at 0.0.0.0:#{port}"
+      if l = Nyara.logger
+        l.info "starting #{Config[:env]} server at 0.0.0.0:#{port}"
+      end
       case Config[:env].to_s
       when 'production'
         patch_tcp_socket
@@ -87,7 +92,9 @@ module Nyara
     end
 
     def patch_tcp_socket
-      puts "patching TCPSocket"
+      if l = Nyara.logger
+        l.info "patching TCPSocket"
+      end
       require_relative "patches/tcp_socket"
     end
 
@@ -217,8 +224,10 @@ module Nyara
 
     # Increase worker number by 1
     def incr_workers sig
+      Config['before_fork'].call if Config['before_fork']
       pid = fork {
         $0 = "(nyara:worker) ruby #{$0}"
+        Config['after_fork'].call if Config['after_fork']
 
         trap :QUIT do
           Ext.graceful_quit @server.fileno
