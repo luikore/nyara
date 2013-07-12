@@ -144,7 +144,7 @@ static void _error(const char* msg, const char* s, long len, long segment_i) {
       "error parsing \"%.*s\": segments[%ld] is %s",
       (int)len, s, segment_i, msg);
   } else {
-    rb_raise(rb_eRuntimeError, msg);
+    rb_raise(rb_eRuntimeError, "%s", msg);
   }
 }
 
