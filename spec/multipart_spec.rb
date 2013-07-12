@@ -60,5 +60,11 @@ module Nyara
       p.final
       assert_equal "a \x3F \x04", p['data']
     end
+
+    it "inspec and pp helpers" do
+      p = Part.new Hash.new
+      p.inspect
+      p.pretty_inspect
+    end
   end
 end

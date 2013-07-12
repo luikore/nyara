@@ -187,12 +187,10 @@ module Nyara
       "<Nyara::Part #{to_inspect_h.inspect}>"
     end
 
-    def pretty_inspect
-      "<Nyara::Part #{to_inspect_h.pretty_inspect}>"
-    end
-
-    def pretty_print p
-      "<Nyara::Part #{to_inspect_h.pretty_print p}>"
+    def pretty_print q
+      q.text "<Nyara::Part "
+      to_inspect_h.pretty_print q
+      q.text ">"
     end
   end
 end
