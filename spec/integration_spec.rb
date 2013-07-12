@@ -122,7 +122,7 @@ module Nyara
       param = @test.env.request.param
       assert_equal 'foo', param['foo']
       assert_equal 'bar', param['bar']['data']
-      assert_equal 'baz', param['baz']['文件']['data']
+      assert_equal 'baz', param['baz']['你好']['data']
     end
 
     context "public static content" do

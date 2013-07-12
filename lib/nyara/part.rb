@@ -34,11 +34,11 @@ module Nyara
     #     pct-encoded := "%" HEXDIG HEXDIG
     #
     EX_PARAM = /\s*;\s*(filename|name)\s*(?:
-      = \s* "((?>\\"|[^"])*)"         # quoted string - 2
-      | = \s* (#{TOKEN})              # token - 3
-      | \*= \s* ([\w\-]+)             # charset - 4
+      = \s* "((?>\\"|[^"])*)"         # quoted string - v1
+      | = \s* (#{TOKEN})              # token - v2
+      | \*= \s* ([\w\-]+)             # charset - enc
             '[\w\-]+'                 # language
-            ((?>%\h\h|#{ATTR_CHAR})+) # value-chars - 5
+            ((?>%\h\h|#{ATTR_CHAR})+) # value-chars - v3
     )/xni
 
     # Analyse given `head` and build a param hash representing the part
@@ -48,7 +48,7 @@ module Nyara
     # * `type`      - mime type
     # * `data`      - decoded data (incomplete before Part#final called)
     # * `filename`  - basename of uploaded data
-    # * `name`      - param name
+    # * `name`      - param name, in array form. If it comes like `a[b][][c]`, then it becomes `["a", "b", "", "c"]` after parsing.
     #
     def initialize head
       self['head'] = head
@@ -67,36 +67,40 @@ module Nyara
         # skip first token
         ex_params = disposition.sub TOKEN, ''.force_encoding('binary')
 
-        # store values not so specific as encoded value
+        # store values not so specific as values with charset
         tmp_values = {}
         ex_params.scan EX_PARAM do |name, v1, v2, enc, v3|
           name.downcase!
-          if enc
-            # value with charset and lang is more specific
-            self[name] ||= enc_unescape enc, v3
-          else
-            tmp_values[name] ||= (v1 || (CGI.unescape(v2) rescue nil))
+          case name
+          when 'name', 'filename'
+            if enc
+              self[name] = enc_unescape enc, v3
+            else
+              tmp_values[name] = (v1.force_encoding('utf-8') || (CGI.unescape(v2) rescue nil))
+            end
           end
         end
-        self['filename'] ||= tmp_values['filename']
+
+        if filename = (self['filename'] ||= tmp_values['filename'])
+          self['filename'] = File.basename filename
+        end
+
         self['name'] ||= tmp_values['name']
       end
-      if self['filename']
-        self['filename'] = File.basename self['filename']
-      end
-      self['name'] ||= head['Content-Id']
+
+      # rfc2111: url-encoded
+      self['name'] ||= (head['Content-Id'] ? (CGI.unescape(head['Content-Id']) rescue nil) : nil)
     end
 
     # Merge self data into params
     def merge_into params
-      unless self['name']
+      unless name = self['name']
         warn "looks like bad part: #{self['header'].inspect}"
         return
       end
 
-      # NOTE name is already decoded
-      keys = self['name'].sub(/\]$/, '').split(/\]\[|\[/)
-
+      # NOTE `[` are `]` are escaped in url-encoded, so should not split before decode
+      keys = name.sub(/\]$/, '').split(/\]\[|\[/)
       if self['filename']
         Ext.param_hash_nested_aset params, keys, self
       elsif self['type']
