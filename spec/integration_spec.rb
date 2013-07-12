@@ -44,6 +44,10 @@ module Nyara
       @test = MyTest.new
     end
 
+    before :each do
+      GC.stress = false
+    end
+
     it "response" do
       @test.get "/", {'Xample' => 'résumé'}
       assert @test.response.success?
