@@ -16,6 +16,7 @@ Gem::Specification.new do |s|
   s.files += Dir.glob('ext/multipart-parser-c/README.md')
   s.files.uniq!
   s.require_paths = ["lib"]
+  s.executables << 'nyara'
   s.extensions = ["ext/extconf.rb"]
   s.rubygems_version = '2.0.3'
 
