@@ -214,7 +214,10 @@ static int on_headers_complete(http_parser* parser) {
 static int on_body(http_parser* parser, const char* s, size_t len) {
   Request* p = (Request*)parser;
   if (p->mparser) {
-    multipart_parser_execute(p->mparser, s, len);
+    size_t parsed = multipart_parser_execute(p->mparser, s, len);
+    if (parsed != len) {
+      rb_raise(rb_eRuntimeError, "multipart chunk parse failure at %lu", parsed);
+    }
     // todo sum total length, if too big, trigger save to tmpfile
   } else {
     rb_str_cat(p->body, s, len);
