@@ -68,7 +68,3 @@ RSpec.configure do |config|
     end
   end
 end
-
-configure do
-  set :env, 'test'
-end

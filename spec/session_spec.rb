@@ -21,19 +21,19 @@ module Nyara
 
         init_configure_with :session, :secure, false
         line = Session.encode_set_cookie @session, true
-        assert_not_includes line, 'Secure'
+        assert_not_include line, 'Secure'
 
         init_configure_with :session, :secure, nil
         line = Session.encode_set_cookie @session, true
         assert_includes line, '; Secure'
         line = Session.encode_set_cookie @session, false
-        assert_not_includes line, 'Secure'
+        assert_not_include line, 'Secure'
       end
 
       it "adds Expires" do
         init_configure_with :session, :expire, nil
         line = Session.encode_set_cookie @session, false
-        assert_not_includes line, 'Expires'
+        assert_not_include line, 'Expires'
 
         init_configure_with :session, :expires, 30 * 60
         line = Session.encode_set_cookie @session, false
@@ -107,7 +107,7 @@ module Nyara
 
         session_data = cookie[Session.name].split('/')[1]
         if session_data
-          assert_not_includes Base64.urlsafe_decode64(session_data), 'world'
+          assert_not_include Base64.urlsafe_decode64(session_data), 'world'
         end
 
         session2 = Session.decode cookie
