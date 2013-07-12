@@ -1,0 +1,28 @@
+defaults: &defaults
+  options:
+    identity_map_enabled: true
+
+development:
+  <<: *defaults
+  sessions:
+    default:
+      hosts:
+        - 127.0.0.1:27017
+      database: '<%= app_name %>_dev'
+
+test:
+  <<: *defaults
+  sessions:
+    default:
+      hosts:
+        - 127.0.0.1:27017
+      database: '<%= app_name %>_test'
+
+# set these environment variables on your prod server
+production:
+  <<: *defaults
+  sessions:
+    default:
+      hosts:
+        - 127.0.0.1:27017
+      database: '<%= app_name %>'

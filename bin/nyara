@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+require_relative "../lib/nyara/nyara"
+
+args = ARGV.dup
+task_name = args.shift || 'help'
+
+
+case task_name
+when 'help'
+when '-h'
+  Nyara::Command.help
+when '-v'
+  Nyara::Command.version
+when 'new'
+  Nyara::Command.new_project(*args)
+end

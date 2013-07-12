@@ -26,6 +26,7 @@ require_relative "route"
 require_relative "view"
 require_relative "cpu_counter"
 require_relative "part"
+require_relative "command"
 
 # default controllers
 require_relative "controllers/public_controller"
@@ -57,7 +58,7 @@ module Nyara
     end)
   }
 
-  class << self
+  class << self    
     def config
       raise ArgumentError, 'block not accepted, did you mean Nyara::Config.config?' if block_given?
       Config
