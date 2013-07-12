@@ -21,9 +21,5 @@ module Nyara
       assert_nil @flash.next['foo']
       assert_empty @session.values.first
     end
-
-    it "#now is from session, and #next is to session" do
-      
-    end
   end
 end
