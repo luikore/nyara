@@ -163,16 +163,14 @@ static void _aset_keys(VALUE output, VALUE keys, VALUE value, const char* kv_s, 
   }
 
   // first key seg
-  volatile VALUE key = arr[0];
   long is_hash_key = 1;
 
   // middle key segs
   for (long i = 0; i < len - 1; i++) {
-    key = arr[i];
     long next_is_hash_key = RSTRING_LEN(arr[i + 1]);
     if (is_hash_key) {
-      if (nyara_rb_hash_has_key(output, key)) {
-        output = rb_hash_aref(output, key);
+      if (nyara_rb_hash_has_key(output, arr[i])) {
+        output = rb_hash_aref(output, arr[i]);
         if (next_is_hash_key) {
           if (TYPE(output) != T_HASH) {
             // note: StringValueCStr requires VALUE* as param, and can raise another error if there's nul in the string
@@ -185,7 +183,7 @@ static void _aset_keys(VALUE output, VALUE keys, VALUE value, const char* kv_s, 
         }
       } else {
         volatile VALUE child = _new_child(next_is_hash_key);
-        rb_hash_aset(output, key, child);
+        rb_hash_aset(output, arr[i], child);
         output = child;
       }
     } else {
@@ -197,9 +195,8 @@ static void _aset_keys(VALUE output, VALUE keys, VALUE value, const char* kv_s, 
   }
 
   // terminate key seg: add value
-  key = arr[len - 1];
   if (is_hash_key) {
-    rb_hash_aset(output, key, value);
+    rb_hash_aset(output, arr[len - 1], value);
   } else {
     rb_ary_push(output, value);
   }
