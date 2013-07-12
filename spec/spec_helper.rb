@@ -21,6 +21,17 @@ end
 require_relative "../lib/nyara/nyara"
 require_relative "../lib/nyara/test"
 
+def stdout(&block)
+  original_stdout = $stdout
+  $stdout = fake = StringIO.new
+  begin
+    yield
+  ensure
+    $stdout = original_stdout
+  end
+  fake.string
+end
+
 RSpec.configure do |config|
   config.expect_with :stdlib
   if config.formatters.first.class.to_s =~ /TextMate/

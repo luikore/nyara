@@ -9,6 +9,9 @@ module Nyara
 commands:
   nyara help\t\t\tShow this message
   nyara new APP_NAME\t\tTo initialize a new project with default template in current directory.
+      options:
+      -f\t\t\tForce override if same name path existed
+      
   nyara version\t\t\tDisplay current version
       )
     end
@@ -17,7 +20,9 @@ commands:
       puts "Nyara #{Nyara::VERSION}"
     end
     
-    def new_project(name = nil)
+    def new_project(name = nil,*args)
+      args ||= []
+      force_create = args.include?("-f")
       require 'fileutils'
       require "erb"
       require 'ostruct'
@@ -29,7 +34,10 @@ commands:
       end
       
       app_dir = File.join(Dir.pwd,name)
-      FileUtils.rm_rf(app_dir) # TODO: will remove it
+      templte_dir = File.join(File.dirname(__FILE__),"templates")
+      
+      FileUtils.rm_rf(app_dir) if force_create
+      
       if Dir.exist?(app_dir)
         puts "This has same dir name's '#{name}' existed, Nyara can not override it."
         return
@@ -39,7 +47,7 @@ commands:
       
       puts "Generate Nyara project..."
       # Copy source template
-      FileUtils.cp_r(Dir.glob('lib/nyara/templates/*'),app_dir)
+      FileUtils.cp_r(Dir.glob("#{templte_dir}/*"),app_dir)
       
       # render template
       files = Dir.glob("#{app_dir}/**/*")
