@@ -48,6 +48,11 @@ module Nyara
       GC.stress = false
     end
 
+    it "decodes cookie" do
+      @test.get "/", {"Cookie" => 'foo=bar'}
+      assert_equal 'bar', @test.env.cookie['foo']
+    end
+
     it "response" do
       @test.get "/", {'Xample' => 'résumé'}
       assert @test.response.success?
