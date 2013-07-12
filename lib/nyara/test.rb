@@ -36,7 +36,8 @@ module Nyara
 
         client << data
         self.controller = Ext.handle_request request
-        response_data = client.read_nonblock response_size_limit
+        # response_data can be empty
+        response_data = (client.read_nonblock response_size_limit rescue '')
         self.response = Response.new response_data
 
         # no env when route not found
