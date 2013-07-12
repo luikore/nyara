@@ -18,12 +18,27 @@ class TestController < Nyara::Controller
     redirect_to '#index'
   end
 
+  post '/upload' do
+    params
+    # no response
+  end
+
   put '/send_file/%z' do |name|
     send_file Nyara.config.views_path name
   end
 
   delete '/render' do
     render 'edit.slim'
+  end
+
+  patch '/stream' do
+    view = stream 'edit.slim'
+    view.resume
+    view.end
+  end
+
+  options '/error' do
+    raise 'error'
   end
 end
 
@@ -79,7 +94,7 @@ module Nyara
       assert_equal '3', @test.session['a']
     end
 
-    it "send file" do
+    it "send_file" do
       @test.put "/send_file/layout.erb"
       data = File.read Nyara.config.views_path('layout.erb')
       assert_equal data, @test.response.body
@@ -88,6 +103,26 @@ module Nyara
     it "render" do
       @test.delete "/render"
       assert_include @test.response.body, "slim:edit"
+    end
+
+    it "stream" do
+      @test.patch '/stream'
+      assert_include @test.response.body, "slim:edit"
+    end
+
+    it "error" do
+      @test.options '/error'
+      assert_equal 500, @test.response.status
+      assert_equal false, @test.response.success?
+    end
+
+    it "multipart upload" do
+      data = File.binread(__dir__ + '/raw_requests/multipart')
+      @test.env.process_request_data data
+      param = @test.env.request.param
+      assert_equal 'foo', param['foo']
+      assert_equal 'bar', param['bar']['data']
+      assert_equal 'baz', param['baz']['文件']['data']
     end
 
     context "public static content" do

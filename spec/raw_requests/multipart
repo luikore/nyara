@@ -1,0 +1,20 @@
+POST /upload HTTP/1.1
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Content-Length: 431
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundarykkJ0CDXe4jYnH95C
+
+------WebKitFormBoundarykkJ0CDXe4jYnH95C
+Content-Disposition: form-data; name="bar"; filename="bar"
+Content-Type: application/octet-stream
+
+bar
+------WebKitFormBoundarykkJ0CDXe4jYnH95C
+Content-Disposition: form-data; name="baz[你好]"; filename="baz.txt"
+Content-Type: text/plain
+
+baz
+------WebKitFormBoundarykkJ0CDXe4jYnH95C
+Content-Disposition: form-data; name="foo"
+
+foo
+------WebKitFormBoundarykkJ0CDXe4jYnH95C--
