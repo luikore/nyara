@@ -154,7 +154,7 @@ static VALUE _new_child(long hash) {
 
 // a, b, c = keys; h[a][b][c] = value
 // the last 2 args are for error report
-static void _aset_keys(VALUE output, VALUE keys, VALUE value, const char* kv_s, long kv_len) {
+static void _aset_keys(VALUE output, volatile VALUE keys, VALUE value, const char* kv_s, long kv_len) {
   VALUE* arr = RARRAY_PTR(keys);
   long len = RARRAY_LEN(keys);
   if (!len) {
