@@ -60,9 +60,10 @@ module Nyara
       end
       self['data'] = ''.force_encoding('binary')
 
-      # todo just use binary when constructing it?
-      disposition = head['Content-Disposition'].force_encoding('binary')
+      disposition = head['Content-Disposition']
       if disposition
+        # todo just use binary when constructing it?
+        disposition.force_encoding('binary')
         # skip first token
         ex_params = disposition.sub TOKEN, ''.force_encoding('binary')
 
