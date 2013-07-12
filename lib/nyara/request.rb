@@ -111,6 +111,7 @@ module Nyara
 
     def form?
       if type = header['Content-Type']
+        type = type[/[^;\s]+/]
         FORM_METHODS.include?(http_method) and
         FORM_MEDIA_TYPES.include?(type)
       else
