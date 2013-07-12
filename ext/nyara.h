@@ -9,6 +9,10 @@
 #undef NDEBUG
 #endif
 
+#define nyara_inspect(value) do {\
+    volatile VALUE _xx = rb_inspect(value);\
+    printf("%s: %.*s\n", __func__, (int)RSTRING_LEN(_xx), RSTRING_PTR(_xx));\
+  } while(0)
 
 /* event.c */
 void Init_event(VALUE ext);
