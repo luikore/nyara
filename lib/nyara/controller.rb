@@ -64,37 +64,13 @@ module Nyara
         @meta_exist = true
       end
 
-      # HTTP GET
-      def get path, &blk
-        http 'GET', path, &blk
-      end
-
-      # HTTP POST
-      def post path, &blk
-        http 'POST', path, &blk
-      end
-
-      # HTTP PUT
-      def put path, &blk
-        http 'PUT', path, &blk
-      end
-
-      # HTTP DELETE
-      def delete path, &blk
-        http 'DELETE', path, &blk
-      end
-
-      # HTTP PATCH
-      def patch path, &blk
-        http 'PATCH', path, &blk
-      end
-
-      # HTTP OPTIONS<br>
-      # todo generate options response for a url<br>
-      # see http://tools.ietf.org/html/rfc5789
-      def options path, &blk
-        http 'OPTIONS', path, &blk
-      end
+      eval %w[GET POST PUT DELETE PATCH OPTIONS].map{|meth|
+        <<-RUBY
+          def #{meth.downcase} path, &blk
+            http '#{meth}', path, &blk
+          end
+        RUBY
+      }.join "\n"
 
       # Add *before* processor, invoke order is the same as definition order
       #
@@ -112,10 +88,6 @@ module Nyara
           (@before_filters[selector] ||= []) << p
         end
       end
-
-      # ---
-      # todo http method: trace ?
-      # +++
 
       # Set default layout
       def set_default_layout l
@@ -148,22 +120,15 @@ module Nyara
           e.id = next_id[] if e.id.empty?
 
           before_actions = e.matched_lifecycle_callbacks @before_filters
-          method_body = [*before_actions, e.blk]
-          method_names = []
-          # bind all with instance
-          method_body.each_with_index do |blk, idx|
+          senders = []
+          before_actions.each_with_index do |blk, idx|
             method_name = "#{e.id}\##{idx}"
-            method_names << method_name
+            senders << "send #{method_name.inspect}\n"
             define_method method_name, &blk
           end
-          senders = []
-          method_names.each_with_index do |name, idx|
-            if idx == before_actions.size
-              senders << "send #{name.inspect}, *xs\n"
-            else
-              senders << "send #{name.inspect}\n"
-            end
-          end
+          method_name = "#{e.id}\##{before_actions.size}"
+          senders << "send #{method_name.inspect}, *xs\n"
+          define_method method_name, e.blk
           class_eval <<-RUBY
             def __nyara_tmp_action *xs
               #{senders.join}
