@@ -14,6 +14,7 @@
     printf("%s: %.*s\n", __func__, (int)RSTRING_LEN(_xx), RSTRING_PTR(_xx));\
   } while(0)
 
+
 /* event.c */
 void Init_event(VALUE ext);
 void nyara_detach_rid(VALUE rid);
@@ -37,8 +38,8 @@ void Init_test_response(VALUE nyara);
 /* url_encoded.c */
 void Init_url_encoded(VALUE ext);
 long nyara_parse_path(VALUE path, const char*s, long len);
-void nyara_parse_param(VALUE output, const char* s, long len);
 VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str);
+void nyara_decode_uri_kv(volatile VALUE key, volatile VALUE value, const char* kv_s, long kv_len);
 
 
 /* accept.c */
@@ -53,11 +54,13 @@ VALUE ext_mime_match(VALUE _, VALUE request_accept, VALUE accept_mimes);
 
 /* hashes.c */
 void Init_hashes(VALUE nyara);
+void nyara_parse_param(VALUE output, const char* s, long len);
+
 
 // "ab-cd" => "Ab-Cd"
 // note str must be string created by nyara code
 void nyara_headerlize(VALUE str);
-int nyara_rb_hash_has_key(VALUE hash, VALUE key);
+// int nyara_rb_hash_has_key(VALUE hash, VALUE key);
 
 extern VALUE nyara_param_hash_class;
 extern VALUE nyara_header_hash_class;

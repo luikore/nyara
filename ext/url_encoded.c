@@ -74,6 +74,8 @@ static long _decode_url_seg(VALUE output, const char*s, long len, char stop_char
 // NOTE it's similar to _decode_url_seg, but:
 // - "+" is not escaped
 // - matrix uri params (segments starting with ";") are ignored
+//
+// returns parsed length, including matrix uri params
 long nyara_parse_path(VALUE output, const char* s, long len) {
   const char* last_s = s;
   long last_len = 0;
@@ -133,75 +135,6 @@ long nyara_parse_path(VALUE output, const char* s, long len) {
   return i;
 }
 
-static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
-  long parsed = nyara_parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
-  return ULONG2NUM(parsed);
-}
-
-static void _error(const char* msg, const char* s, long len, long segment_i) {
-  if (s) {
-    rb_raise(rb_eRuntimeError,
-      "error parsing \"%.*s\": segments[%ld] is %s",
-      (int)len, s, segment_i, msg);
-  } else {
-    rb_raise(rb_eRuntimeError, "%s", msg);
-  }
-}
-
-static VALUE _new_child(long hash) {
-  return hash ? rb_class_new_instance(0, NULL, nyara_param_hash_class) : rb_ary_new();
-}
-
-// a, b, c = keys; h[a][b][c] = value
-// the last 2 args are for error report
-static void _aset_keys(VALUE output, volatile VALUE keys, VALUE value, const char* kv_s, long kv_len) {
-  VALUE* arr = RARRAY_PTR(keys);
-  long len = RARRAY_LEN(keys);
-  if (!len) {
-    rb_bug("bug: aset 0 length key");
-    return;
-  }
-
-  // first key seg
-  long is_hash_key = 1;
-
-  // middle key segs
-  for (long i = 0; i < len - 1; i++) {
-    long next_is_hash_key = RSTRING_LEN(arr[i + 1]);
-    if (is_hash_key) {
-      if (nyara_rb_hash_has_key(output, arr[i])) {
-        output = rb_hash_aref(output, arr[i]);
-        if (next_is_hash_key) {
-          if (TYPE(output) != T_HASH) {
-            // note: StringValueCStr requires VALUE* as param, and can raise another error if there's nul in the string
-            _error("not array index (expect to be empty)", kv_s, kv_len, i);
-          }
-        } else {
-          if (TYPE(output) != T_ARRAY) {
-            _error("not hash key (expect to be non-empty)", kv_s, kv_len, i);
-          }
-        }
-      } else {
-        volatile VALUE child = _new_child(next_is_hash_key);
-        rb_hash_aset(output, arr[i], child);
-        output = child;
-      }
-    } else {
-      volatile VALUE child = _new_child(next_is_hash_key);
-      rb_ary_push(output, child);
-      output = child;
-    }
-    is_hash_key = next_is_hash_key;
-  }
-
-  // terminate key seg: add value
-  if (is_hash_key) {
-    rb_hash_aset(output, arr[len - 1], value);
-  } else {
-    rb_ary_push(output, value);
-  }
-}
-
 static const char* _strnchr(const char* s, long len, char c) {
   for (long i = 0; i < len; i++) {
     if (s[i] == c) {
@@ -215,15 +148,15 @@ static inline VALUE _new_blank_str() {
   return rb_enc_str_new("", 0, u8_encoding);
 }
 
-static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int nested_mode) {
-  // (note if we _decode_url_seg with '&' first, then there may be multiple '='s in one kv)
+// key and value are for output
+// usually should be blank string
+// decode into key and value
+void nyara_decode_uri_kv(volatile VALUE key, volatile VALUE value, const char* kv_s, long kv_len) {
   const char* s = kv_s;
   long len = kv_len;
   if (!len) {
-    return;
+    rb_raise(rb_eArgError, "empty key=value segment");
   }
-
-  volatile VALUE value = _new_blank_str();
 
   // rule out the value part
   {
@@ -240,117 +173,10 @@ static void _url_encoded_seg(VALUE output, const char* kv_s, long kv_len, int ne
     }
     // starts with '='
     if (value_s == s) {
-      rb_hash_aset(output, _new_blank_str(), value);
       return;
     }
   }
-
-  volatile VALUE key = _new_blank_str();
-  if (nested_mode) {
-    // todo fault-tolerant?
-    long parsed = _decode_url_seg(key, s, len, '[');
-    if (parsed == len) {
-      rb_hash_aset(output, key, value);
-      return;
-    }
-    s += parsed;
-    len -= parsed;
-    volatile VALUE keys = rb_ary_new3(1, key);
-    while (len) {
-      key = _new_blank_str();
-      parsed = _decode_url_seg(key, s, len, ']');
-      rb_ary_push(keys, key);
-      s += parsed;
-      len -= parsed;
-      if (len) {
-        if (s[0] == '[') {
-          s++;
-          len--;
-        } else {
-          rb_raise(rb_eRuntimeError, "malformed params: remaining chars in key but not starting with '['");
-          return;
-        }
-      }
-    }
-    _aset_keys(output, keys, value, kv_s, kv_len);
-  } else {
-    _decode_url_seg(key, s, len, '=');
-    rb_hash_aset(output, key, value);
-  }
-
-  return;
-}
-
-// "a[%20][][b]=c" ===> output["a", "\x20", nil, "b"] = "c"
-static VALUE ext_parse_url_encoded_seg(VALUE self, VALUE output, VALUE kv, VALUE v_nested_mode) {
-  _url_encoded_seg(output, RSTRING_PTR(kv), RSTRING_LEN(kv), RTEST(v_nested_mode));
-  return output;
-}
-
-void nyara_parse_param(VALUE output, const char* s, long len) {
-  // split with /[&;] */
-  long last_i = 0;
-  long i = 0;
-  for (; i < len; i++) {
-    if (s[i] == '&' || s[i] == ';') {
-      if (i > last_i) {
-        _url_encoded_seg(output, s + last_i, i - last_i, 1);
-      }
-      while(i + 1 < len && s[i + 1] == ' ') {
-        i++;
-      }
-      last_i = i + 1;
-    }
-  }
-  if (i > last_i) {
-    _url_encoded_seg(output, s + last_i, i - last_i, 1);
-  }
-}
-
-static VALUE ext_parse_param(VALUE self, VALUE output, VALUE s) {
-  nyara_parse_param(output, RSTRING_PTR(s), RSTRING_LEN(s));
-  return output;
-}
-
-static VALUE _cookie_seg_str_new(const char* s, long len) {
-  // trim tailing space
-  for (; len > 0; len--) {
-    if (s[len - 1] != ' ') {
-      break;
-    }
-  }
-  return rb_enc_str_new(s, len, u8_encoding);
-}
-
-VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str) {
-  volatile VALUE arr = rb_ary_new();
-  const char* s = RSTRING_PTR(str);
-  long len = RSTRING_LEN(str);
-
-  // split with / *[,;] */
-  long last_i = 0;
-  long i = 0;
-  for (; i < len; i++) {
-    if (s[i] == ',' || s[i] == ';') {
-      // char* and len parse_seg
-      if (i > last_i) {
-        rb_ary_push(arr, _cookie_seg_str_new(s + last_i, i - last_i));
-      }
-      while(i + 1 < len && s[i + 1] == ' ') {
-        i++;
-      }
-      last_i = i + 1;
-    }
-  }
-  if (i > last_i) {
-    rb_ary_push(arr, _cookie_seg_str_new(s + last_i, i - last_i));
-  }
-
-  VALUE* arr_p = RARRAY_PTR(arr);
-  for (long j = RARRAY_LEN(arr) - 1; j >= 0; j--) {
-    _url_encoded_seg(output, RSTRING_PTR(arr_p[j]), RSTRING_LEN(arr_p[j]), 0);
-  }
-  return output;
+  _decode_url_seg(key, s, len, '=');
 }
 
 static bool _should_escape(char c) {
@@ -391,7 +217,8 @@ static void _concat_char(VALUE s, char c, bool ispath) {
   }
 }
 
-// escape for uri path ('/', '+' are not changed) or component ('/', '+' are changed)
+// escape for uri path ('/', '+' are not changed)
+// or component ('/', '+' are changed)
 static VALUE ext_escape(VALUE _, VALUE s, VALUE v_ispath) {
   Check_Type(s, T_STRING);
   long len = RSTRING_LEN(s);
@@ -405,20 +232,30 @@ static VALUE ext_escape(VALUE _, VALUE s, VALUE v_ispath) {
   return res;
 }
 
-// nil in keys will be interpreted as array key
-static VALUE ext_param_hash_nested_aset(VALUE _, VALUE output, VALUE keys, VALUE value) {
-  // todo check output is ParamHash
-  Check_Type(keys, T_ARRAY);
-  _aset_keys(output, keys, value, NULL, 0);
-  return Qnil;
+// caveats: matrix uri params and query are ignored
+static VALUE ext_unescape(VALUE _, volatile VALUE s, VALUE v_is_path) {
+  Check_Type(s, T_STRING);
+  if (RTEST(v_is_path)) {
+    volatile VALUE output = _new_blank_str();
+    if (nyara_parse_path(output, RSTRING_PTR(s), RSTRING_LEN(s))) {
+    }
+    return output;
+  } else {
+    volatile VALUE output = _new_blank_str();
+    _decode_url_seg(output, RSTRING_PTR(s), RSTRING_LEN(s), '=');
+    return output;
+  }
+}
+
+static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
+  long parsed = nyara_parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
+  return ULONG2NUM(parsed);
 }
 
 void Init_url_encoded(VALUE ext) {
-  rb_define_singleton_method(ext, "parse_param", ext_parse_param, 2);
-  rb_define_singleton_method(ext, "parse_cookie", ext_parse_cookie, 2);
   rb_define_singleton_method(ext, "escape", ext_escape, 2);
-  rb_define_singleton_method(ext, "param_hash_nested_aset", ext_param_hash_nested_aset, 3);
-  // for test
-  rb_define_singleton_method(ext, "parse_url_encoded_seg", ext_parse_url_encoded_seg, 3);
+  rb_define_singleton_method(ext, "unescape", ext_unescape, 2);
+
+  // test only
   rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);
 }
