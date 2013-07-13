@@ -113,6 +113,8 @@ module Nyara
     # #### Params
     #
     # - `raw` in binary encoding
+    #
+    # NOTE should not raise
     def update raw
       case self['mechanism']
       when 'base64'
@@ -148,6 +150,7 @@ module Nyara
       end
     end
 
+    # NOTE should not raise
     def final
       case self['mechanism']
       when 'base64'
