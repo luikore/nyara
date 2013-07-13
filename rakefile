@@ -34,7 +34,7 @@ file version_file => ['nyara.gemspec', __FILE__] do
   version = nil
   lines.each do |line|
     if line =~ /s\.version =/
-      version = line[/\d+(\.\d+)*(\.pre\d+)?/]
+      version = line[/\d+(\.\d+)*(\.pre\.\d+)?/]
       break
     end
   end
