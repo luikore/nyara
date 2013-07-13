@@ -1,12 +1,12 @@
 Gem::Specification.new do |s|
   s.name = "nyara"
-  s.version = "0.0.1.pre.8"
+  s.version = "0.0.1.pre.9"
   s.author = "Zete Lui"
   s.email = "nobody@example.com"
   s.homepage = "https://github.com/luikore/nyara"
   s.platform = Gem::Platform::RUBY
-  s.summary = "Fast, slim and fuzzy ruby web framework + server"
-  s.description = "Fast, slim and fuzzy ruby web framework + server, based on preforked event queue and Fiber. NO rack NOR eventmachine are used."
+  s.summary = "Fast and fuzzy ruby web framework + server"
+  s.description = "Fast and fuzzy ruby web framework + server"
   s.required_ruby_version = ">=2.0.0"
   s.licenses = ['BSD 3-Clause']
 
@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.files += Dir.glob('spec/**/*')
   s.files += Dir.glob('ext/http-parser/{AUTHORS,CONTRIBUTIONS,LICENSE-MIT}')
   s.files += Dir.glob('ext/multipart-parser-c/README.md')
+  s.files += Dir.glob('lib/nyara/templates/**/*') - %w[.DS_Store]
   s.files.uniq!
   s.require_paths = ["lib"]
   s.executables << 'nyara'

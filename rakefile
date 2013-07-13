@@ -65,7 +65,7 @@ task :test => :build do
 end
 
 desc "build and test"
-task :default => :test
+task :default => [:gen, :test]
 
 desc "build and install gem"
 task :gem => 'gen' do
