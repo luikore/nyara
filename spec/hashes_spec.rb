@@ -120,7 +120,7 @@ module Nyara
       end
 
       it "parses k without v and preserves hash class" do
-        h = ParamHash.parse_param ConfigHash.new, "a[][b]"
+        h = ParamHash.parse_param ConfigHash.new, "a%5B%5d[b]"
         assert_equal({'a' => [{'b' => ''}]}, h)
         assert_equal Array, h[:a].class
         assert_equal ConfigHash, h[:a].first.class
