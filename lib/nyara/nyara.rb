@@ -58,7 +58,7 @@ module Nyara
     end)
   }
 
-  class << self    
+  class << self
     def config
       raise ArgumentError, 'block not accepted, did you mean Nyara::Config.config?' if block_given?
       Config
