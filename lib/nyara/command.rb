@@ -62,6 +62,11 @@ commands:
 
       puts "Enjoy!"
     end
+    
+    def run_server(*args)
+      args ||= []
+      `ruby config/boot.rb`
+    end
 
     private
     def render_template(fname, opts = {})

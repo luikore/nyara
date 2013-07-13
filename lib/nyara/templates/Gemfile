@@ -1,4 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'nyara', '<%= nyara_version %>'
+gem 'tilt'
+gem 'erubis'
+gem 'nyara', '<%= Nyara::VERSION %>'
 gem 'mongoid', '3.1.4'
