@@ -13,6 +13,6 @@ end
 
 GC.disable
 
-nyara = bench(1000){ Nyara::Ext.parse_param({}, param) }
+nyara = bench(1000){ Nyara::ParamHash.parse_param({}, param) }
 ruby = bench(1000){ ruby_parse param }
 dump nyara: nyara, ruby: ruby

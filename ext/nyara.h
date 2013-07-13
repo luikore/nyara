@@ -38,7 +38,6 @@ void Init_test_response(VALUE nyara);
 /* url_encoded.c */
 void Init_url_encoded(VALUE ext);
 long nyara_parse_path(VALUE path, const char*s, long len);
-VALUE ext_parse_cookie(VALUE self, VALUE output, VALUE str);
 void nyara_decode_uri_kv(volatile VALUE key, volatile VALUE value, const char* kv_s, long kv_len);
 
 
@@ -54,6 +53,7 @@ VALUE ext_mime_match(VALUE _, VALUE request_accept, VALUE accept_mimes);
 
 /* hashes.c */
 void Init_hashes(VALUE nyara);
+void nyara_parse_cookie(VALUE output, VALUE str);
 void nyara_parse_query(VALUE output, const char* s, long len);
 
 

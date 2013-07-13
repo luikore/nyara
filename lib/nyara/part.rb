@@ -100,13 +100,14 @@ module Nyara
       end
 
       # NOTE `[` are `]` are escaped in url-encoded, so should not split before decode
-      keys = name.sub(/\]$/, '').split(/\]\[|\[/)
+      keys = ParamHash.split_name(name)
+
       if self['filename']
-        Ext.param_hash_nested_aset params, keys, self
+        params.nested_aset keys, self
       elsif self['type']
         warn "looks like bad part: #{self['header'].inspect}"
       else
-        Ext.param_hash_nested_aset params, keys, CGI.unescape(self['data'])
+        params.nested_aset keys, CGI.unescape(self['data'])
       end
     end
 
@@ -114,7 +115,7 @@ module Nyara
     #
     # - `raw` in binary encoding
     #
-    # NOTE should not raise
+    # NOTE close connection on error
     def update raw
       case self['mechanism']
       when 'base64'
@@ -150,7 +151,7 @@ module Nyara
       end
     end
 
-    # NOTE should not raise
+    # NOTE close connection on error
     def final
       case self['mechanism']
       when 'base64'

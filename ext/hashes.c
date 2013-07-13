@@ -189,7 +189,7 @@ static VALUE param_hash_parse_cookie(VALUE _, VALUE output, VALUE str) {
   Check_Type(output, T_HASH);
   Check_Type(str, T_STRING);
   if (rb_obj_is_kind_of(output, nyara_header_hash_class)) {
-    rb_raise(rb_eArgError, "can not parse param into HeaderHash");
+    rb_raise(rb_eArgError, "can not parse cookie into HeaderHash");
   }
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
@@ -201,13 +201,13 @@ static VALUE param_hash_parse_cookie(VALUE _, VALUE output, VALUE str) {
   for (; i >= 0; i--) {
     if (s[i] == ',' || s[i] == ';') {
       if (i < last_i) {
-        _kv(output, s + i, last_i - i, false);
+        _kv(output, s + i + 1, last_i - i, false);
       }
       last_i = i - 1;
     }
   }
   if (last_i > 0) {
-    _kv(output, s, last_i, false);
+    _kv(output, s, last_i + 1, false);
   }
   return output;
 }
@@ -241,6 +241,18 @@ static VALUE param_hash_parse_param(VALUE _, VALUE output, VALUE str) {
 }
 
 static VALUE _tmp_str;
+
+static VALUE _parse_cookie_func(VALUE output) {
+  param_hash_parse_cookie(Qnil, output, _tmp_str);
+  return Qnil;
+}
+
+void nyara_parse_cookie(VALUE output, VALUE str) {
+  _tmp_str = str;
+  int err = 0;
+  rb_protect(_parse_cookie_func, output, &err);
+}
+
 static VALUE _parse_query_func(VALUE output) {
   param_hash_parse_param(Qnil, output, _tmp_str);
   return Qnil;

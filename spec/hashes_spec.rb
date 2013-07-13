@@ -46,7 +46,6 @@ module Nyara
         history = CGI.escape '历史'
         cookie = "pgv_pvi; pgv_si= ; pgv_pvi=som; sid=1d6c75f0 ; PLHistory=<#{history}>;"
         h = ParamHash.parse_cookie ParamHash.new, cookie
-        p h
         assert_equal '1d6c75f0', h['sid']
         assert_equal '', h['pgv_si']
         assert_equal '', h['pgv_pvi'] # left orverrides right
@@ -57,6 +56,38 @@ module Nyara
         cookie = ''
         h = ParamHash.parse_cookie ParamHash.new, cookie
         assert_empty h
+      end
+
+      it "parses cookie start with ','" do
+        h = ParamHash.parse_cookie ParamHash.new, ',a'
+        assert_equal 1, h.size
+        assert_equal '', h['a']
+
+        h = ParamHash.parse_cookie ParamHash.new, ' ,b = 1,a'
+        assert_equal 2, h.size
+        assert_equal '', h['a']
+        assert_equal '1', h['b']
+      end
+
+      it "parses cookie end with ';'" do
+        h = ParamHash.parse_cookie ParamHash.new, 'a ;'
+        assert_equal 1, h.size
+        assert_equal '', h['a']
+
+        h = ParamHash.parse_cookie ParamHash.new, 'b = 1; a ;'
+        assert_equal 2, h.size
+        assert_equal '', h['a']
+        assert_equal '1', h['b']
+      end
+
+      it "parses cookie with space around =" do
+
+      end
+
+      it "refuses to parse cookie into HeaderHash" do
+        assert_raise ArgumentError do
+          ParamHash.parse_cookie HeaderHash.new, 'session=3'
+        end
       end
     end
 

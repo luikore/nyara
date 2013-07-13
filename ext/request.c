@@ -127,7 +127,7 @@ void nyara_request_init_env(VALUE self) {
   p->cookie = rb_class_new_instance(0, NULL, nyara_param_hash_class);
   VALUE cookie = rb_hash_aref(p->header, str_cookie);
   if (cookie != Qnil) {
-    ext_parse_cookie(Qnil, p->cookie, cookie);
+    nyara_parse_cookie(p->cookie, cookie);
   }
   p->session = rb_funcall(session_mod, id_decode, 1, p->cookie);
   p->flash = rb_class_new_instance(1, &p->session, flash_class);

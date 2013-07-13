@@ -49,7 +49,7 @@ module Nyara
           # merge Set-Cookie
           response.set_cookies.each do |cookie_seg|
             # todo distinguish delete, value and set
-            Ext.parse_url_encoded_seg cookie, cookie_seg, false
+            ParamHash.parse_cookie cookie, cookie_seg
           end
         end
 
