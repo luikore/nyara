@@ -61,26 +61,39 @@ static VALUE param_hash_split_name(VALUE _, VALUE name) {
   for (i = 0; i < len; i++) {
     if (s[i] == '[') {
       if (i == 0) {
-        rb_raise(rb_eRuntimeError, "bad key (starts with '[')");
+        rb_raise(rb_eArgError, "bad name (starts with '[')");
       }
       volatile VALUE key = rb_enc_str_new(s, i, u8_encoding);
       rb_ary_push(keys, key);
       i++;
       break;
+    } else if (s[i] == ']') {
+      rb_raise(rb_eArgError, "bad name (unmatched ']')");
     }
   }
-  long last_j = i;
-  for (long j = last_j; j < len; j++) {
-    if (s[j] == ']') {
-      if (j == len - 1 || s[j + 1] == '[') {
-        volatile VALUE key = rb_enc_str_new(s + last_j, j - last_j, u8_encoding);
-        rb_ary_push(keys, key);
-        last_j = j + 2; // fine for last round
-        j++;
-      } else {
-        rb_raise(rb_eRuntimeError, "bad key");
+
+  if (RARRAY_LEN(keys)) {
+    if (s[len - 1] != ']') {
+      rb_raise(rb_eArgError, "bad name (not end with ']')");
+    }
+    long last_j = i;
+    for (long j = last_j; j < len; j++) {
+      if (s[j] == ']') {
+        if (j == len - 1 || s[j + 1] == '[') {
+          volatile VALUE key = rb_enc_str_new(s + last_j, j - last_j, u8_encoding);
+          rb_ary_push(keys, key);
+          last_j = j + 2; // fine for last round
+          j++;
+        } else {
+          rb_raise(rb_eArgError, "bad name (']' not followed by '[')");
+        }
+      } else if (s[j] == '[') {
+        rb_raise(rb_eArgError, "bad name (nested '[')");
       }
     }
+  } else {
+    // single key
+    rb_ary_push(keys, name);
   }
   return keys;
 }
@@ -175,10 +188,13 @@ static void _kv(VALUE output, const char* s, long len, bool nested_mode) {
 static VALUE param_hash_parse_cookie(VALUE _, VALUE output, VALUE str) {
   Check_Type(output, T_HASH);
   Check_Type(str, T_STRING);
+  if (rb_obj_is_kind_of(output, nyara_header_hash_class)) {
+    rb_raise(rb_eArgError, "can not parse param into HeaderHash");
+  }
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
 
-  // split with / *[,;] */
+  // split with /[,;]/
   // scan in reverse order because entries on the left of the cookie has greater priority
   long i = len - 1;
   long last_i = i;
@@ -196,8 +212,18 @@ static VALUE param_hash_parse_cookie(VALUE _, VALUE output, VALUE str) {
   return output;
 }
 
-void nyara_parse_param(VALUE output, const char* s, long len) {
-  // split with /[&;] */
+// class method:
+// insert parsing result into output
+static VALUE param_hash_parse_param(VALUE _, VALUE output, VALUE str) {
+  Check_Type(output, T_HASH);
+  Check_Type(str, T_STRING);
+  if (rb_obj_is_kind_of(output, nyara_header_hash_class)) {
+    rb_raise(rb_eArgError, "can not parse param into HeaderHash");
+  }
+  const char* s = RSTRING_PTR(str);
+  long len = RSTRING_LEN(str);
+
+  // split with /[&;]/
   long i = 0;
   long last_i = i;
   for (; i < len; i++) {
@@ -211,17 +237,21 @@ void nyara_parse_param(VALUE output, const char* s, long len) {
   if (i > last_i) {
     _kv(output, s + last_i, i - last_i, true);
   }
+  return output;
 }
 
-// class method:
-// insert parsing result into output
-static VALUE param_hash_parse_param(VALUE _, VALUE output, VALUE str) {
-  Check_Type(output, T_HASH);
-  Check_Type(str, T_STRING);
-  const char* s = RSTRING_PTR(str);
-  long len = RSTRING_LEN(str);
-  nyara_parse_param(output, s, len);
-  return output;
+static VALUE _tmp_str;
+static VALUE _parse_query_func(VALUE output) {
+  param_hash_parse_param(Qnil, output, _tmp_str);
+  return Qnil;
+}
+
+// do not raise error
+void nyara_parse_query(VALUE output, const char* s, long len) {
+  volatile VALUE str = rb_str_new(s, len);
+  _tmp_str = str;
+  int err = 0;
+  rb_protect(_parse_query_func, output, &err);
 }
 
 void nyara_headerlize(VALUE str) {

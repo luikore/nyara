@@ -54,7 +54,7 @@ VALUE ext_mime_match(VALUE _, VALUE request_accept, VALUE accept_mimes);
 
 /* hashes.c */
 void Init_hashes(VALUE nyara);
-void nyara_parse_param(VALUE output, const char* s, long len);
+void nyara_parse_query(VALUE output, const char* s, long len);
 
 
 // "ab-cd" => "Ab-Cd"

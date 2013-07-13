@@ -165,8 +165,14 @@ void nyara_decode_uri_kv(volatile VALUE key, volatile VALUE value, const char* k
     if (value_s) {
       value_s++;
       long value_len = s + len - value_s;
-      long parsed = _decode_url_seg(value, value_s, value_len, '&');
-      if (parsed != value_len) {
+      long skipped = 0;
+      for (;skipped < value_len; skipped++) {
+        if (!isspace(value_s[skipped])) {
+          break;
+        }
+      }
+      long parsed = _decode_url_seg(value, value_s + skipped, value_len - skipped, '&');
+      if (parsed != value_len - skipped) {
         rb_raise(rb_eArgError, "separator & in param segment");
       }
       len = value_s - s - 1;
@@ -176,7 +182,17 @@ void nyara_decode_uri_kv(volatile VALUE key, volatile VALUE value, const char* k
       return;
     }
   }
+  while (len > 0 && isspace(s[len - 1])) {
+    len--;
+  }
   _decode_url_seg(key, s, len, '=');
+}
+
+static VALUE ext_decode_uri_kv(VALUE _, VALUE str) {
+  volatile VALUE k = _new_blank_str();
+  volatile VALUE v = _new_blank_str();
+  nyara_decode_uri_kv(k, v, RSTRING_PTR(str), RSTRING_LEN(str));
+  return rb_ary_new3(2, k, v);
 }
 
 static bool _should_escape(char c) {
@@ -232,7 +248,9 @@ static VALUE ext_escape(VALUE _, VALUE s, VALUE v_ispath) {
   return res;
 }
 
-// caveats: matrix uri params and query are ignored
+// caveats:
+// - stops at '='
+// - matrix uri params and query are ignored
 static VALUE ext_unescape(VALUE _, volatile VALUE s, VALUE v_is_path) {
   Check_Type(s, T_STRING);
   if (RTEST(v_is_path)) {
@@ -247,6 +265,8 @@ static VALUE ext_unescape(VALUE _, volatile VALUE s, VALUE v_is_path) {
   }
 }
 
+// concats result into output<br>
+// returns parsed length
 static VALUE ext_parse_path(VALUE self, VALUE output, VALUE input) {
   long parsed = nyara_parse_path(output, RSTRING_PTR(input), RSTRING_LEN(input));
   return ULONG2NUM(parsed);
@@ -257,5 +277,6 @@ void Init_url_encoded(VALUE ext) {
   rb_define_singleton_method(ext, "unescape", ext_unescape, 2);
 
   // test only
+  rb_define_singleton_method(ext, "decode_uri_kv", ext_decode_uri_kv, 1);
   rb_define_singleton_method(ext, "parse_path", ext_parse_path, 2);
 }
