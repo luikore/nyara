@@ -204,7 +204,7 @@ module Nyara
       raise "unsupported redirect status: #{status}" unless HTTP_REDIRECT_STATUS.include?(status)
 
       r = request
-      header = r.header
+      header = r.response_header
       self.status status
 
       uri = URI.parse url_or_path
@@ -213,7 +213,7 @@ module Nyara
         uri.port = request.port
       end
       uri.scheme = r.ssl? ? 'https' : 'http'
-      r.header['Location'] = uri.to_s
+      header['Location'] = uri.to_s
 
       # similar to send_header, but without content-type
       Ext.request_send_data r, HTTP_STATUS_FIRST_LINES[r.status]
@@ -476,6 +476,12 @@ module Nyara
         Ext.request_wakeup request
       end
       Fiber.yield :sleep # see event.c for the handler
+    end
+
+    # Render a template as string
+    def partial view_path, locals: nil
+      view = View.new self, view_path, nil, nil, {}
+      view.partial
     end
 
     # One shot render, and terminate the action.

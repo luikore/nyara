@@ -287,6 +287,14 @@ module Nyara
     end
     attr_reader :deduced_content_type, :in, :out
 
+    def partial
+      out = @out
+      @out = Buffer.new
+      res = @layout_render.call *@args
+      @out = out
+      res
+    end
+
     def render
       @instance.send_chunk @layout_render.call *@args
       Fiber.yield :term_close
