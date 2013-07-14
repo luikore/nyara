@@ -25,7 +25,7 @@ module Nyara
     # meth name => method obj
     RENDER = {}
 
-    # arity => layout render
+    # nested level => layout render, 0 means no layout
     LAYOUT = {}
 
     autoload :ERB,    File.join(__dir__, "view_handlers/erb")
