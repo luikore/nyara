@@ -1,8 +1,4 @@
 module Nyara
-  # Contain render methods
-  module Renderable
-  end
-
   Controller = Struct.new :request
   class Controller
     module ClassMethods
@@ -148,8 +144,6 @@ module Nyara
 
       attr_accessor :path_templates
     end
-
-    include Renderable
 
     def self.inherited klass
       # note: klass will also have this inherited method

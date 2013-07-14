@@ -1,8 +1,6 @@
 require_relative "spec_helper"
 
 class RenderableMock
-  include Nyara::Renderable
-
   def initialize
     @result = ''
   end
