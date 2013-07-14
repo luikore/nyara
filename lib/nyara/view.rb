@@ -132,7 +132,7 @@ module Nyara
       attr_reader :root
 
       # NOTE: `path` needs extension
-      def on_delete path
+      def on_removed path
         meth = path2meth path
         RENDER.delete meth
 
@@ -140,7 +140,7 @@ module Nyara
         @meth2sig.delete meth
       end
 
-      def on_delete_all
+      def on_removed_all
         meths = @meth2sig
         meths.each do |meth, _|
           RENDER.delete meth
@@ -154,7 +154,7 @@ module Nyara
       # #### Returns
       #
       # dot_ext for further use
-      def on_update path
+      def on_modified path
         meth = path2meth path
         return unless @meth2sig[meth] # has not been searched before, see also View.template
 
@@ -225,7 +225,7 @@ module Nyara
         return [RENDER[meth], ext] if ext
 
         @meth2sig[meth] = locals.keys
-        ext = on_update path
+        ext = on_modified path
         raise "template not found or not valid in Tilt: #{path}" unless ext
         [RENDER[meth], ext]
       end
