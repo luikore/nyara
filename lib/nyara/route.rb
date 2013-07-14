@@ -107,14 +107,14 @@ module Nyara
         case s
         when '%d'
           conv << :to_i
-          '(-?[0-9]+)'
+          '(-?\d+)'
         when '%f'
           conv << :to_f
           # just copied from scanf
           '([-+]?(?:0[xX](?:\.\h+|\h+(?:\.\h*)?)[pP][-+]\d+|\d+(?![\d.])|\d*\.\d*(?:[eE][-+]?\d+)?))'
         when '%u'
           conv << :to_i
-          '([0-9]+)'
+          '(\d+)'
         when '%x'
           conv << :hex
           '(\h+)'

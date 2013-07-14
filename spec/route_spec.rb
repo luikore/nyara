@@ -22,7 +22,7 @@ module Nyara
       @r.path = '/a/%d/b'
       @r.compile :controller_stub, '/scope'
       assert_equal "/scope/a/", @r.prefix
-      assert_equal "^(-?[0-9]+)/b$", @r.suffix
+      assert_equal "^(-?\\d+)/b$", @r.suffix
       assert_equal [:to_i], @r.conv
     end
 
