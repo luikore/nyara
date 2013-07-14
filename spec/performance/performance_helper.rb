@@ -1,25 +1,12 @@
 require_relative "../../lib/nyara/nyara"
 
-# baseline is the raw loop
-def bench n
-  t = Time.now
-  n.times{ yield }
-  cost = Time.now - t
-
-  t = Time.now
-  n.times{}
-  baseline = Time.now - t
-
-  cost - baseline
-end
-
-# custom baseline
-def bench_raw n
-  t = Time.now
-  n.times{ yield }
-  Time.now - t
-end
-
 def dump data
-  print Marshal.dump data
+  in_spec = ENV['NYARA_FORKED'] == 'spec'
+  GC.start
+  GC.disable
+  if in_spec
+    print Marshal.dump data
+  else
+    p data
+  end
 end

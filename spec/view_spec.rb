@@ -12,7 +12,7 @@ class RenderableMock
 end
 
 module Nyara
-  describe [View, Renderable] do
+  describe View do
     before :all do
       Config['views'] = __dir__ + '/views'
       View.init
