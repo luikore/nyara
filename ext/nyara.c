@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <sys/resource.h>
 #include <sys/fcntl.h>
+#include "inc/rdtsc.h"
 
 rb_encoding* u8_encoding;
 static VALUE nyara;
@@ -44,6 +45,18 @@ static VALUE ext_summary_request(VALUE _, VALUE toggle) {
   return toggle;
 }
 
+static unsigned long long last_rdtsc = 0;
+
+static VALUE ext_rdtsc_start(VALUE _) {
+  last_rdtsc = rdtsc();
+  return Qnil;
+}
+
+static VALUE ext_rdtsc(VALUE _) {
+  unsigned long long diff = rdtsc() - last_rdtsc;
+  return ULL2NUM(diff);
+}
+
 void Init_nyara() {
   u8_encoding = rb_utf8_encoding();
   set_fd_limit(20000);
@@ -81,6 +94,9 @@ void Init_nyara() {
 
   VALUE ext = rb_define_module_under(nyara, "Ext");
   rb_define_singleton_method(ext, "summary_request", ext_summary_request, 1);
+  rb_define_singleton_method(ext, "rdtsc_start", ext_rdtsc_start, 0);
+  rb_define_singleton_method(ext, "rdtsc", ext_rdtsc, 0);
+
   Init_accept(ext);
   Init_mime(ext);
   Init_request(nyara, ext);
