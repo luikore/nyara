@@ -52,7 +52,7 @@ module Nyara
     end
 
     it "#compile_re with utf-8 chars" do
-      re, conv = @r.compile_re '/目录/%da/也可以'
+      re, conv = @r.compile_re '/目录/%.3da/也可以'
       assert_equal [:to_i], conv
       s = "/目录/12a/也可以"
       assert_equal [s, '12'], s.match(Regexp.new re).to_a
