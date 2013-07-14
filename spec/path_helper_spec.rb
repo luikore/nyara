@@ -5,6 +5,10 @@ class FooController < Nyara::Controller
   get '/%.5d' do |id|
   end
 
+  meta '#put'
+  put '/' do
+  end
+
   class BarController < Nyara::Controller
     meta '#index'
     get '/' do
@@ -59,7 +63,15 @@ module Nyara
       end
 
       it "perserves _method query" do
-        pending
+        c = FooController.new :stub_request
+        path = c.path_to('#put')
+        assert_equal '/?_method=PUT', path
+
+        path = c.path_to('#put', :_method => 'POST')
+        assert_equal '/?_method=POST', path
+
+        path = c.path_to('#put', '_method' => nil)
+        assert_equal '/?_method=', path
       end
 
       it "appends format and query" do

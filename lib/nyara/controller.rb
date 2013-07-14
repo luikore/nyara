@@ -140,7 +140,7 @@ module Nyara
 
           e.compile self, scope
           e.validate
-          @path_templates[e.id] = e.path_template
+          @path_templates[e.id] = [e.path_template, e.http_method_override]
         end
         @routes
       end
@@ -172,11 +172,20 @@ module Nyara
         opts = args.pop
       end
 
-      r = self.class.path_templates[id.to_s] % args
+      template, meth = self.class.path_templates[id.to_s]
+      r = template % args
 
       if opts
         format = opts.delete :format
         r << ".#{format}" if format
+        if meth and !opts.key?(:_method) and !opts.key?('_method')
+          opts['_method'] = meth
+        end
+      elsif meth
+        opts = {'_method' => meth}
+      end
+
+      if opts
         r << '?' << opts.to_query unless opts.empty?
       end
       r

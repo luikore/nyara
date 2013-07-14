@@ -24,6 +24,14 @@ module Nyara
       m
     end
 
+    # nil for get / post
+    def http_method_override
+      m = http_method_to_s
+      if m != 'GET' and m != 'POST'
+        m
+      end
+    end
+
     # enum all combinations of matching selectors
     def selectors
       if classes
