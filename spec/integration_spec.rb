@@ -38,6 +38,12 @@ class TestController < Nyara::Controller
     view.end
   end
 
+  http :trace, '/stream-with-partial' do
+    view = stream erb: "before:<%= partial '_partial_with_yield' %>:after"
+    view.resume
+    view.end
+  end
+
   options '/error' do
     raise 'error'
   end
@@ -110,6 +116,12 @@ module Nyara
     it "stream" do
       @test.patch '/stream'
       assert_include @test.response.body, "slim:edit"
+    end
+
+    it "stream-with-yield" do
+      @test.http :trace, '/stream-with-partial'
+      assert @test.response.success?
+      assert_equal "before:yield:after", @test.response.body.strip
     end
 
     it "error" do

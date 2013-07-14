@@ -34,16 +34,42 @@ module Nyara
     autoload :Slim,   File.join(__dir__, "view_handlers/slim")
 
     class Buffer < Array
+      def initialize parent=nil
+        @parent = parent
+      end
+      attr_reader :parent
+
       alias safe_append= <<
 
       def append= thingy
         self << CGI.escape_html(thingy.to_s)
       end
 
+      alias _join join
       def join
         r = super
         clear
         r
+      end
+
+      def push_level
+        Buffer.new self
+      end
+
+      def pop_level
+        @parent << _join
+      end
+
+      def flush instance
+        parents = [self]
+        buf = self
+        while buf = buf.parent
+          parents << buf
+        end
+        parents.reverse_each do |buf|
+          instance.send_chunk buf._join
+          buf.clear
+        end
       end
     end
 
@@ -288,10 +314,9 @@ module Nyara
     attr_reader :deduced_content_type, :in, :out
 
     def partial
-      out = @out
-      @out = Buffer.new
+      @out = @out.push_level
       res = @layout_render.call *@args
-      @out = out
+      @out = @out.pop_level
       res
     end
 
@@ -312,8 +337,7 @@ module Nyara
       r = @fiber.resume
       Fiber.yield r if r
       unless @out.empty?
-        @instance.send_chunk @out.join
-        @out.clear
+        @out.flush @instance
       end
     end
 

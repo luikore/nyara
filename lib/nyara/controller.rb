@@ -11,9 +11,12 @@ module Nyara
       def http method, path, &blk
         @routes ||= []
         @used_ids = {}
+        method = method.to_s.upcase
 
         action = Route.new
-        action.http_method = HTTP_METHODS[method]
+        unless action.http_method = HTTP_METHODS[method]
+          raise ArgumentError, "missing http method: #{method.inspect}"
+        end
         action.path = path
         action.set_accept_exts @formats
         action.id = @curr_id if @curr_id

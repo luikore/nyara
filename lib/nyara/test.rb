@@ -83,7 +83,7 @@ module Nyara
         Session.encode_to_cookie session, cookie
         headers['Cookie'] = Cookie.encode cookie
 
-        request_data = ["#{meth.upcase} #{Ext.escape path, true} HTTP/1.1\r\n"]
+        request_data = ["#{meth.to_s.upcase} #{Ext.escape path, true} HTTP/1.1\r\n"]
         headers.each do |k, v|
           request_data << "#{k}: #{v}\r\n"
         end
@@ -95,6 +95,14 @@ module Nyara
 
     def env
       @_env ||= Env.new
+    end
+
+    # #### Call-seq
+    #
+    #     http :trace, '/'
+    #
+    def http *xs
+      env.http *xs
     end
 
     # #### Call-seq
