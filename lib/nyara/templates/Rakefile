@@ -1,1 +1,2 @@
-require 'rake'
+require_relative 'config/application'
+require 'nyara/tasks'
