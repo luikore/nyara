@@ -1,4 +1,4 @@
-require "nyara"
+require "nyara/nyara"
 require "erubis"
 require 'bundler' and Bundler.setup(:default)
 require 'mongoid'
@@ -14,8 +14,3 @@ end
 
 # Configure Mongoid
 Mongoid.load!(File.join(Nyara.config.root,'config/database.yml'), Nyara.config.env)
-
-# TODO: 此处不用会报 Nyara::SimpleController: no action defined (RuntimeError)
-get '/' do
-  send_string ''
-end
