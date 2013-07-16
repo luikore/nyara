@@ -117,5 +117,14 @@ module Nyara
       Config.init
       assert_nil Nyara.logger
     end
+    
+    it "auto load file in controllers,models" do
+      Config.configure do
+        set :root,File.join(Dir.pwd,'spec/dummy')
+      end
+      Config.init
+      assert_equal true, Object.const_defined?('Simple')
+      assert_equal true, Object.const_defined?('SimpleController')
+    end
   end
 end

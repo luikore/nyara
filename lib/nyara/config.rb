@@ -57,7 +57,6 @@ module Nyara
       self['public'] = project_path(self['public'] || 'public')
       
       # load controllers, models
-      # TODO: need test case
       %W(controllers models).each do |dirname|
         Dir.glob(project_path("app/#{dirname}/**/*.rb")).each do |fname|
           require_relative fname
