@@ -96,6 +96,17 @@ module Nyara
       assert_equal true, Config.production?
       Config.reset
     end
+    
+    it "root helpers" do
+      Config.init
+      assert_equal Dir.pwd, Config.root
+      Config.set :root, 'aaa'
+      assert_equal 'aaa', Config.root
+      Config.configure do
+        set :root,'bbb'
+      end
+      assert_equal 'bbb', Config.root
+    end
 
     it "creates logger" do
       assert Nyara.logger

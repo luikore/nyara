@@ -55,7 +55,15 @@ module Nyara
 
       self['views'] = project_path(self['views'] || 'views')
       self['public'] = project_path(self['public'] || 'public')
-
+      
+      # load controllers, models
+      # TODO: need test case
+      %W(controllers models).each do |dirname|
+        Dir.glob(project_path("app/#{dirname}/**/*.rb")).each do |fname|
+          require_relative fname
+        end
+      end
+      
       self.logger = create_logger
 
       assert !self['before_fork'] or self['before_fork'].respond_to?('call')
@@ -139,6 +147,10 @@ module Nyara
     def env
       self['env'].to_s
     end
+    
+    def root
+      self['root'].to_s
+    end
 
     def development?
       e = env
@@ -179,4 +191,5 @@ configure do
   set 'env', 'development'
   set 'views', 'views'
   set 'public', 'public'
+  set 'root', Dir.pwd
 end
