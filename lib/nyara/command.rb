@@ -35,6 +35,7 @@ commands:
       require 'ostruct'
       require_relative "view_handlers/erb"
 
+      name = args.shift
       if name.blank?
         puts "Need project name: \n\tnyara new xxx"
         return
