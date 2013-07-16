@@ -65,7 +65,7 @@ commands:
     
     def run_server(*args)
       args ||= []
-      `ruby config/boot.rb`
+      system("bundle exec ruby config/boot.rb #{args.join(' ')}")
     end
 
     private
