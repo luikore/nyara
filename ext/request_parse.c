@@ -138,7 +138,7 @@ static void _parse_path_and_query(Request* p) {
   long len = RSTRING_LEN(p->path_with_query);
   long query_i = nyara_parse_path(p->path, s, len);
   if (query_i < len) {
-    nyara_parse_param(p->query, s + query_i, len - query_i);
+    nyara_parse_query(p->query, s + query_i, len - query_i);
 
     // do method override with _method=xxx in query
     if (p->method == HTTP_POST) {

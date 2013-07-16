@@ -21,5 +21,13 @@ module Nyara
       assert_nil @flash.next['foo']
       assert_empty @session.values.first
     end
+
+    it "#clear" do
+      @flash.now['foo'] = 'foo'
+      @flash.next['bar'] = 'bar'
+      @flash.clear
+      assert_empty @flash.now
+      assert_empty @flash.next
+    end
   end
 end

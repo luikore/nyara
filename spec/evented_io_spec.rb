@@ -7,7 +7,8 @@ module Nyara
       @server = fork do
         exec 'ruby', __dir__ + '/apps/connect.rb'
       end
-      sleep 1 # wait for server startup
+      GC.stress = false
+      sleep 1.8 # wait for server startup
     end
 
     after :all do

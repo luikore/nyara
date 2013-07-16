@@ -13,7 +13,6 @@ class MyRenderable
     @title = "layout_render"
     @items = items
   end
-  include Nyara::Renderable
 
   def send_chunk s
     @res ||= []
@@ -35,18 +34,24 @@ class MyRenderable
   end
 end
 
+def bm_nyara items
+  Nyara::Ext.rdtsc_start
+  MyRenderable.new(items).nyara_render
+  Nyara::Ext.rdtsc
+end
+
+def bm_tilt items
+  Nyara::Ext.rdtsc_start
+  MyRenderable.new(items).tilt_render
+  Nyara::Ext.rdtsc
+end
+
 # prepare data
 Item = Struct.new :name, :price
 items = 10.times.map do |i|
   Item.new "name#{i}", i
 end
+bm_nyara items
+bm_tilt items
 
-# precompile
-MyRenderable.new(items).nyara_render
-MyRenderable.new(items).tilt_render
-
-GC.disable
-
-nyara = bench(1000){ MyRenderable.new(items).nyara_render }
-tilt = bench(1000){ MyRenderable.new(items).tilt_render }
-dump nyara: nyara, tilt: tilt
+dump nyara: bm_nyara(items), tilt: bm_tilt(items)

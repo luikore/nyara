@@ -15,6 +15,7 @@ class TestController < Nyara::Controller
 
   meta '#create'
   post '/create' do
+    set_header 'partial', partial('_partial').strip
     redirect_to '#index'
   end
 
@@ -33,6 +34,12 @@ class TestController < Nyara::Controller
 
   patch '/stream' do
     view = stream 'edit.slim'
+    view.resume
+    view.end
+  end
+
+  http :trace, '/stream-with-partial' do
+    view = stream erb: "before:<%= partial '_partial_with_yield' %>:after"
     view.resume
     view.end
   end
@@ -78,6 +85,7 @@ module Nyara
 
     it "redirect" do
       @test.post @test.path_to('test#create')
+      assert_equal 'This is a partial', @test.response.header['Partial']
       assert @test.response.success?
       assert_equal 'http://localhost:3000/', @test.redirect_location
       @test.follow_redirect
@@ -108,6 +116,12 @@ module Nyara
     it "stream" do
       @test.patch '/stream'
       assert_include @test.response.body, "slim:edit"
+    end
+
+    it "stream-with-yield" do
+      @test.http :trace, '/stream-with-partial'
+      assert @test.response.success?
+      assert_equal "before:yield:after", @test.response.body.strip
     end
 
     it "error" do

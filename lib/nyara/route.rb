@@ -24,6 +24,14 @@ module Nyara
       m
     end
 
+    # nil for get / post
+    def http_method_override
+      m = http_method_to_s
+      if m != 'GET' and m != 'POST'
+        m
+      end
+    end
+
     # enum all combinations of matching selectors
     def selectors
       if classes
@@ -96,6 +104,9 @@ module Nyara
     # private
     # +++
 
+    TOKEN = /%(?:[sz]|(?>\.\d+)?[dfux])/
+    FORWARD_SPLIT = /(?=#{TOKEN})/
+
     # #### Returns
     #
     #     [str_re, conv]
@@ -103,21 +114,32 @@ module Nyara
     def compile_re suffix
       return ['', []] unless suffix
       conv = []
-      re_segs = suffix.split(/(?<=%[dfsuxz])|(?=%[dfsuxz])/).map do |s|
+      segs = suffix.split(FORWARD_SPLIT).flat_map do |s|
+        if (s =~ TOKEN) == 0
+          part1 = s[TOKEN]
+          [part1, s.slice(part1.size..-1)]
+        else
+          s
+        end
+      end
+      re_segs = segs.map do |s|
         case s
-        when '%d'
-          conv << :to_i
-          '(-?[0-9]+)'
-        when '%f'
-          conv << :to_f
-          # just copied from scanf
-          '([-+]?(?:0[xX](?:\.\h+|\h+(?:\.\h*)?)[pP][-+]\d+|\d+(?![\d.])|\d*\.\d*(?:[eE][-+]?\d+)?))'
-        when '%u'
-          conv << :to_i
-          '([0-9]+)'
-        when '%x'
-          conv << :hex
-          '(\h+)'
+        when /\A%(?>\.\d+)?([dfux])\z/
+          case $1
+          when 'd'
+            conv << :to_i
+            '(-?\d+)'
+          when 'f'
+            conv << :to_f
+            # just copied from scanf
+            '([-+]?(?:0[xX](?:\.\h+|\h+(?:\.\h*)?)[pP][-+]\d+|\d+(?![\d.])|\d*\.\d*(?:[eE][-+]?\d+)?))'
+          when 'u'
+            conv << :to_i
+            '(\d+)'
+          when 'x'
+            conv << :hex
+            '(\h+)'
+          end
         when '%s'
           conv << :to_s
           '([^/]+)'
@@ -138,7 +160,7 @@ module Nyara
       raise 'path must start with /' unless path.start_with? '/'
       path = path.sub(/\/$/, '') if path != '/'
 
-      path.split(/(?=%[dfsuxz])/, 2)
+      path.split(FORWARD_SPLIT, 2)
     end
   end
 

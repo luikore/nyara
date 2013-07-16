@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/luikore/nyara.png)](https://travis-ci.org/luikore/nyara)
 
-- No dependencies, faster than any web framework on rack.
+- Very few runtime dependencies, faster than any web framework on rack.
 - Nonblock but no callback hell, very low CPU and memory usage.
 - Simple usage, and you don't have to make everything non-block.
 - Prefork production server, with signal-based management which enables graceful restart.

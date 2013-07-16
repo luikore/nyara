@@ -126,7 +126,7 @@ module Nyara
           b = body # read all the message
           case b
           when String
-            Ext.parse_param q, body
+            ParamHash.parse_param q, body
           when Array
             b.each do |part|
               part.merge_into q

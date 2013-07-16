@@ -1,13 +1,29 @@
 require_relative "performance_helper"
-$0 = '' # don't let sinatra boot the server
-require "sinatra"
+require "sinatra/base"
 
-v = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-env = {'HTTP_ACCEPT' => env}
+V = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+E = {'HTTP_ACCEPT' => V}
 
-GC.disable
+def nyara
+  Nyara::Ext.rdtsc_start
+  Nyara::Ext.parse_accept_value V
+  Nyara::Ext.rdtsc
+end
 
-nyara = bench(1000){ Nyara::Ext.parse_accept_value v }
-sinatra = bench_raw(1000){ Sinatra::Request.new(env.dup).accept }
-sinatra_baseline = bench_raw(1000){ Sinatra::Request.new(env.dup) }
+def sinatra_baseline
+  Nyara::Ext.rdtsc_start
+  Sinatra::Request.new(E.dup)
+  Nyara::Ext.rdtsc
+end
+
+def sinatra
+  Nyara::Ext.rdtsc_start
+  Sinatra::Request.new(E.dup).accept
+  Nyara::Ext.rdtsc
+end
+
+nyara
+sinatra
+sinatra_baseline
+
 dump nyara: nyara, sinatra: (sinatra - sinatra_baseline)

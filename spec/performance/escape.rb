@@ -1,10 +1,21 @@
 require_relative "performance_helper"
 require "cgi"
 
-s = 'abcde マfgイ'
+S = 'abcde マfgイ'
 
-GC.disable
+def nyara
+  Nyara::Ext.rdtsc_start
+  Nyara::Ext.escape S, false
+  Nyara::Ext.rdtsc
+end
 
-nyara = bench(10000){ Nyara::Ext.escape s, false }
-cgi = bench(10000){ CGI.escape s }
+def cgi
+  Nyara::Ext.rdtsc_start
+  CGI.escape S
+  Nyara::Ext.rdtsc
+end
+
+nyara
+cgi
+
 dump nyara: nyara, cgi: cgi

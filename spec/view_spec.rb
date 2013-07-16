@@ -1,8 +1,6 @@
 require_relative "spec_helper"
 
 class RenderableMock
-  include Nyara::Renderable
-
   def initialize
     @result = ''
   end
@@ -14,7 +12,7 @@ class RenderableMock
 end
 
 module Nyara
-  describe [View, Renderable] do
+  describe View do
     before :all do
       Config['views'] = __dir__ + '/views'
       View.init

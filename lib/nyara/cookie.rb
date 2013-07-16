@@ -14,7 +14,7 @@ module Nyara
     def decode header
       res = ParamHash.new
       if data = header['Cookie']
-        Ext.parse_cookie res, data
+        ParamHash.parse_cookie res, data
       end
       res
     end

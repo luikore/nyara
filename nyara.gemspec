@@ -20,6 +20,8 @@ Gem::Specification.new do |s|
   s.executables << 'nyara'
   s.extensions = ["ext/extconf.rb"]
   s.rubygems_version = '2.0.3'
+  s.add_runtime_dependency 'tilt', '>= 1.3'
+  s.add_runtime_dependency 'listen', '>= 1.1.3'
 
   s.rdoc_options += %w[
     -v

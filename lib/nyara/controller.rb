@@ -1,8 +1,4 @@
 module Nyara
-  # Contain render methods
-  module Renderable
-  end
-
   Controller = Struct.new :request
   class Controller
     module ClassMethods
@@ -15,9 +11,12 @@ module Nyara
       def http method, path, &blk
         @routes ||= []
         @used_ids = {}
+        method = method.to_s.upcase
 
         action = Route.new
-        action.http_method = HTTP_METHODS[method]
+        unless action.http_method = HTTP_METHODS[method]
+          raise ArgumentError, "missing http method: #{method.inspect}"
+        end
         action.path = path
         action.set_accept_exts @formats
         action.id = @curr_id if @curr_id
@@ -141,15 +140,13 @@ module Nyara
 
           e.compile self, scope
           e.validate
-          @path_templates[e.id] = e.path_template
+          @path_templates[e.id] = [e.path_template, e.http_method_override]
         end
         @routes
       end
 
       attr_accessor :path_templates
     end
-
-    include Renderable
 
     def self.inherited klass
       # note: klass will also have this inherited method
@@ -175,11 +172,20 @@ module Nyara
         opts = args.pop
       end
 
-      r = self.class.path_templates[id.to_s] % args
+      template, meth = self.class.path_templates[id.to_s]
+      r = template % args
 
       if opts
         format = opts.delete :format
         r << ".#{format}" if format
+        if meth and !opts.key?(:_method) and !opts.key?('_method')
+          opts['_method'] = meth
+        end
+      elsif meth
+        opts = {'_method' => meth}
+      end
+
+      if opts
         r << '?' << opts.to_query unless opts.empty?
       end
       r
@@ -210,7 +216,7 @@ module Nyara
       raise "unsupported redirect status: #{status}" unless HTTP_REDIRECT_STATUS.include?(status)
 
       r = request
-      header = r.header
+      header = r.response_header
       self.status status
 
       uri = URI.parse url_or_path
@@ -219,7 +225,7 @@ module Nyara
         uri.port = request.port
       end
       uri.scheme = r.ssl? ? 'https' : 'http'
-      r.header['Location'] = uri.to_s
+      header['Location'] = uri.to_s
 
       # similar to send_header, but without content-type
       Ext.request_send_data r, HTTP_STATUS_FIRST_LINES[r.status]
@@ -482,6 +488,12 @@ module Nyara
         Ext.request_wakeup request
       end
       Fiber.yield :sleep # see event.c for the handler
+    end
+
+    # Render a template as string
+    def partial view_path, locals: nil
+      view = View.new self, view_path, nil, nil, {}
+      view.partial
     end
 
     # One shot render, and terminate the action.

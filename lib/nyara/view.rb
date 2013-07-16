@@ -1,7 +1,4 @@
 module Nyara
-  module Renderable
-  end
-
   # A support class which provides:
   #
   # - layout / locals for rendering
@@ -25,27 +22,104 @@ module Nyara
     # Path extension (without dot) => stream friendly
     ENGINE_STREAM_FRIENDLY = ParamHash.new
 
+    # meth name => method obj
+    RENDER = {}
+
+    # nested level => layout render, 0 means no layout
+    LAYOUT = {}
+
     autoload :ERB,    File.join(__dir__, "view_handlers/erb")
     autoload :Erubis, File.join(__dir__, "view_handlers/erubis")
     autoload :Haml,   File.join(__dir__, "view_handlers/haml")
     autoload :Slim,   File.join(__dir__, "view_handlers/slim")
 
     class Buffer < Array
+      def initialize parent=nil
+        @parent = parent
+      end
+      attr_reader :parent
+
       alias safe_append= <<
 
       def append= thingy
         self << CGI.escape_html(thingy.to_s)
       end
 
+      alias _join join
       def join
         r = super
         clear
         r
       end
+
+      def push_level
+        Buffer.new self
+      end
+
+      def pop_level
+        @parent << _join
+      end
+
+      def flush instance
+        parents = [self]
+        buf = self
+        while buf = buf.parent
+          parents << buf
+        end
+        parents.reverse_each do |buf|
+          instance.send_chunk buf._join
+          buf.clear
+        end
+      end
+    end
+
+    module Renderable
+      def self.make_render_method file, line, sig, src
+        class_eval <<-RUBY, file, line
+          def render#{sig}
+            #{src}
+          end
+        RUBY
+        instance_method :render
+      end
+
+      def self.make_layout_method nested_level=0
+        sig = 'e'
+        src = "e.call locals"
+        nested_level.times do |i|
+          sig << ", e#{i}"
+          src = "e#{i}.call{ #{src} }"
+        end
+        sig = "#{sig}"
+        class_eval <<-RUBY
+          def layout #{sig}, locals
+            #{src}
+          end
+        RUBY
+        instance_method(:layout).bind self
+      end
+    end
+
+    class TiltRenderable
+      def initialize tilt
+        @tilt = tilt
+      end
+
+      def bind instance
+        @instance = instance
+        self
+      end
+
+      def call locals=nil, &p
+        inst = @instance
+        @instance = nil
+        @tilt.render inst, locals, &p
+      end
     end
 
     class << self
       def init
+        RENDER.delete_if{|k, v| k.start_with?('!') }
         @root = Config['views']
         @meth2ext = {} # meth => ext (without dot)
         @meth2sig = {}
@@ -58,22 +132,18 @@ module Nyara
       attr_reader :root
 
       # NOTE: `path` needs extension
-      def on_delete path
+      def on_removed path
         meth = path2meth path
-        Renderable.class_eval do
-          undef meth
-        end
+        RENDER.delete meth
 
         @meth2ext.delete meth
         @meth2sig.delete meth
       end
 
-      def on_delete_all
+      def on_removed_all
         meths = @meth2sig
-        Renderable.class_eval do
-          meths.each do |meth, _|
-            undef meth
-          end
+        meths.each do |meth, _|
+          RENDER.delete meth
         end
         @meth2sig.clear
         @meth2ext.clear
@@ -84,7 +154,7 @@ module Nyara
       # #### Returns
       #
       # dot_ext for further use
-      def on_update path
+      def on_modified path
         meth = path2meth path
         return unless @meth2sig[meth] # has not been searched before, see also View.template
 
@@ -98,21 +168,14 @@ module Nyara
           sig = @meth2sig[meth].map{|k| "#{k}: nil" }.join ','
           sig = '_={}' if sig.empty?
           sig = "(#{sig})" # 2.0.0-p0 requirement
-          Renderable.class_eval <<-RUBY, path, 0
-            def render#{sig}
-              #{src}
-            end
-            alias :#{meth.inspect} render
-          RUBY
+          RENDER[meth] = Renderable.make_render_method path, 0, sig, src
         else
           t = Dir.chdir @root do
             # todo display template error
             Tilt.new path rescue return
           end
           # partly precompiled
-          Renderable.send :define_method, meth do |locals=nil, &p|
-            t.render self, locals, &p
-          end
+          RENDER[meth] = TiltRenderable.new t
         end
 
         @meth2ext[meth] = ext
@@ -126,22 +189,16 @@ module Nyara
         line = 1
 
         if stream_friendly
-          Renderable.class_eval <<-RUBY, __FILE__, __LINE__
-            def render locals={}
-              @_nyara_locals = locals
-              src = locals.map{|k, _| "\#{k} = @_nyara_locals[:\#{k}];" }.join
-              src << View.precompile(#{ext.inspect}){ @_nyara_view.in }
-              instance_eval src, #{file}, #{line}
-            end
-            alias :#{meth.inspect} render
+          RENDER[meth] = Renderable.make_render_method __FILE__, __LINE__, '(locals={})', <<-RUBY
+            @_nyara_locals = locals
+            src = locals.map{|k, _| "\#{k} = @_nyara_locals[:\#{k}];" }.join
+            src << View.precompile(#{ext.inspect}){ @_nyara_view.in }
+            instance_eval src, #{file}, #{line}
           RUBY
           ENGINE_STREAM_FRIENDLY[ext] = true
         else
-          Renderable.class_eval <<-RUBY, __FILE__, __LINE__
-            def render locals=nil
-              Tilt[#{ext.inspect}].new(#{file}, #{line}){ @_nyara_view.in }.render self, locals
-            end
-            alias :#{meth.inspect} render
+          RENDER[meth] = Renderable.make_render_method __FILE__, __LINE__, '(locals=nil)', <<-RUBY
+            Tilt[#{ext.inspect}].new(#{file}, #{line}){ @_nyara_view.in }.render self, locals
           RUBY
         end
         ENGINE_DEFAULT_CONTENT_TYPES[ext] = default_content_type
@@ -151,7 +208,7 @@ module Nyara
       #
       # #### Returns
       #
-      # `[meth, ext_without_dot]`
+      # `[meth_obj, ext_without_dot]`
       def template path, locals={}
         if File.extname(path).empty?
           Dir.chdir @root do
@@ -165,12 +222,12 @@ module Nyara
 
         meth = path2meth path
         ext = @meth2ext[meth]
-        return [meth, ext] if ext
+        return [RENDER[meth], ext] if ext
 
         @meth2sig[meth] = locals.keys
-        ext = on_update path
+        ext = on_modified path
         raise "template not found or not valid in Tilt: #{path}" unless ext
-        [meth, ext]
+        [RENDER[meth], ext]
       end
 
       # private
@@ -192,11 +249,11 @@ module Nyara
       end
 
       def path2meth path
-        "!!#{path}"
+        "!#{path}"
       end
 
       def engine2meth engine
-        "!:#{engine}"
+        ":#{engine}"
       end
     end
 
@@ -225,59 +282,52 @@ module Nyara
         unless @deduced_content_type = ENGINE_DEFAULT_CONTENT_TYPES[ext]
           raise ArgumentError, "unkown template engine: #{ext.inspect}"
         end
-
-        @layouts = [[meth, ext]]
       else
         raise ArgumentError, "too many options, expected only 1: #{opts.inspect}" if opts.size > 1
-        ext, template = opts.first
-        meth = View.engine2meth ext
+        ext, @in = opts.first
 
         unless @deduced_content_type = ENGINE_DEFAULT_CONTENT_TYPES[ext]
           raise ArgumentError, "unkown template engine: #{ext.inspect}"
         end
 
-        @layouts = [meth]
-        @in = template
+        meth = RENDER[View.engine2meth(ext)]
       end
 
+      @args = [meth.bind(instance)]
       unless layout.is_a?(Array)
         layout = layout ? [layout] : []
       end
       layout.each do |l|
         pair = View.template(l)
         # see notes on View
-        raise "can not use #{meth} as layout" unless ENGINE_STREAM_FRIENDLY[pair[1]]
-        @layouts << pair
+        raise "can not use #{pair[1]} as layout" unless ENGINE_STREAM_FRIENDLY[pair[1]]
+        @args << pair.first.bind(instance)
       end
 
-      @locals = locals
+      @layout_render = (LAYOUT[@args.size] ||= Renderable.make_layout_method(@args.size - 1))
+      @args << locals
+
       @instance = instance
       @instance.instance_variable_set :@_nyara_view, self
       @out = Buffer.new
     end
     attr_reader :deduced_content_type, :in, :out
 
+    def partial
+      @out = @out.push_level
+      res = @layout_render.call *@args
+      @out = @out.pop_level
+      res
+    end
+
     def render
-      @rest_layouts = @layouts.dup
-      @instance.send_chunk _render
+      @instance.send_chunk @layout_render.call *@args
       Fiber.yield :term_close
     end
 
-    def _render # :nodoc:
-      t, _ = @rest_layouts.pop
-      if @rest_layouts.empty?
-        @instance.send t, @locals
-      else
-        @instance.send t do
-          _render
-        end
-      end
-    end
-
     def stream
-      @rest_layouts = @layouts.dup
       @fiber = Fiber.new do
-        @rest_result = _render
+        @rest_result = @layout_render.call *@args
         nil
       end
       self
@@ -287,8 +337,7 @@ module Nyara
       r = @fiber.resume
       Fiber.yield r if r
       unless @out.empty?
-        @instance.send_chunk @out.join
-        @out.clear
+        @out.flush @instance
       end
     end
 
