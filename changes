@@ -1,3 +1,4 @@
+2013-07-18 add automatic reloader for development mode
 2013-07-13 add bin script `nyara`
 2013-07-10 add before filter
 2013-07-06 add worker signal management
