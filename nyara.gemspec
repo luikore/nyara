@@ -33,5 +33,6 @@ Gem::Specification.new do |s|
     -x ext/inc/.*
     -x .*\.o
     -x .*\.bundle
+    -x .*\.so
   ]
 end
