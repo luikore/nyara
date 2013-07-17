@@ -125,5 +125,10 @@ module Nyara
         assert_equal '.b:C', s
       end
     end
+
+    it ".print_routes" do
+      out = stdout { Route.print_routes }
+      assert_include(out, "all routes:")
+    end
   end
 end

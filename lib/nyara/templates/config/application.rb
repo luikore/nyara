@@ -1,3 +1,7 @@
+require 'bundler'
+Bundler.require :default
+Bundler.require ENV['NYARA_ENV'] || 'development'
+
 configure do
   set :env, ENV['NYARA_ENV'] || 'development'
 
@@ -25,10 +29,7 @@ configure do
   require_relative env
 end
 
-require 'bundler'
-Bundler.require Nyara.config.env
-
 # Configure Mongoid
-Mongoid.load!(Nyara.config.project_path 'config/database.yml'), Nyara.config.env)
+Mongoid.load!(Nyara.config.project_path('config/database.yml'), Nyara.config.env)
 
-Nyara.config.load_app
+Nyara.load_app

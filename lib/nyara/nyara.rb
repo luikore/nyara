@@ -83,8 +83,8 @@ module Nyara
           require_relative "reload"
           Reload.init do
             # NOTE app_files can be an array
-            Dir.glob Config['app_files'] do |file|
-              load_file Config.project_path file
+            Dir.glob(Config['app_files']).uniq.each do |file|
+              Reload.load_file Config.project_path file
             end
           end
         else

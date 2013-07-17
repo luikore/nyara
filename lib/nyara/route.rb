@@ -239,6 +239,16 @@ module Nyara
       @controllers = []
     end
 
+    def print_routes
+      puts "all routes:"
+      Nyara::Route.routes.each do |route|
+        print (route.id || "").gsub("#", "").rjust(30), " "
+        print route.http_method_to_s.ljust(6), " "
+        print route.path
+        puts ""
+      end
+    end
+
     # private
 
     def const2name c
