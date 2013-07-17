@@ -65,8 +65,8 @@ module Nyara
       
       self.logger = create_logger
 
-      assert !self['before_fork'] or self['before_fork'].respond_to?('call')
-      assert !self['after_fork'] or self['after_fork'].respond_to?('call')
+      assert !self['before_fork'] || self['before_fork'].respond_to?('call')
+      assert !self['after_fork'] || self['after_fork'].respond_to?('call')
 
       if self['public']
         map '/', PublicController
