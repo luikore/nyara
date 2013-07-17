@@ -55,7 +55,7 @@ commands:
 
       puts "Generate Nyara project..."
       source_templates = Dir.glob("#{templte_dir}/*")
-      puts source_templates
+      puts source_templates.map{|f| File.basename f }
       FileUtils.cp_r(source_templates, app_dir)
 
       # render template
@@ -69,10 +69,16 @@ commands:
         end
       end
 
-      puts "config/session.key"
       Dir.chdir app_dir do
+        puts "config/session.key"
         File.open 'config/session.key', 'wb' do |f|
           f << Session.generate_key
+        end
+
+        puts ".gitignore"
+        File.open '.gitignore', 'w' do |f|
+          f.puts ".DS_Store"
+          f.puts "config/session.key"
         end
       end
 
