@@ -60,6 +60,7 @@ module Nyara
         reset
         map '/', TestController
         set :root, __dir__
+        set :public, 'public'
         set :logger, false
       end
       Nyara.setup

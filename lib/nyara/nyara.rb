@@ -28,9 +28,6 @@ require_relative "cpu_counter"
 require_relative "part"
 require_relative "command"
 
-# default controllers
-require_relative "controllers/public_controller"
-
 module Nyara
   HTTP_STATUS_FIRST_LINES = Hash[HTTP_STATUS_CODES.map{|k,v|[k, "HTTP/1.1 #{k} #{v}\r\n".freeze]}].freeze
 
@@ -103,13 +100,6 @@ module Nyara
         l.info "patching TCPSocket"
       end
       require_relative "patches/tcp_socket"
-    end
-
-    def summary_request method_num, path, controller
-      if l = logger
-        method = HTTP_METHODS.find{|k, v| method_num == v}.first
-        l.info "#{method} #{path} => #{controller}"
-      end
     end
 
     def start_development_server port

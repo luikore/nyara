@@ -242,17 +242,6 @@ static VALUE param_hash_parse_param(VALUE _, VALUE output, VALUE str) {
 
 static VALUE _tmp_str;
 
-static VALUE _parse_cookie_func(VALUE output) {
-  param_hash_parse_cookie(Qnil, output, _tmp_str);
-  return Qnil;
-}
-
-void nyara_parse_cookie(VALUE output, VALUE str) {
-  _tmp_str = str;
-  int err = 0;
-  rb_protect(_parse_cookie_func, output, &err);
-}
-
 static VALUE _parse_query_func(VALUE output) {
   param_hash_parse_param(Qnil, output, _tmp_str);
   return Qnil;

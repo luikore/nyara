@@ -54,8 +54,10 @@ module Nyara
       self['root'] = File.expand_path self['root']
 
       self['views'] = project_path(self['views'] || 'views')
-      self['public'] = project_path(self['public'] || 'public')
-      
+      if self['public']
+        self['public'] = project_path(self['public'])
+      end
+
       # load controllers, models
       %W(controllers models).each do |dirname|
         Dir.glob(project_path("app/#{dirname}/**/*.rb")).each do |fname|
@@ -67,10 +69,6 @@ module Nyara
 
       assert !self['before_fork'] || self['before_fork'].respond_to?('call')
       assert !self['after_fork'] || self['after_fork'].respond_to?('call')
-
-      if self['public']
-        map '/', PublicController
-      end
     end
 
     attr_accessor :logger
@@ -80,11 +78,8 @@ module Nyara
       l = self['logger']
 
       if l == true or l.nil?
-        # see Nyara.summary_request
-        Ext.summary_request true if development?
         ::Logger.new(production? ? project_path('production.log') : STDOUT)
       elsif l.is_a?(Class)
-        Ext.summary_request true if development?
         l.new(production? ? project_path('production.log') : STDOUT)
       elsif l.is_a?(Proc)
         l.call

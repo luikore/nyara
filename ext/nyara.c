@@ -32,19 +32,6 @@ static void set_fd_limit(int nofiles) {
   }
 }
 
-static bool summary_request = false;
-void nyara_summary_request(int method, VALUE path, VALUE controller) {
-  if (summary_request) {
-    rb_funcall(nyara, rb_intern("summary_request"), 3, INT2NUM(method), path, controller);
-  }
-}
-
-// set whether should log summary of request
-static VALUE ext_summary_request(VALUE _, VALUE toggle) {
-  summary_request = RTEST(toggle);
-  return toggle;
-}
-
 static unsigned long long last_rdtsc = 0;
 
 static VALUE ext_rdtsc_start(VALUE _) {
@@ -93,7 +80,6 @@ void Init_nyara() {
   OBJ_FREEZE(status_map);
 
   VALUE ext = rb_define_module_under(nyara, "Ext");
-  rb_define_singleton_method(ext, "summary_request", ext_summary_request, 1);
   rb_define_singleton_method(ext, "rdtsc_start", ext_rdtsc_start, 0);
   rb_define_singleton_method(ext, "rdtsc", ext_rdtsc, 0);
 

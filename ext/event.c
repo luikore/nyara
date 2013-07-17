@@ -46,9 +46,14 @@ static Request* curr_request;
 static bool graceful_quit = false;
 
 static VALUE _fiber_func(VALUE _, VALUE args) {
-  VALUE instance = rb_ary_pop(args);
-  VALUE meth = rb_ary_pop(args);
-  rb_apply(instance, SYM2ID(meth), args);
+  static VALUE controller_class = Qnil;
+  static ID id_dispatch;
+  if (controller_class == Qnil) {
+    controller_class = rb_const_get(rb_cModule, rb_intern("Nyara"));
+    controller_class = rb_const_get(controller_class, rb_intern("Controller"));
+    id_dispatch = rb_intern("dispatch");
+  }
+  rb_apply(controller_class, id_dispatch, args);
   return Qnil;
 }
 
@@ -102,27 +107,16 @@ static void _handle_request(VALUE request) {
   // ensure action
   if (p->fiber == Qnil) {
     volatile RouteResult result = nyara_lookup_route(p->method, p->path, p->accept);
-    nyara_summary_request(p->method, p->path, result.controller);
     if (RTEST(result.controller)) {
-      rb_ary_push(result.args, rb_class_new_instance(1, &(p->self), result.controller));
-      // result.args is on stack, no need to worry gc
-      p->fiber = rb_fiber_new(_fiber_func, result.args);
-      p->instance = RARRAY_PTR(result.args)[RARRAY_LEN(result.args) - 1];
-      p->scope = result.scope;
-      p->format = result.format;
-      p->response_header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
-      p->response_header_extra_lines = rb_ary_new();
-      nyara_request_init_env(request);
-    } else {
-      static const char* not_found = "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n";
-      static long not_found_len = 0;
-      if (!not_found_len) {
-        not_found_len = strlen(not_found);
-      }
-      nyara_send_data(p->fd, not_found, not_found_len);
-      nyara_detach_rid(p->rid);
-      return;
+      p->instance = rb_class_new_instance(1, &(p->self), result.controller);
     }
+    // result.args is on stack, no need to worry gc
+    p->scope = result.scope;
+    p->format = result.format;
+    p->cookie = rb_class_new_instance(0, NULL, nyara_param_hash_class);
+    p->response_header = rb_class_new_instance(0, NULL, nyara_header_hash_class);
+    p->response_header_extra_lines = rb_ary_new();
+    p->fiber = rb_fiber_new(_fiber_func, rb_ary_new3(3, p->self, p->instance, result.args));
   }
 
   _resume_action(p);

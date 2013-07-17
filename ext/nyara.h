@@ -26,7 +26,6 @@ void Init_request_parse(VALUE nyara, VALUE ext);
 
 /* request.c */
 void Init_request(VALUE nyara, VALUE ext);
-void nyara_request_init_env(VALUE request);
 void nyara_request_term_close(VALUE request);
 bool nyara_send_data(int fd, const char* s, long len);
 
@@ -53,7 +52,6 @@ VALUE ext_mime_match(VALUE _, VALUE request_accept, VALUE accept_mimes);
 
 /* hashes.c */
 void Init_hashes(VALUE nyara);
-void nyara_parse_cookie(VALUE output, VALUE str);
 void nyara_parse_query(VALUE output, const char* s, long len);
 
 
@@ -81,5 +79,4 @@ extern RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, 
 
 /* nyara.c */
 void nyara_set_nonblock(int fd);
-void nyara_summary_request(int method, VALUE path, VALUE controller);
 extern rb_encoding* u8_encoding;

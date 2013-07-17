@@ -109,30 +109,6 @@ Request* nyara_request_new(int fd) {
   return p;
 }
 
-void nyara_request_init_env(VALUE self) {
-  static VALUE session_mod = Qnil;
-  static VALUE flash_class = Qnil;
-  static VALUE str_cookie = Qnil;
-  static ID id_decode = 0;
-  if (session_mod == Qnil) {
-    VALUE nyara = rb_const_get(rb_cModule, rb_intern("Nyara"));
-    session_mod = rb_const_get(nyara, rb_intern("Session"));
-    flash_class = rb_const_get(nyara, rb_intern("Flash"));
-    str_cookie = rb_enc_str_new("Cookie", strlen("Cookie"), u8_encoding);
-    rb_gc_register_mark_object(str_cookie);
-    id_decode = rb_intern("decode");
-  }
-
-  P;
-  p->cookie = rb_class_new_instance(0, NULL, nyara_param_hash_class);
-  VALUE cookie = rb_hash_aref(p->header, str_cookie);
-  if (cookie != Qnil) {
-    nyara_parse_cookie(p->cookie, cookie);
-  }
-  p->session = rb_funcall(session_mod, id_decode, 1, p->cookie);
-  p->flash = rb_class_new_instance(1, &p->session, flash_class);
-}
-
 void nyara_request_term_close(VALUE self) {
   P;
   VALUE transfer_enc = rb_hash_aref(p->response_header, str_transfer_encoding);
@@ -202,9 +178,25 @@ static VALUE request_session(VALUE self) {
   return p->session;
 }
 
+static VALUE request_session_eq(VALUE self, VALUE session) {
+  P;
+  if (p->session != Qnil) {
+    rb_raise(rb_eRuntimeError, "request.session already initialized");
+  }
+  return p->session = session;
+}
+
 static VALUE request_flash(VALUE self) {
   P;
   return p->flash;
+}
+
+static VALUE request_flash_eq(VALUE self, VALUE flash) {
+  P;
+  if (p->flash != Qnil) {
+    rb_raise(rb_eRuntimeError, "request.flash already initialized");
+  }
+  return p->flash = flash;
 }
 
 static VALUE request_body(VALUE self) {
@@ -388,7 +380,9 @@ void Init_request(VALUE nyara, VALUE ext) {
   rb_define_method(request_class, "format", request_format, 0);
   rb_define_method(request_class, "cookie", request_cookie, 0);
   rb_define_method(request_class, "session", request_session, 0);
+  rb_define_method(request_class, "session=", request_session_eq, 1);
   rb_define_method(request_class, "flash", request_flash, 0);
+  rb_define_method(request_class, "flash=", request_flash_eq, 1);
   rb_define_method(request_class, "body", request_body, 0);
   rb_define_method(request_class, "message_complete?", request_message_complete_p, 0);
 

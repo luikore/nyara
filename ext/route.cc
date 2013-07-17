@@ -187,8 +187,7 @@ static VALUE ext_list_route(VALUE self) {
   return route_hash;
 }
 
-static VALUE build_args(const char* suffix, std::vector<ID>& conv) {
-  volatile VALUE args = rb_ary_new();
+static VALUE build_args(const char* suffix, std::vector<ID>& conv, volatile VALUE args) {
   volatile VALUE str = rb_str_new2(""); // tmp for conversion, no need encoding
   long last_len = 0;
   for (size_t j = 0; j < conv.size(); j++) {
@@ -271,8 +270,7 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, VALUE a
               break;
             }
           }
-          r.args = build_args(suffix, i->conv);
-          rb_ary_push(r.args, i->id);
+          r.args = build_args(suffix, i->conv, rb_ary_new3(1, i->id));
           r.controller = i->controller;
           break;
         }

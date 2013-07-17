@@ -37,7 +37,7 @@ module Nyara
     it "views and public default" do
       Config[:root] = '/root'
       Config.init
-      assert_equal '/root/public', Config['public']
+      assert_equal nil, Config['public']
       assert_equal '/root/views', Config['views']
     end
 

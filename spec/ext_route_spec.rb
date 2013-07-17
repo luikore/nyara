@@ -58,13 +58,13 @@ module Nyara
       scope, cont, args = Ext.lookup_route 'GET', '/hello/3world', nil
       assert_equal @e1.scope, scope
       assert_equal @e1.controller, cont
-      assert_equal [3, :'#1'], args
+      assert_equal [:'#1', 3], args
 
       scope, _ = Ext.lookup_route 'GET', '/world', nil
       assert_equal nil, scope
 
       scope, _, args = Ext.lookup_route 'GET', '/a目录/2013-6-1', nil
-      assert_equal [2013, 6, 1, :'#dir'], args
+      assert_equal [:'#dir', 2013, 6, 1], args
     end
   end
 end

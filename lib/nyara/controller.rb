@@ -131,8 +131,6 @@ module Nyara
           class_eval <<-RUBY
             def __nyara_tmp_action *xs
               #{senders.join}
-            rescue Exception => e
-              handle_error e
             end
             alias :#{e.id.inspect} __nyara_tmp_action
             undef __nyara_tmp_action
@@ -164,6 +162,42 @@ module Nyara
           klass.instance_variable_set iv, value.dup
         end
       end
+    end
+
+    def self.dispatch request, instance, args
+      if cookie_str = request.header._aref('Cookie')
+        ParamHash.parse_cookie request.cookie, cookie_str
+      end
+      request.flash = Flash.new(
+        request.session = Session.decode(request.cookie)
+      )
+
+      if instance
+        if l = Nyara.logger
+          l.info "#{request.http_method} #{request.path} => #{instance.class}"
+        end
+        instance.send *args
+        return
+      elsif request.http_method == 'GET' and Config['public']
+        path = Config.public_path request.path
+        if File.file?(path)
+          if l = Nyara.logger
+            l.info "GET #{path} => public 200"
+          end
+          instance = Controller.new request
+          instance.send_file path
+          return
+        end
+      end
+
+      if l = Nyara.logger
+        l.info "#{request.http_method} #{request.path} => 404"
+      end
+      Ext.request_send_data request, "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
+      Fiber.yield :term_close
+
+    rescue Exception
+      instance.handle_error($!) if instance
     end
 
     # Path helper
@@ -557,7 +591,7 @@ module Nyara
     def handle_error e
       if l = Nyara.logger
         l.error "#{e.class}: #{e.message}"
-        l.error e.backtrace
+        l.error e.backtrace.join "\n"
       end
       status 500
       send_header rescue nil
