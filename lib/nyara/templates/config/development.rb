@@ -1,7 +1,7 @@
 configure do
-  set :port, 3000          # set listening port number
-  set :workers, 4          # set number of worker process
-                           # if not set, will estimate best n by CPU count
+  set :port, 3000
+  set :logger, true
+  set :public, 'public'
 
-  set :logger, true        # equivalent to no setting
+  # todo reloader
 end

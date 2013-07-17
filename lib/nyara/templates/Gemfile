@@ -5,3 +5,7 @@ gem 'erubis'
 gem 'rake'
 gem 'nyara', '<%= Nyara::VERSION %>', require: 'nyara/nyara'
 gem 'mongoid', '3.1.4'
+
+group :test do
+  gem 'rspec'
+end

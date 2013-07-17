@@ -64,7 +64,7 @@ module Nyara
           require_relative fname
         end
       end
-      
+
       self.logger = create_logger
 
       assert !self['before_fork'] || self['before_fork'].respond_to?('call')
@@ -141,7 +141,7 @@ module Nyara
     def env
       self['env'].to_s
     end
-    
+
     def root
       self['root'].to_s
     end

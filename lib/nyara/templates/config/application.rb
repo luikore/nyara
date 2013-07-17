@@ -1,16 +1,24 @@
 require 'bundler'
 Bundler.require(:default)
-require "erubis"
-require 'mongoid'
 
 configure do
-  set :views, 'app/views'
-  set :session, :name, '_aaa'
-  set :session, :secure, true
-  set :session, :expires, 30 * 60
-  
-  map '/', 'welcome'
-end
+  set :env, ENV['NYARA_ENV'] || 'development'
+  require_relative env
 
-# Configure Mongoid
-Mongoid.load!(File.join(Nyara.config.root,'config/database.yml'), Nyara.config.env)
+  set :views, 'app/views'
+
+  set :session, :name, '_aaa'
+
+  ## If you've configured https with nginx:
+  # set :session, :secure, true
+
+  ## Default session expires when browser closes.
+  ## if you need timed expire, 30 minutes for example:
+  # set :session, :expires, 30 * 60
+
+  map '/', 'welcome'
+
+  # Configure Mongoid
+  Mongoid.load!(project_path 'config/database.yml'), env)
+
+end

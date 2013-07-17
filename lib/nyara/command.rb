@@ -25,7 +25,7 @@ commands:
       }
       OptionParser.new do |opt|
         opt.banner = 'Usage: nyara new APP_NAME [options]'
-        opt.on('-f','Force override old') do
+        opt.on('-f', 'Force override old') do
           opts[:force] = true
         end
       end.parse(args)
@@ -41,8 +41,8 @@ commands:
         return
       end
 
-      app_dir = File.join(Dir.pwd,name)
-      templte_dir = File.join(File.dirname(__FILE__),"templates")
+      app_dir = File.join(Dir.pwd, name)
+      templte_dir = File.join(File.dirname(__FILE__), "templates")
 
       FileUtils.rm_rf(app_dir) if opts[:force]
 
@@ -54,8 +54,9 @@ commands:
       Dir.mkdir(app_dir)
 
       puts "Generate Nyara project..."
-      # Copy source template
-      FileUtils.cp_r(Dir.glob("#{templte_dir}/*"),app_dir)
+      source_templates = Dir.glob("#{templte_dir}/*")
+      puts source_templates
+      FileUtils.cp_r(source_templates, app_dir)
 
       # render template
       files = Dir.glob("#{app_dir}/**/*")
@@ -64,13 +65,20 @@ commands:
       }
       files.each do |fname|
         if not File.directory?(fname)
-          render_template(fname,render_opts)
+          render_template(fname, render_opts)
+        end
+      end
+
+      puts "config/session.key"
+      Dir.chdir app_dir do
+        File.open 'config/session.key', 'wb' do |f|
+          f << Session.generate_key
         end
       end
 
       puts "Enjoy!"
     end
-    
+
     def run_server(*args)
       args ||= []
       system("bundle exec ruby config/boot.rb")
@@ -83,7 +91,7 @@ commands:
         app_name: opts[:app_name],
         nyara_version: Nyara::VERSION
       }
-      File.open(fname,'w+') do |f|
+      File.open(fname, 'w+') do |f|
         f.write renderer.result(OpenStruct.new(locals).instance_eval { binding })
       end
     end
