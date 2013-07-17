@@ -1,3 +1,4 @@
+require 'optparse'
 module Nyara
   module Command
     extend self
@@ -9,9 +10,6 @@ module Nyara
 commands:
   nyara help\t\t\tShow this message
   nyara new APP_NAME\t\tTo initialize a new project with default template in current directory.
-      options:
-      -f\t\t\tForce override if same name path existed
-
   nyara version\t\t\tDisplay current version
       )
     end
@@ -20,14 +18,24 @@ commands:
       puts "Nyara #{Nyara::VERSION}"
     end
 
-    def new_project(name = nil,*args)
+    def new_project(*args)
       args ||= []
-      force_create = args.include?("-f")
+      opts = {
+        force: false
+      }
+      OptionParser.new do |opt|
+        opt.banner = 'Usage: nyara new APP_NAME [options]'
+        opt.on('-f','Force override old') do
+          opts[:force] = true
+        end
+      end.parse(args)
+
       require 'fileutils'
       require "erb"
       require 'ostruct'
       require_relative "view_handlers/erb"
 
+      name = args.shift
       if name.blank?
         puts "Need project name: \n\tnyara new xxx"
         return
@@ -36,7 +44,7 @@ commands:
       app_dir = File.join(Dir.pwd,name)
       templte_dir = File.join(File.dirname(__FILE__),"templates")
 
-      FileUtils.rm_rf(app_dir) if force_create
+      FileUtils.rm_rf(app_dir) if opts[:force]
 
       if Dir.exist?(app_dir)
         puts "This has same dir name's '#{name}' existed, Nyara can not override it."
@@ -61,6 +69,11 @@ commands:
       end
 
       puts "Enjoy!"
+    end
+    
+    def run_server(*args)
+      args ||= []
+      system("bundle exec ruby config/boot.rb")
     end
 
     private

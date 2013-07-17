@@ -166,6 +166,10 @@ module Nyara
 
   # class methods
   class << Route
+    def routes
+      @routes || []
+    end
+    
     # #### Param
     #
     # * `controller` - string or class which inherits [Nyara::Controller](Controller.html)
@@ -183,7 +187,7 @@ module Nyara
       @global_path_templates = {} # "name#id" => path
       mapped_controllers = {}
 
-      routes = @controllers.flat_map do |scope, c|
+      @routes = @controllers.flat_map do |scope, c|
         if c.is_a?(String)
           c = name2const c
         end
@@ -199,15 +203,15 @@ module Nyara
           @global_path_templates[name + e.id] = e.path_template
         end
       end
-      routes.sort_by! &:prefix
-      routes.reverse!
+      @routes.sort_by! &:prefix
+      @routes.reverse!
 
       mapped_controllers.each do |c, _|
         c.path_templates = @global_path_templates.merge c.path_templates
       end
 
       Ext.clear_route
-      routes.each do |e|
+      @routes.each do |e|
         Ext.register_route e
       end
     end
