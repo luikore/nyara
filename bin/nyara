@@ -6,12 +6,12 @@ task_name = args.shift || 'help'
 
 
 case task_name
-when 'help'
-  Nyara::Command.help
-when '-h'
+when 'help', '-h'
   Nyara::Command.help
 when '-v'
   Nyara::Command.version
 when 'new'
   Nyara::Command.new_project(*args)
+when 's','server'
+  Nyara::Command.run_server(*args)
 end
