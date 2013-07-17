@@ -1,6 +1,5 @@
 require 'bundler'
-Bundler.require :default
-Bundler.require ENV['NYARA_ENV'] || 'development'
+Bundler.require :default, ENV['NYARA_ENV'] || 'development'
 
 configure do
   set :env, ENV['NYARA_ENV'] || 'development'
