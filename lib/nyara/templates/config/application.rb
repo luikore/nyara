@@ -1,6 +1,6 @@
-require "nyara/nyara"
+require 'bundler'
+Bundler.require(:default)
 require "erubis"
-require 'bundler' and Bundler.setup(:default)
 require 'mongoid'
 
 configure do
