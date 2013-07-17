@@ -81,9 +81,5 @@ module Nyara
     end
 
     # todo (don't forget wiki doc!)
-
-    def self.reload_all
-
-    end
   end
 end

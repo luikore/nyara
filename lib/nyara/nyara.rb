@@ -210,15 +210,21 @@ module Nyara
     def spawn_new_master sig
       fork do
         @server.close_on_exec = false
-        Dir.chdir START_CTX[:cwd]
-        if File.executable?(START_CTX[0])
-          exec START_CTX[0], *START_CTX[:argv], close_others: false
-        else
-          # gemset env should be correct because env is inherited
-          require "rbconfig"
-          ruby = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['ruby_install_name'])
-          exec ruby, START_CTX[0], *START_CTX[:argv], close_others: false
-        end
+        reload_all
+      end
+    end
+
+    # Reload everything
+    def reload_all
+      # todo set 1-1024 close_on_exec
+      Dir.chdir START_CTX[:cwd]
+      if File.executable?(START_CTX[0])
+        exec START_CTX[0], *START_CTX[:argv], close_others: false
+      else
+        # gemset env should be correct because env is inherited
+        require "rbconfig"
+        ruby = File.join(RbConfig::CONFIG['bindir'], RbConfig::CONFIG['ruby_install_name'])
+        exec ruby, START_CTX[0], *START_CTX[:argv], close_others: false
       end
     end
 
