@@ -96,7 +96,7 @@ module Nyara
       assert_equal true, Config.production?
       Config.reset
     end
-    
+
     it "root helpers" do
       Config.init
       assert_equal Dir.pwd, Config.root
@@ -117,14 +117,17 @@ module Nyara
       Config.init
       assert_nil Nyara.logger
     end
-    
-    it "auto load file in controllers,models" do
+
+    it "auto load file" do
       Config.configure do
-        set :root,File.join(Dir.pwd,'spec/dummy')
+        set :env, 'test'
+        set :root, File.join(__dir__, 'dummy')
+        set :app_files, 'app/**/*.rb'
       end
       Config.init
-      assert_equal true, Object.const_defined?('Simple')
-      assert_equal true, Object.const_defined?('SimpleController')
+      Nyara.load_app
+      assert_equal true, Object.const_defined?('DummyModel')
+      assert_equal true, Object.const_defined?('DummyController')
     end
   end
 end

@@ -1,2 +1,0 @@
-class SimpleController
-end

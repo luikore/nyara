@@ -1,9 +1,5 @@
-require 'bundler'
-Bundler.require(:default)
-
 configure do
   set :env, ENV['NYARA_ENV'] || 'development'
-  require_relative env
 
   set :views, 'app/views'
 
@@ -13,12 +9,26 @@ configure do
   # set :session, :secure, true
 
   ## Default session expires when browser closes.
-  ## if you need timed expire, 30 minutes for example:
+  ## If you need time-based expiration, 30 minutes for example:
   # set :session, :expires, 30 * 60
 
+  # Routing
   map '/', 'welcome'
 
-  # Configure Mongoid
-  Mongoid.load!(project_path 'config/database.yml'), env)
+  # Application loading order
+  set :app_files, %w|
+    app/controllers/application_controller.rb
+    app/{helpers,models,controllers}/**/*.rb
+  |
 
+  # Environment specific configure at last
+  require_relative env
 end
+
+require 'bundler'
+Bundler.require Nyara.config.env
+
+# Configure Mongoid
+Mongoid.load!(Nyara.config.project_path 'config/database.yml'), Nyara.config.env)
+
+Nyara.config.load_app

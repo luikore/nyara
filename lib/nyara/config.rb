@@ -58,13 +58,6 @@ module Nyara
         self['public'] = project_path(self['public'])
       end
 
-      # load controllers, models
-      %W(controllers models).each do |dirname|
-        Dir.glob(project_path("app/#{dirname}/**/*.rb")).each do |fname|
-          require_relative fname
-        end
-      end
-
       self.logger = create_logger
 
       assert !self['before_fork'] || self['before_fork'].respond_to?('call')

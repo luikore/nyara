@@ -77,6 +77,24 @@ module Nyara
       View.init
     end
 
+    def load_app
+      Dir.chdir Config.root do
+        if Config.development?
+          require_relative "reload"
+          Reload.init do
+            # NOTE app_files can be an array
+            Dir.glob Config['app_files'] do |file|
+              load_file Config.project_path file
+            end
+          end
+        else
+          Dir.glob Config['app_files'] do |file|
+            require Config.project_path file
+          end
+        end
+      end
+    end
+
     def start_server
       port = Config[:port]
 
