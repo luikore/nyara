@@ -175,6 +175,9 @@ module Nyara
       if instance
         if l = Nyara.logger
           l.info "#{request.http_method} #{request.path} => #{instance.class}"
+          if %W"POST PUT PATCH".include?(request.http_method)
+            l.info "  params: #{instance.params.inspect}"
+          end
         end
         instance.send *args
         return

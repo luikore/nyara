@@ -1,4 +1,5 @@
 require_relative "spec_helper"
+require 'logger'
 
 class TestController < Nyara::Controller
   attr_reader :before_invoked
@@ -91,6 +92,14 @@ module Nyara
       assert_equal 'http://localhost:3000/', @test.redirect_location
       @test.follow_redirect
       assert_equal '/', @test.request.path
+    end
+    
+    it "post params log output" do
+      data = { name: 1, sex: 0 }
+      Nyara.config.stub(:logger).and_return(Logger.new($stdout))
+      out = capture(:stdout) { @test.post @test.path_to('test#create'), {}, data }
+      # puts out
+      assert_include out, 'params: {"name"=>"1", "sex"=>"0"}'
     end
 
     it "session continuation" do
