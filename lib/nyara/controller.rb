@@ -182,7 +182,7 @@ module Nyara
         path = Config.public_path request.path
         if File.file?(path)
           if l = Nyara.logger
-            l.info "GET #{path} => public 200"
+            l.info "GET #{request.path} => public 200"
           end
           instance = Controller.new request
           instance.send_file path
