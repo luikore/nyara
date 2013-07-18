@@ -479,6 +479,8 @@ module Nyara
         unless content_type
           extname = File.extname(file)
           extname = File.extname(filename) if extname.blank? and filename
+          extname.gsub!(".","")
+        
           content_type = MIME_TYPES[extname] || 'application/octet-stream'
         end
         header['Content-Type'] = content_type

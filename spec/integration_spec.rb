@@ -162,6 +162,23 @@ module Nyara
         @test.get "/empty"
         assert_equal 404, @test.response.status
       end
+      
+      it "found test.css and text/css content_type" do
+        @test.get "/test.css"
+        assert_equal "test css", @test.response.body
+        assert_include @test.response.header['Content-Type'],"text/css"
+      end
+      
+      it "found test.js" do
+        @test.get "/test.js"
+        assert_equal "test js", @test.response.body
+        assert_include @test.response.header['Content-Type'],"application/javascript"
+      end
+      
+      it "found test.jpg" do
+        @test.get "/test.jpg"
+        assert_include @test.response.header['Content-Type'],"image/jpeg"
+      end
     end
 
     context "before / after" do
