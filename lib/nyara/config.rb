@@ -51,8 +51,9 @@ module Nyara
       unless self['root']
         set :root, Dir.pwd
       end
-      self['root'] = File.expand_path self['root']
+      self['root'] = File.realpath File.expand_path self['root']
 
+      # todo warn paths not under project?
       self['views'] = project_path(self['views'] || 'views')
       if self['public']
         self['public'] = project_path(self['public'])

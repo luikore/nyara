@@ -12,6 +12,8 @@ module Nyara
     end
 
     after :all do
+      Process.kill :TERM, @server
+      sleep 0.2
       Process.kill :KILL, @server
     end
 

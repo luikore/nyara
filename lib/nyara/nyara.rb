@@ -77,31 +77,32 @@ module Nyara
       View.init
     end
 
+    # load with Config['app_files']
     def load_app
+      app_files = Config['app_files']
+      return unless app_files
+
       Dir.chdir Config.root do
+        # NOTE app_files can be an array
+        Dir.glob Config['app_files'] do |file|
+          require Config.project_path file
+        end
         if Config.development?
           require_relative "reload"
-          Reload.init do
-            # NOTE app_files can be an array
-            Dir.glob(Config['app_files']).uniq.each do |file|
-              Reload.load_file Config.project_path file
-            end
-          end
-        else
-          Dir.glob Config['app_files'] do |file|
-            require Config.project_path file
-          end
+          Reload.listen
+          @reload = Reload
         end
       end
     end
 
     def start_server
-      port = Config[:port]
+      port = Config['port']
+      env = Config['env']
 
       if l = logger
-        l.info "starting #{Config[:env]} server at 0.0.0.0:#{port}"
+        l.info "starting #{env} server at 0.0.0.0:#{port}"
       end
-      case Config[:env].to_s
+      case env.to_s
       when 'production'
         patch_tcp_socket
         start_production_server port
@@ -121,17 +122,14 @@ module Nyara
     end
 
     def start_development_server port
-      trap :INT do
-        exit!
-      end
+      create_tcp_server port
+      @workers = []
+      incr_workers nil
 
-      t = Thread.new do
-        server = TCPServer.new '0.0.0.0', port
-        server.listen 1000
-        Ext.init_queue
-        Ext.run_queue server.fileno
-      end
-      t.join
+      trap :INT, &method(:kill_all)
+      trap :QUIT, &method(:kill_all)
+      trap :TERM, &method(:kill_all)
+      Process.waitall
     end
 
     # Signals:
@@ -161,16 +159,7 @@ module Nyara
       workers = Config[:workers]
 
       puts "workers: #{workers}"
-
-      if (server_fd = ENV['NYARA_FD'].to_i) > 0
-        puts "inheriting server fd #{server_fd}"
-        @server = TCPServer.for_fd server_fd
-      end
-      unless @server
-        @server = TCPServer.new '0.0.0.0', port
-        @server.listen 1000
-        ENV['NYARA_FD'] = @server.fileno.to_s
-      end
+      create_tcp_server port
 
       GC.start
       @workers = []
@@ -198,11 +187,24 @@ module Nyara
 
     private
 
+    def create_tcp_server port
+      if (server_fd = ENV['NYARA_FD'].to_i) > 0
+        puts "inheriting server fd #{server_fd}"
+        @server = TCPServer.for_fd server_fd
+      end
+      unless @server
+        @server = TCPServer.new '0.0.0.0', port
+        @server.listen 1000
+        ENV['NYARA_FD'] = @server.fileno.to_s
+      end
+    end
+
     # Kill all workers and exit
     def kill_all sig
       @workers.each do |w|
         Process.kill :KILL, w
       end
+      @reload.stop if @reload
       exit!
     end
 

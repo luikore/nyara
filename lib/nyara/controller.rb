@@ -164,6 +164,40 @@ module Nyara
       end
     end
 
+    def self.process_reload request, l
+      if request.http_method == 'POST' and request.path =~ /\A\/reload:([\w-]+)\z/
+        ty = $1
+        files = request.param['files']
+        case ty
+        when 'views-modified'
+          files.each do |f|
+            if l
+              l.info "modified: #{f}"
+            end
+            View.on_removed f
+            View.on_modified f
+          end
+        when 'views-removed'
+          files.each do |f|
+            if l
+              l.info "removed: #{f}"
+            end
+            View.on_removed f
+          end
+        when 'app-modified'
+          files.each do |f|
+            if l
+              l.info "modified: #{f}"
+            end
+            Reload.load_file f
+          end
+        else
+          return false
+        end
+        true
+      end
+    end
+
     def self.dispatch request, instance, args
       if cookie_str = request.header._aref('Cookie')
         ParamHash.parse_cookie request.cookie, cookie_str
@@ -172,8 +206,10 @@ module Nyara
         request.session = Session.decode(request.cookie)
       )
 
+      l = Nyara.logger
+
       if instance
-        if l = Nyara.logger
+        if l
           l.info "#{request.http_method} #{request.path} => #{instance.class}"
           if %W"POST PUT PATCH".include?(request.http_method)
             l.info "  params: #{instance.params.inspect}"
@@ -184,16 +220,21 @@ module Nyara
       elsif request.http_method == 'GET' and Config['public']
         path = Config.public_path request.path
         if File.file?(path)
-          if l = Nyara.logger
+          if l
             l.info "GET #{request.path} => public 200"
           end
           instance = Controller.new request
           instance.send_file path
           return
         end
+      elsif Config.development?
+        if process_reload(request, l)
+          Ext.request_send_data request, "HTTP/1.1 200 OK\r\n\r\n"
+          return
+        end
       end
 
-      if l = Nyara.logger
+      if l
         l.info "#{request.http_method} #{request.path} => 404"
       end
       Ext.request_send_data request, "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"

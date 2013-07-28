@@ -35,24 +35,24 @@ module Nyara
     end
 
     it "views and public default" do
-      Config[:root] = '/root'
+      Config[:root] = __dir__
       Config.init
       assert_equal nil, Config['public']
-      assert_equal '/root/views', Config['views']
+      assert_equal __dir__ + '/views', Config['views']
     end
 
     context "#project_path" do
       before :each do
         Config.configure do
           reset
-          set :root, '/a'
+          set :root, __dir__
           init
         end
       end
 
       it "works" do
         path = Config.project_path 'b/../../c', false
-        assert_equal '/c', path
+        assert_equal File.dirname(__dir__) + '/c', path
       end
 
       it "restrict mode ensures dir safety" do
@@ -62,18 +62,18 @@ module Nyara
 
       it "restrict mode allows '..' if it doesn't get outside" do
         path = Config.project_path 'b/../c', true
-        assert_equal '/a/c', path
+        assert_equal __dir__ + '/c', path
       end
     end
 
     it "#public_path" do
       Config.configure do
-        set :root, '/root'
+        set :root, __dir__
         set :public, 'a'
         init
       end
       path = Config.public_path '/b'
-      assert_equal '/root/a/b', path
+      assert_equal __dir__ + '/a/b', path
     end
 
     it "#views_path" do
