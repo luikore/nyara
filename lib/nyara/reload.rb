@@ -65,7 +65,5 @@ module Nyara
       return if files.empty?
       system 'curl', "localhost:#{@port}/reload:#{leader}", '--data', files.to_query('files')
     end
-
-    # todo (don't forget wiki doc!)
   end
 end

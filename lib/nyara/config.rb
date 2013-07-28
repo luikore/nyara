@@ -12,6 +12,8 @@ module Nyara
   # * `session`     - see [Nyara::Session](Session.html) for sub options
   # * `prefer_erb`  - use ERB instead of ERubis for `.erb` templates
   # * `logger`      - if set, every request is logged, and you can use `Nyara.logger` to do your own logging.
+  # * `app_files`   - application source file glob patterns, they will be required automatically.
+  #    In developemnt mode, this option enables automatic reloading for views and app.
   # * `before_fork` - a proc to run before forking
   # * `after_fork`  - a proc to run after forking
   #
