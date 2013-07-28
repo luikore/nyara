@@ -45,7 +45,7 @@ module Nyara
     end
 
     # ---
-    # child process
+    # private
     # +++
 
     def hook_app_reload app_path
