@@ -8,7 +8,7 @@ module Nyara
         exec 'ruby', __dir__ + '/apps/connect.rb'
       end
       GC.stress = false
-      sleep 1.8 # wait for server startup
+      sleep 2.3 # wait for server startup
     end
 
     after :all do
