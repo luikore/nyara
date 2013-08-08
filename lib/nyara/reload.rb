@@ -38,10 +38,14 @@ module Nyara
       @views_listener = hook_views_reload views_path
     end
 
-    # stop listening
+    # cleanup workers
     def stop
-      @app_listener.stop
-      @views_listener.stop
+      if @app_listener.adapter.worker
+        @app_listener.adapter.worker.stop
+      end
+      if @views_listener.adapter.worker
+        @views_listener.adapter.worker.stop
+      end
     end
 
     # ---
@@ -49,16 +53,20 @@ module Nyara
     # +++
 
     def hook_app_reload app_path
-      Listen.to app_path, relative_paths: false, filter: /\.rb$/ do |modified, added, removed|
+      l = Listen.to(app_path).relative_paths(false).filter(/\.rb$/).change do |modified, added, removed|
         notify 'app-modified', (added + modified).uniq
       end
+      l.start
+      l
     end
 
     def hook_views_reload views_path
-      Listen.to views_path, relative_paths: true do |modified, added, removed|
+      l = Listen.to(views_path).relative_paths(true).change do |modified, added, removed|
         notify 'views-modified', (added + modified).uniq
         notify 'views-removed', removed
       end
+      l.start
+      l
     end
 
     def notify leader, files
