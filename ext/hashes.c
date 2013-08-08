@@ -2,7 +2,9 @@
 
 #include "nyara.h"
 #include <ruby/st.h>
+#include <assert.h>
 #include "inc/str_intern.h"
+#include "inc/ary_intern.h"
 #include <ctype.h>
 
 VALUE nyara_param_hash_class;
@@ -42,10 +44,13 @@ static VALUE param_hash_aset(VALUE self, VALUE key, VALUE value) {
   return rb_hash_aset(self, key, value);
 }
 
-// prereq: name should be already url decoded <br>
-// "a[b][][c]" ==> ["a", "b", "", "c"]
-static VALUE param_hash_split_name(VALUE _, VALUE name) {
-  Check_Type(name, T_STRING);
+static bool _str_eql(volatile VALUE s1, const char* s2, long len) {
+  return (RSTRING_LEN(s1) == len && 0 == strncmp(RSTRING_PTR(s1), s2, len));
+}
+
+// replace content of keys with split name
+// existing prefices are not replaced for minimal allocation
+static void _split_name(volatile VALUE name, volatile VALUE keys) {
   long len = RSTRING_LEN(name);
   if (len == 0) {
     rb_raise(rb_eArgError, "name should not be empty");
@@ -56,15 +61,27 @@ static VALUE param_hash_split_name(VALUE _, VALUE name) {
   // - byte with 0 in highest nibble, which is ascii char
   // - bytes with 1 in highest nibble, which can not be eql to any ascii char
 
-  volatile VALUE keys = rb_ary_new();
+  VALUE* keys_ptr = RARRAY_PTR(keys);
+  long keys_len = RARRAY_LEN(keys);
+  long keys_i = 0;
+# define INSERT(s, len) \
+    if (keys_ptr && keys_i < keys_len && _str_eql(keys_ptr[keys_i], s, len)) {\
+      keys_i++;\
+    } else {\
+      if (keys_ptr) {\
+        ARY_SET_LEN(keys, keys_i);\
+        keys_ptr = NULL;\
+      }\
+      rb_ary_push(keys, rb_enc_str_new(s, len, u8_encoding));\
+    }
+
   long i;
   for (i = 0; i < len; i++) {
     if (s[i] == '[') {
       if (i == 0) {
         rb_raise(rb_eArgError, "bad name (starts with '[')");
       }
-      volatile VALUE key = rb_enc_str_new(s, i, u8_encoding);
-      rb_ary_push(keys, key);
+      INSERT(s, i);
       i++;
       break;
     } else if (s[i] == ']') {
@@ -80,8 +97,7 @@ static VALUE param_hash_split_name(VALUE _, VALUE name) {
     for (long j = last_j; j < len; j++) {
       if (s[j] == ']') {
         if (j == len - 1 || s[j + 1] == '[') {
-          volatile VALUE key = rb_enc_str_new(s + last_j, j - last_j, u8_encoding);
-          rb_ary_push(keys, key);
+          INSERT(s + last_j, j - last_j);
           last_j = j + 2; // fine for last round
           j++;
         } else {
@@ -95,13 +111,140 @@ static VALUE param_hash_split_name(VALUE _, VALUE name) {
     // single key
     rb_ary_push(keys, name);
   }
+# undef INSERT
+}
+
+// prereq: name should be already url decoded <br>
+// "a[b][][c]" ==> ["a", "b", "", "c"]
+static VALUE param_hash_split_name(VALUE _, VALUE name) {
+  Check_Type(name, T_STRING);
+  volatile VALUE keys = rb_ary_new();
+  _split_name(name, keys);
   return keys;
 }
 
+// prereq: all elements in keys are string
+static VALUE param_hash_nested_aref(volatile VALUE obj, VALUE keys) {
+  Check_Type(keys, T_ARRAY);
+  VALUE* keys_ptr = RARRAY_PTR(keys);
+  long keys_len = RARRAY_LEN(keys);
+
+  for (long i = 0; i < keys_len; i++) {
+    volatile VALUE key = keys_ptr[i];
+    if (RSTRING_LEN(key)) {
+      if (rb_obj_is_kind_of(obj, rb_cHash)) {
+        obj = rb_hash_aref(obj, key);
+      } else {
+        return Qnil;
+      }
+    } else {
+      if (rb_obj_is_kind_of(obj, rb_cArray)) {
+        long arr_len = RARRAY_LEN(obj);
+        if (arr_len) {
+          obj = RARRAY_PTR(obj)[arr_len - 1];
+        } else {
+          return Qnil;
+        }
+      } else {
+        return Qnil;
+      }
+    }
+  }
+  return obj;
+}
+
+// prereq: len > 0
+static void _nested_aset(VALUE output, VALUE* arr, long len, VALUE value) {
+  volatile VALUE klass = rb_obj_class(output);
+
+  // first key seg
+  if (!RSTRING_LEN(arr[0])) {
+    rb_raise(rb_eRuntimeError, "array key at:0 conflicts with hash");
+  }
+  bool is_hash_key = true;
+
+# define NEW_CHILD(child) \
+    volatile VALUE child = (next_is_hash_key ? rb_class_new_instance(0, NULL, klass) : rb_ary_new());
+# define ASSERT_HASH \
+    if (TYPE(output) != T_HASH) {\
+      rb_raise(rb_eTypeError, "hash key at:%ld conflicts with array", i + 1);\
+    }
+# define ASSERT_ARRAY \
+    if (TYPE(output) != T_ARRAY) {\
+      rb_raise(rb_eTypeError, "array key at:%ld conflicts with hash", i + 1);\
+    }
+# define CHECK_NEXT \
+    if (next_is_hash_key) {\
+      ASSERT_HASH;\
+    } else {\
+      ASSERT_ARRAY;\
+    }
+
+  // special treatment to array keys according to last 2 segments:
+  // *[][foo] append new hash if already exists
+  //
+  // normal cases:
+  // *[]      just push
+  // *[foo]   find last elem first
+  // *[]*     find last elem first
+
+  // middle key segs
+  for (long i = 0; i < len - 1; i++) {
+    bool next_is_hash_key = RSTRING_LEN(arr[i + 1]);
+    if (is_hash_key) {
+      if (nyara_rb_hash_has_key(output, arr[i])) {
+        output = rb_hash_aref(output, arr[i]);
+        CHECK_NEXT;
+      } else {
+        NEW_CHILD(child);
+        rb_hash_aset(output, arr[i], child);
+        output = child;
+      }
+    } else {
+      // array key, try to use the last elem
+      long output_len = RARRAY_LEN(output);
+      if (output_len) {
+        bool append = false;
+        if (i == len - 2 && next_is_hash_key) {
+          volatile VALUE next_hash = RARRAY_PTR(output)[output_len - 1];
+          if (nyara_rb_hash_has_key(next_hash, arr[i + 1])) {
+            append = true;
+          }
+        }
+        if (append) {
+          volatile VALUE child = rb_class_new_instance(0, NULL, klass);
+          rb_ary_push(output, child);
+          output = child;
+        } else {
+          output = RARRAY_PTR(output)[output_len - 1];
+          CHECK_NEXT;
+        }
+      } else {
+        NEW_CHILD(child);
+        rb_ary_push(output, child);
+        output = child;
+      }
+    }
+    is_hash_key = next_is_hash_key;
+  }
+
+# undef CHECK_NEXT
+# undef ASSERT_ARRAY
+# undef ASSERT_HASH
+# undef NEW_CHILD
+
+  // terminate seg
+  if (is_hash_key) {
+    rb_hash_aset(output, arr[len - 1], value);
+  } else {
+    rb_ary_push(output, value);
+  }
+}
+
+// prereq: all elements in keys are string
 // assume keys = [a, b, c] ==> self[a][b][c] = value
 // blank keys will be translated as array keys.
 // created hashes has the same class with output
-// todo make 2 versions, one for public use
 static VALUE param_hash_nested_aset(VALUE output, volatile VALUE keys, VALUE value) {
   Check_Type(keys, T_ARRAY);
   VALUE* arr = RARRAY_PTR(keys);
@@ -110,55 +253,13 @@ static VALUE param_hash_nested_aset(VALUE output, volatile VALUE keys, VALUE val
     rb_raise(rb_eArgError, "aset 0 length key");
     return Qnil;
   }
-  volatile VALUE klass = rb_obj_class(output);
-
-  // first key seg
-  long is_hash_key = 1;
-
-  // middle key segs
-  for (long i = 0; i < len - 1; i++) {
-    long next_is_hash_key = RSTRING_LEN(arr[i + 1]);
-#   define NEW_CHILD(child) \
-      volatile VALUE child = (next_is_hash_key ? rb_class_new_instance(0, NULL, klass) : rb_ary_new());
-
-    if (is_hash_key) {
-      if (nyara_rb_hash_has_key(output, arr[i])) {
-        output = rb_hash_aref(output, arr[i]);
-        if (next_is_hash_key) {
-          if (TYPE(output) != T_HASH) {
-            rb_raise(rb_eRuntimeError, "hash key at:%ld conflicts with array", i + 1);
-          }
-        } else {
-          if (TYPE(output) != T_ARRAY) {
-            rb_raise(rb_eRuntimeError, "array key at:%ld conflicts with hash", i + 1);
-          }
-        }
-      } else {
-        NEW_CHILD(child);
-        rb_hash_aset(output, arr[i], child);
-        output = child;
-      }
-    } else {
-      NEW_CHILD(child);
-      rb_ary_push(output, child);
-      output = child;
-    }
-    is_hash_key = next_is_hash_key;
-#   undef NEW_CHILD
-  }
-
-  // terminate key seg: add value
-  if (is_hash_key) {
-    rb_hash_aset(output, arr[len - 1], value);
-  } else {
-    rb_ary_push(output, value);
-  }
+  _nested_aset(output, arr, len, value);
   return output;
 }
 
 // s, len is the raw kv string
 // returns trailing length
-static void _kv(VALUE output, const char* s, long len, bool nested_mode) {
+static void _cookie_kv(VALUE output, const char* s, long len) {
   // strip
   for (; len > 0; len--, s++) {
     if (!isspace(*s)) {
@@ -174,12 +275,7 @@ static void _kv(VALUE output, const char* s, long len, bool nested_mode) {
     volatile VALUE key = rb_enc_str_new("", 0, u8_encoding);
     volatile VALUE value = rb_enc_str_new("", 0, u8_encoding);
     nyara_decode_uri_kv(key, value, s, len);
-    if (nested_mode) {
-      volatile VALUE keys = param_hash_split_name(Qnil, key);
-      param_hash_nested_aset(output, keys, value);
-    } else {
-      rb_hash_aset(output, key, value);
-    }
+    rb_hash_aset(output, key, value);
   }
 }
 
@@ -201,15 +297,40 @@ static VALUE param_hash_parse_cookie(VALUE _, VALUE output, VALUE str) {
   for (; i >= 0; i--) {
     if (s[i] == ',' || s[i] == ';') {
       if (i < last_i) {
-        _kv(output, s + i + 1, last_i - i, false);
+        _cookie_kv(output, s + i + 1, last_i - i);
       }
       last_i = i - 1;
     }
   }
   if (last_i > 0) {
-    _kv(output, s, last_i + 1, false);
+    _cookie_kv(output, s, last_i + 1);
   }
   return output;
+}
+
+// s, len is the raw kv string
+// returns trailing length
+static void _param_kv(VALUE output, VALUE keys, const char* s, long len) {
+  // strip
+  for (; len > 0; len--, s++) {
+    if (!isspace(*s)) {
+      break;
+    }
+  }
+  for (; len > 0; len--) {
+    if (!isspace(s[len - 1])) {
+      break;
+    }
+  }
+  if (len <= 0) {
+    return;
+  }
+
+  volatile VALUE name = rb_enc_str_new("", 0, u8_encoding);
+  volatile VALUE value = rb_enc_str_new("", 0, u8_encoding);
+  nyara_decode_uri_kv(name, value, s, len);
+  _split_name(name, keys);
+  _nested_aset(output, RARRAY_PTR(keys), RARRAY_LEN(keys), value);
 }
 
 // class method:
@@ -223,19 +344,21 @@ static VALUE param_hash_parse_param(VALUE _, VALUE output, VALUE str) {
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
 
+  volatile VALUE key_stack = rb_ary_new();
+
   // split with /[&;]/
   long i = 0;
   long last_i = i;
   for (; i < len; i++) {
     if (s[i] == '&' || s[i] == ';') {
       if (i > last_i) {
-        _kv(output, s + last_i, i - last_i, true);
+        _param_kv(output, key_stack, s + last_i, i - last_i);
       }
       last_i = i + 1;
     }
   }
   if (i > last_i) {
-    _kv(output, s + last_i, i - last_i, true);
+    _param_kv(output, key_stack, s + last_i, i - last_i);
   }
   return output;
 }
@@ -308,7 +431,7 @@ static VALUE header_hash_aset(VALUE self, VALUE key, VALUE value) {
   return rb_hash_aset(self, key, value);
 }
 
-static int header_hash_merge_func(VALUE k, VALUE v, VALUE self_st) {
+static int _reverse_merge_func(VALUE k, VALUE v, VALUE self_st) {
   st_table* t = (st_table*)self_st;
   if (!st_is_member(t, k)) {
     st_insert(t, (st_data_t)k, (st_data_t)v);
@@ -321,11 +444,11 @@ static VALUE header_hash_reverse_merge_bang(VALUE self, VALUE other) {
     rb_raise(rb_eArgError, "need a Nyara::HeaderHash");
   }
   st_table* t = rb_hash_tbl(self);
-  rb_hash_foreach(other, header_hash_merge_func, (VALUE)t);
+  rb_hash_foreach(other, _reverse_merge_func, (VALUE)t);
   return self;
 }
 
-static int header_hash_serialize_func(VALUE k, VALUE v, VALUE arr) {
+static int _serialize_func(VALUE k, VALUE v, VALUE arr) {
   long vlen = RSTRING_LEN(v);
   // deleted field
   if (vlen == 0) {
@@ -349,7 +472,7 @@ static VALUE header_hash_serialize(VALUE self) {
 # else
   volatile VALUE arr = rb_ary_new();
 # endif
-  rb_hash_foreach(self, header_hash_serialize_func, arr);
+  rb_hash_foreach(self, _serialize_func, arr);
   return arr;
 }
 
@@ -364,6 +487,7 @@ void Init_hashes(VALUE nyara) {
   rb_define_method(nyara_param_hash_class, "key?", param_hash_key_p, 1);
   rb_define_method(nyara_param_hash_class, "[]=", param_hash_aset, 2);
   rb_define_method(nyara_param_hash_class, "nested_aset", param_hash_nested_aset, 2);
+  rb_define_method(nyara_param_hash_class, "nested_aref", param_hash_nested_aref, 1);
   rb_define_singleton_method(nyara_param_hash_class, "split_name", param_hash_split_name, 1);
   rb_define_singleton_method(nyara_param_hash_class, "parse_param", param_hash_parse_param, 2);
   rb_define_singleton_method(nyara_param_hash_class, "parse_cookie", param_hash_parse_cookie, 2);
@@ -375,6 +499,6 @@ void Init_hashes(VALUE nyara) {
   rb_define_method(nyara_header_hash_class, "serialize", header_hash_serialize, 0);
 
   // for internal use
-  rb_define_method(nyara_header_hash_class, "_aset", rb_hash_aset, 2);
-  rb_define_method(nyara_header_hash_class, "_aref", rb_hash_aref, 1);
+  rb_define_method(nyara_param_hash_class, "_aset", rb_hash_aset, 2);
+  rb_define_method(nyara_param_hash_class, "_aref", rb_hash_aref, 1);
 }

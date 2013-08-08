@@ -21,14 +21,14 @@ module Nyara
       end
 
       %w(  a[  [  a]  a[b]c  a[[b]  a[[b]]  ).each do |k|
-        it "detects bad key: #{k}" do
+        it "does not accept bad key: #{k}" do
           assert_raise ArgumentError do
             ParamHash.split_name k
           end
         end
       end
 
-      it "detects empty key" do
+      it "does not accept empty key" do
         assert_raise ArgumentError do
           ParamHash.split_name ''
         end
@@ -37,7 +37,7 @@ module Nyara
 
     it "#nested_aset" do
       h = ParamHash.new
-      h.nested_aset ['a', '', 'b'], 'c'
+      h.send :nested_aset, ['a', '', 'b'], 'c'
       assert_equal({'a' => [{'b' => 'c'}]}, h)
     end
 
@@ -73,15 +73,13 @@ module Nyara
         h = ParamHash.parse_cookie ParamHash.new, 'a ;'
         assert_equal 1, h.size
         assert_equal '', h['a']
+      end
 
+      it "parses cookie with space around =" do
         h = ParamHash.parse_cookie ParamHash.new, 'b = 1; a ;'
         assert_equal 2, h.size
         assert_equal '', h['a']
         assert_equal '1', h['b']
-      end
-
-      it "parses cookie with space around =" do
-
       end
 
       it "refuses to parse cookie into HeaderHash" do
@@ -113,27 +111,53 @@ module Nyara
         assert_equal "", h["\xE2"]
       end
 
-      it "parses nested kv and preserves hash class" do
-        h = ParamHash.parse_param ParamHash.new, "a[b][]=c"
-        assert_equal({'a' => {'b' => ['c']}}, h)
-        assert_equal ParamHash, h['a'].class
-      end
-
-      it "parses k without v and preserves hash class" do
-        h = ParamHash.parse_param ConfigHash.new, "a%5B%5d[b]"
-        assert_equal({'a' => [{'b' => ''}]}, h)
-        assert_equal Array, h[:a].class
-        assert_equal ConfigHash, h[:a].first.class
-      end
-
       it "parses blank string" do
         h = ParamHash.parse_param({}, '')
         assert h.empty?
       end
 
-      it "raises for HeaderHash" do
+      it "does not accept HeaderHash" do
         assert_raise ArgumentError do
           ParamHash.parse_param(HeaderHash.new, '')
+        end
+      end
+
+      context "nested" do
+        it "parses nested kv and output with ParamHash" do
+          h = ParamHash.parse_param ParamHash.new, "a[b][]=c"
+          assert_equal({'a' => {'b' => ['c']}}, h)
+          assert_equal ParamHash, h['a'].class
+        end
+
+        it "parses k without v and output preserves hash class" do
+          h = ParamHash.parse_param ConfigHash.new, "a%5B%5d[b]"
+          assert_equal({'a' => [{'b' => ''}]}, h)
+          assert_equal Array, h[:a].class
+          assert_equal ConfigHash, h[:a].first.class
+        end
+
+        it "increases array index when there's existing key" do
+          h = ParamHash.parse_param({}, %w'
+            a[][foo]=0
+            a[][foo]=1
+            a[][bar]=1
+            a[][foo]=2
+          '.join('&'))
+          assert_equal({"a"=>[{"foo"=>"0"}, {"foo"=>"1", "bar"=>"1"}, {"foo"=>"2"}]}, h)
+        end
+
+        it "raises error for conflict key" do
+          assert_raise TypeError do
+            ParamHash.parse_param({}, 'a[a]=1&a[]=1')
+          end
+        end
+
+        it "raises error for conflict key in 2 parses" do
+          h = {}
+          ParamHash.parse_param(h, 'a[a]=1')
+          assert_raise TypeError do
+            ParamHash.parse_param(h, 'a[]=1')
+          end
         end
       end
     end

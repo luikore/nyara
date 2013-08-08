@@ -3,5 +3,6 @@ module Nyara
   # All keys are stored in String form.
   class ParamHash
     alias has_key? key?
+    private :nested_aset, :nested_aref, :_aset, :_aref
   end
 end
