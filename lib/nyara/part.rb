@@ -103,11 +103,11 @@ module Nyara
       keys = ParamHash.split_name(name)
 
       if self['filename']
-        params.nested_aset keys, self
+        params.send :nested_aset, keys, self
       elsif self['type']
         warn "looks like bad part: #{self['header'].inspect}"
       else
-        params.nested_aset keys, CGI.unescape(self['data'])
+        params.send :nested_aset, keys, CGI.unescape(self['data'])
       end
     end
 
