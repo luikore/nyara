@@ -25,7 +25,7 @@ describe 'performance' do
 
   it "[parse_param] faster than parse in pure ruby" do
     res = bm 'parse_param'
-    assert res[:nyara] * 7 < res[:ruby], res.inspect
+    assert res[:nyara] * 5 < res[:ruby], res.inspect
   end
 
   it "[layout_render] nearly as fast as using tilt..." do

@@ -44,36 +44,18 @@ static VALUE param_hash_aset(VALUE self, VALUE key, VALUE value) {
   return rb_hash_aset(self, key, value);
 }
 
-static bool _str_eql(volatile VALUE s1, const char* s2, long len) {
-  return (RSTRING_LEN(s1) == len && 0 == strncmp(RSTRING_PTR(s1), s2, len));
-}
-
 // replace content of keys with split name
 // existing prefices are not replaced for minimal allocation
-static void _split_name(volatile VALUE name, volatile VALUE keys) {
+static VALUE _split_name(volatile VALUE name) {
   long len = RSTRING_LEN(name);
   if (len == 0) {
     rb_raise(rb_eArgError, "name should not be empty");
   }
   char* s = RSTRING_PTR(name);
 
-  // NOTE it's OK to compare utf-8 string with ascii chars, because utf-8 code units are either:
-  // - byte with 0 in highest nibble, which is ascii char
-  // - bytes with 1 in highest nibble, which can not be eql to any ascii char
-
-  VALUE* keys_ptr = RARRAY_PTR(keys);
-  long keys_len = RARRAY_LEN(keys);
-  long keys_i = 0;
+  volatile VALUE keys = rb_ary_new();
 # define INSERT(s, len) \
-    if (keys_ptr && keys_i < keys_len && _str_eql(keys_ptr[keys_i], s, len)) {\
-      keys_i++;\
-    } else {\
-      if (keys_ptr) {\
-        ARY_SET_LEN(keys, keys_i);\
-        keys_ptr = NULL;\
-      }\
-      rb_ary_push(keys, rb_enc_str_new(s, len, u8_encoding));\
-    }
+    rb_ary_push(keys, rb_enc_str_new(s, len, u8_encoding))
 
   long i;
   for (i = 0; i < len; i++) {
@@ -112,15 +94,14 @@ static void _split_name(volatile VALUE name, volatile VALUE keys) {
     rb_ary_push(keys, name);
   }
 # undef INSERT
+  return keys;
 }
 
 // prereq: name should be already url decoded <br>
 // "a[b][][c]" ==> ["a", "b", "", "c"]
 static VALUE param_hash_split_name(VALUE _, VALUE name) {
   Check_Type(name, T_STRING);
-  volatile VALUE keys = rb_ary_new();
-  _split_name(name, keys);
-  return keys;
+  return _split_name(name);
 }
 
 // prereq: all elements in keys are string
@@ -310,7 +291,7 @@ static VALUE param_hash_parse_cookie(VALUE _, VALUE output, VALUE str) {
 
 // s, len is the raw kv string
 // returns trailing length
-static void _param_kv(VALUE output, VALUE keys, const char* s, long len) {
+static void _param_kv(VALUE output, const char* s, long len) {
   // strip
   for (; len > 0; len--, s++) {
     if (!isspace(*s)) {
@@ -329,7 +310,7 @@ static void _param_kv(VALUE output, VALUE keys, const char* s, long len) {
   volatile VALUE name = rb_enc_str_new("", 0, u8_encoding);
   volatile VALUE value = rb_enc_str_new("", 0, u8_encoding);
   nyara_decode_uri_kv(name, value, s, len);
-  _split_name(name, keys);
+  volatile VALUE keys = _split_name(name);
   _nested_aset(output, RARRAY_PTR(keys), RARRAY_LEN(keys), value);
 }
 
@@ -344,21 +325,19 @@ static VALUE param_hash_parse_param(VALUE _, VALUE output, VALUE str) {
   const char* s = RSTRING_PTR(str);
   long len = RSTRING_LEN(str);
 
-  volatile VALUE key_stack = rb_ary_new();
-
   // split with /[&;]/
   long i = 0;
   long last_i = i;
   for (; i < len; i++) {
     if (s[i] == '&' || s[i] == ';') {
       if (i > last_i) {
-        _param_kv(output, key_stack, s + last_i, i - last_i);
+        _param_kv(output, s + last_i, i - last_i);
       }
       last_i = i + 1;
     }
   }
   if (i > last_i) {
-    _param_kv(output, key_stack, s + last_i, i - last_i);
+    _param_kv(output, s + last_i, i - last_i);
   }
   return output;
 }
