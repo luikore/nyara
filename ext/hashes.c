@@ -135,8 +135,10 @@ static VALUE param_hash_nested_aref(volatile VALUE obj, VALUE keys) {
 }
 
 // prereq: len > 0
-static void _nested_aset(VALUE output, VALUE* arr, long len, VALUE value) {
+static void _nested_aset(VALUE output, volatile VALUE keys, VALUE value) {
   volatile VALUE klass = rb_obj_class(output);
+  VALUE* arr = RARRAY_PTR(keys);
+  long len = RARRAY_LEN(keys);
 
   // first key seg
   if (!RSTRING_LEN(arr[0])) {
@@ -226,15 +228,14 @@ static void _nested_aset(VALUE output, VALUE* arr, long len, VALUE value) {
 // assume keys = [a, b, c] ==> self[a][b][c] = value
 // blank keys will be translated as array keys.
 // created hashes has the same class with output
-static VALUE param_hash_nested_aset(VALUE output, volatile VALUE keys, VALUE value) {
+static VALUE param_hash_nested_aset(VALUE output, VALUE keys, VALUE value) {
   Check_Type(keys, T_ARRAY);
-  VALUE* arr = RARRAY_PTR(keys);
   long len = RARRAY_LEN(keys);
   if (!len) {
     rb_raise(rb_eArgError, "aset 0 length key");
     return Qnil;
   }
-  _nested_aset(output, arr, len, value);
+  _nested_aset(output, keys, value);
   return output;
 }
 
@@ -310,8 +311,7 @@ static void _param_kv(VALUE output, const char* s, long len) {
   volatile VALUE name = rb_enc_str_new("", 0, u8_encoding);
   volatile VALUE value = rb_enc_str_new("", 0, u8_encoding);
   nyara_decode_uri_kv(name, value, s, len);
-  volatile VALUE keys = _split_name(name);
-  _nested_aset(output, RARRAY_PTR(keys), RARRAY_LEN(keys), value);
+  _nested_aset(output, _split_name(name), value);
 }
 
 // class method:
