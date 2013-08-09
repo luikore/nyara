@@ -57,6 +57,7 @@ static long _decode_url_seg(VALUE output, const char*s, long len, char stop_char
 
     } else if (s[i] == '+') {
       FLUSH_UNESCAPED;
+      last_s++;
       rb_str_cat(output, " ", 1);
 
     } else {

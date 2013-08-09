@@ -33,6 +33,11 @@ module Nyara
         assert_equal '', v
       end
 
+      it "with escaped chars" do
+        k, v = Ext.decode_uri_kv "[b+]"
+        assert_equal '[b ]', k
+      end
+
       it "raises for bad kv" do
         assert_raise ArgumentError do
           Ext.decode_uri_kv 'a=&b'
