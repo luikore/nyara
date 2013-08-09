@@ -240,11 +240,14 @@ module Nyara
     end
 
     def print_routes
-      puts "all routes:"
+      puts "All routes:"
       Nyara::Route.routes.each do |route|
-        print (route.id || "").gsub("#", "").rjust(30), " "
+        cname = route.controller.to_s
+        cname.gsub!("Controller","")
+        cname.downcase!
+        print "#{cname}#{route.id}".rjust(30), " "
         print route.http_method_to_s.ljust(6), " "
-        print route.path
+        print route.prefix
         puts ""
       end
     end
