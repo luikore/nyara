@@ -14,6 +14,8 @@ configure do
   ## Default session expires when browser closes.
   ## If you need time-based expiration, 30 minutes for example:
   # set :session, :expires, 30 * 60
+  
+  set 'session', 'key', File.read(project_path 'config/session.key')
 
   # Routing
   map '/', 'welcome'
