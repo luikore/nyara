@@ -325,8 +325,11 @@ module Nyara
     end
 
     # Shortcut for `redirect url_to *xs`
-    def redirect_to *xs
-      redirect url_to(*xs)
+    def redirect_to identifier, *xs
+      if identifier !~ /\A\w*#\w++(?:\-\w++)*\z/
+        raise ArgumentError, "not action identifier: #{identifier.inspect}, did you mean `redirect`?"
+      end
+      redirect url_to(identifier, *xs)
     end
 
     # Stop processing and close connection<br>

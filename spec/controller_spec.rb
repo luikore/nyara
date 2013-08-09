@@ -20,5 +20,19 @@ module Nyara
       assert_equal nil, AChildController.controller_name
       assert_equal 'll', AChildController.default_layout
     end
+
+    context "argument validation" do
+      class DummyController < Controller
+        get '/' do
+        end
+      end
+
+      it "#redirect_to checks first parameter" do
+        c = DummyController.new Ext.request_new
+        assert_raise ArgumentError do
+          c.redirect_to '/'
+        end
+      end
+    end
   end
 end
