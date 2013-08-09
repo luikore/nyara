@@ -251,6 +251,9 @@ module Nyara
       end
 
       template, meth = self.class.path_templates[id.to_s]
+      if template.blank? && meth.blank?
+        raise ArgumentError, "#{id} route not found."
+      end
       r = template % args
 
       if opts

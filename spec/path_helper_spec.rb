@@ -79,6 +79,13 @@ module Nyara
         generated = c.path_to '#index', 1, format: 'js', 'utm_source' => 'a spam'
         assert_equal "/00001.js?utm_source=a+spam", generated
       end
+      
+      it "raise info with wrong route" do
+        c = FooController.new :stub_request
+        assert_raise ArgumentError do
+          c.path_to('#aksdgjajksdg')
+        end
+      end
     end
 
     context '#url_to' do
