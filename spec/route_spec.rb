@@ -128,7 +128,7 @@ module Nyara
 
     it ".print_routes" do
       out = capture(:stdout) { Route.print_routes }
-      assert_include(out, "all routes:")
+      assert_include(out, "All routes:")
     end
   end
 end
