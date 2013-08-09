@@ -572,7 +572,7 @@ module Nyara
 
     # Render a template as string
     def partial view_path, locals: nil
-      view = View.new self, view_path, nil, nil, {}
+      view = View.new self, view_path, nil, locals, {}
       view.partial
     end
 

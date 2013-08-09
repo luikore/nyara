@@ -16,7 +16,7 @@ class TestController < Nyara::Controller
 
   meta '#create'
   post '/create' do
-    set_header 'partial', partial('_partial').strip
+    set_header 'partial', partial('_partial', locals: { a: '1' }).strip
     redirect_to '#index'
   end
 
@@ -87,7 +87,7 @@ module Nyara
 
     it "redirect" do
       @test.post @test.path_to('test#create')
-      assert_equal 'This is a partial', @test.response.header['Partial']
+      assert_equal 'This is a partial 1', @test.response.header['Partial']
       assert @test.response.success?
       assert_equal 'http://localhost:3000/', @test.redirect_location
       @test.follow_redirect
