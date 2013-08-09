@@ -27,7 +27,7 @@ module Nyara
     def listen
       @port = Config['port']
       app_path = Config['root']
-      views_path = Config.views_path('/')
+      views_path = Config.views_path('/',false)
       if l = Nyara.logger
         l.info "watching app and view changes under #{app_path}"
         unless views_path.start_with?(app_path)
