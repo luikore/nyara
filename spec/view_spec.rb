@@ -47,10 +47,17 @@ module Nyara
       assert_raise ArgumentError do
         render 'edit', nil, nil, {}
       end
+      
       render 'edit.slim', nil, nil, {}
       assert_equal "<div>slim:edit</div>", @instance.result.gsub(/\s/, '')
       render 'edit.haml', nil, nil, {}
       assert_equal "<div>haml:edit</div>", @instance.result.gsub(/\s/, '')
+    end
+    
+    it "raises error with template not found" do
+      assert_raise ArgumentError do
+        render 'asdgasdgasdg'
+      end
     end
 
     context "fallback to tilt" do

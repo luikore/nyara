@@ -209,7 +209,8 @@ module Nyara
       # #### Returns
       #
       # `[meth_obj, ext_without_dot]`
-      def template path, locals={}
+      def template path, locals={}    
+        raw_path = path
         if File.extname(path).empty?
           Dir.chdir @root do
             paths = Dir.glob("#{path}.{#@ext_list}")
@@ -218,6 +219,10 @@ module Nyara
             end
             path = paths.first
           end
+        end
+        
+        if path.blank?
+          raise ArgumentError, "template '#{raw_path}' file not found in view dir."
         end
 
         meth = path2meth path
