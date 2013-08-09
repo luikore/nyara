@@ -9,6 +9,11 @@ module Nyara
       #     end
       #
       def http method, path, &blk
+        # special treatment: '/' also maps ''
+        if path == '/'
+          http method, '', &blk
+        end
+
         @routes ||= []
         @used_ids = {}
         method = method.to_s.upcase

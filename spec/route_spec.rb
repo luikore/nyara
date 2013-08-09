@@ -15,7 +15,7 @@ module Nyara
 
       @r.path = '/'
       @r.compile :controller_stub, '/scope'
-      assert_equal '/scope', @r.prefix
+      assert_equal '/scope/', @r.prefix
       assert_equal '', @r.suffix
       assert_equal [], @r.conv
 
@@ -59,7 +59,7 @@ module Nyara
     end
 
     it "#analyse_path" do
-      r = @r.analyse_path '/hello/%d-world%u/%s/'
+      r = @r.analyse_path '/hello/%d-world%u/%s'
       assert_equal ['/hello/', '%d-world%u/%s'], r
 
       prefix, suffix = @r.analyse_path '/hello'

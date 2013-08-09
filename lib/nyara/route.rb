@@ -158,8 +158,6 @@ module Nyara
     def analyse_path path
       raise 'path must contain no new line' if path.index "\n"
       raise 'path must start with /' unless path.start_with? '/'
-      path = path.sub(/\/$/, '') if path != '/'
-
       path.split(FORWARD_SPLIT, 2)
     end
   end

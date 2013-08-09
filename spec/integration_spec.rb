@@ -93,7 +93,7 @@ module Nyara
       @test.follow_redirect
       assert_equal '/', @test.request.path
     end
-    
+
     it "post params log output" do
       data = { name: 1, sex: 0 }
       Nyara.config.stub(:logger).and_return(Logger.new($stdout))
@@ -171,19 +171,19 @@ module Nyara
         @test.get "/empty"
         assert_equal 404, @test.response.status
       end
-      
+
       it "found test.css and text/css content_type" do
         @test.get "/test.css"
         assert_equal "test css", @test.response.body
         assert_include @test.response.header['Content-Type'],"text/css"
       end
-      
+
       it "found test.js" do
         @test.get "/test.js"
         assert_equal "test js", @test.response.body
         assert_include @test.response.header['Content-Type'],"application/javascript"
       end
-      
+
       it "found test.jpg" do
         @test.get "/test.jpg"
         assert_include @test.response.header['Content-Type'],"image/jpeg"
