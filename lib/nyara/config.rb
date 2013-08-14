@@ -7,6 +7,7 @@ module Nyara
   # * `host`        - host name used in `url_to` helper
   # * `root`        - root path, default is `Dir.pwd`
   # * `views`       - views (templates) directory, relative to root, default is `"views"`
+  # * `assets`      - assets directory, relative to root, default is `"assets"`
   # * `public`      - static files directory, relative to root, default is `"public"`
   # * `x_send_file` - header field name for `X-Sendfile` or `X-Accel-Redirect`, see [Nyara::Controller#send_file](Controller#send_file.html-instance_method) for details
   # * `session`     - see [Nyara::Session](Session.html) for sub options
@@ -60,6 +61,8 @@ module Nyara
       if self['public']
         self['public'] = project_path(self['public'])
       end
+      
+      self['assets'] = project_path(self['assets'] || 'assets')
 
       self.logger = create_logger
 
@@ -112,6 +115,16 @@ module Nyara
     #
     def views_path path, strict=true
       path_under 'views', path, strict
+    end
+    
+    # Get absoute path under assets path
+    #
+    # #### Options
+    #
+    # * `strict` - return `nil` if path is not under the dir
+    #
+    def assets_path path, strict=true
+      path_under "assets", path, strict
     end
 
     # Get path under the dir configured `Nyara.config[key]`

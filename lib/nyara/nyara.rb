@@ -109,8 +109,19 @@ module Nyara
       when 'test'
         # don't
       else
+        start_watch_assets
         patch_tcp_socket
         start_development_server port
+      end
+    end
+    
+    def start_watch_assets
+      Process.fork do
+       exec("bundle exec sass --scss --watch #{Config.assets_path('css')}:public/css --cache-location tmp/cache/sass")
+      end
+
+      Process.fork do
+        exec("bundle exec coffee -w -b -c -o public/js #{Config.assets_path('js')}")
       end
     end
 

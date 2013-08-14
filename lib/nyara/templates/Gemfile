@@ -4,6 +4,9 @@ gem 'erubis'
 gem 'nyara', '<%= Nyara::VERSION %>', require: 'nyara/nyara'
 gem 'mongoid', '3.1.4'
 
+gem "sass"
+gem "coffee-script"
+
 group :deploy do
   gem 'rake'
 end

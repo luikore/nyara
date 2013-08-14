@@ -34,11 +34,12 @@ module Nyara
       assert_equal 3000, Config['port']
     end
 
-    it "views and public default" do
+    it "views, assets and public default" do
       Config[:root] = __dir__
       Config.init
       assert_equal nil, Config['public']
       assert_equal __dir__ + '/views', Config['views']
+      assert_equal __dir__ + '/assets', Config['assets']
     end
 
     context "#project_path" do
@@ -83,6 +84,16 @@ module Nyara
         init
       end
       path = Config.views_path '../..', false
+      assert_equal '/', path
+    end
+    
+    it "#assets_path" do
+      Config.configure do
+        set :root, '/'
+        set :assets, '/a'
+        init
+      end
+      path = Config.assets_path '../..', false
       assert_equal '/', path
     end
 

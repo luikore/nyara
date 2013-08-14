@@ -5,6 +5,8 @@ configure do
   set :env, ENV['NYARA_ENV'] || 'development'
 
   set :views, 'app/views'
+  
+  set :assets, "app/assets"
 
   set :session, :name, '_aaa'
 
