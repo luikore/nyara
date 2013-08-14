@@ -61,7 +61,7 @@ module Nyara
       Config
     end
 
-    %w[logger env production? test? development? project_path views_path public_path].each do |m|
+    %w[logger env production? test? development? project_path assets_path views_path public_path].each do |m|
       eval <<-RUBY
         def #{m} *xs
           Config.#{m} *xs
