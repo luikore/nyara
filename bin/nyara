@@ -14,4 +14,6 @@ when 'new'
   Nyara::Command.new_project(*args)
 when 's','server'
   Nyara::Command.run_server(*args)
+when 'c', 'console'
+  Nyara::Command.run_console(*args)
 end

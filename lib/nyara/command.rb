@@ -11,6 +11,8 @@ commands:
   nyara help\t\t\tShow this message
   nyara new APP_NAME\t\tTo initialize a new project with default template in current directory.
   nyara version\t\t\tDisplay current version
+  nyara server\t\t\tStart Nyara Web Server
+  nyara console\t\t\tStart Interactive console for Nyara
       )
     end
 
@@ -87,7 +89,30 @@ commands:
 
     def run_server(*args)
       args ||= []
-      system("bundle exec ruby config/boot.rb")
+      opts = {
+        env: ENV['NYARA_ENV'] || "development"
+      }
+      OptionParser.new do |opt|
+        opt.banner = 'Usage: nyara server [options]'
+        opt.on('-e [enviroment]', [:development, :test, :production], 'Start enviroment') do |value|
+          opts[:env] = value
+        end
+      end.parse(args)
+      system("NYARA_ENV=#{opts[:env]} bundle exec ruby config/boot.rb")
+    end
+    
+    def run_console(*args)
+      args ||= []
+      opts = {
+        env: ENV['NYARA_ENV'] || "development"
+      }
+      OptionParser.new do |opt|
+        opt.banner = 'Usage: nyara console [options]'
+        opt.on('-e [enviroment]', [:development, :test, :production], 'Start enviroment') do |value|
+          opts[:env] = value
+        end
+      end.parse(args)
+      system("NYARA_ENV=#{opts[:env]} bundle exec rake console")
     end
 
     private
