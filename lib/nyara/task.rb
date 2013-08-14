@@ -6,7 +6,8 @@ end
 
 desc "Run Nyara Console"
 task :console do |t, args|
-  puts "Loading #{ENV['NYARA_ENV']} environment (Nyara #{Nyara::VERSION})"
+  env = ENV['NYARA_ENV'] || 'development'
+  puts "Loading #{env} environment (Nyara #{Nyara::VERSION})"
   require "irb"
   require 'irb/completion'
   Nyara.setup
