@@ -19,7 +19,11 @@ module Nyara
       ensure
         $VERBOSE = verbose
       end
-      @last_error
+      if l = Nyara.logger
+        if @last_error
+          l.error @last_error
+        end
+      end
     end
     attr_reader :last_error
 
@@ -71,7 +75,12 @@ module Nyara
 
     def notify leader, files
       return if files.empty?
-      system 'curl', "localhost:#{@port}/reload:#{leader}", '--data', files.to_query('files')
+      data = files.to_query('files')
+      s = Socket.new :INET, :STREAM
+      addr = Socket.pack_sockaddr_in @port, 'localhost'
+      s.connect addr
+      s << "POST /reload:#{leader}\r\nContent-Length: #{data.bytesize}\r\n\r\n" << data
+      s.close
     end
   end
 end
