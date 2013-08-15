@@ -241,12 +241,12 @@ module Nyara
       puts "All routes:"
       Nyara::Route.routes.each do |route|
         cname = route.controller.to_s
-        cname.gsub!("Controller","")
+        cname.gsub!("Controller", "")
         cname.downcase!
         print "#{cname}#{route.id}".rjust(30), " "
         print route.http_method_to_s.ljust(6), " "
-        print route.prefix
-        puts ""
+        print route.path_template
+        puts
       end
     end
 
