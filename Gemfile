@@ -11,6 +11,8 @@ gem 'liquid'
 gem 'erubis'
 gem 'pry'
 gem 'listen'
+gem 'sass'
+gem 'coffee-script'
 
 # for performance comparison
 gem 'sinatra', '~>1.4.2'
