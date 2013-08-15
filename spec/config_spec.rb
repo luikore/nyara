@@ -39,7 +39,7 @@ module Nyara
       Config.init
       assert_equal nil, Config['public']
       assert_equal __dir__ + '/views', Config['views']
-      assert_equal __dir__ + '/assets', Config['assets']
+      assert_equal nil, Config['assets']
     end
 
     context "#project_path" do
@@ -86,7 +86,7 @@ module Nyara
       path = Config.views_path '../..', false
       assert_equal '/', path
     end
-    
+
     it "#assets_path" do
       Config.configure do
         set :root, '/'

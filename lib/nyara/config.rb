@@ -61,8 +61,10 @@ module Nyara
       if self['public']
         self['public'] = project_path(self['public'])
       end
-      
-      self['assets'] = project_path(self['assets'] || 'assets')
+
+      if self['assets']
+        self['assets'] = project_path(self['assets'])
+      end
 
       self.logger = create_logger
 
@@ -116,7 +118,7 @@ module Nyara
     def views_path path, strict=true
       path_under 'views', path, strict
     end
-    
+
     # Get absoute path under assets path
     #
     # #### Options

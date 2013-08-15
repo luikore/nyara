@@ -114,8 +114,9 @@ module Nyara
         start_development_server port
       end
     end
-    
+
     def start_watch_assets
+      return if Config[:assets].blank?
       Process.fork do
        exec("bundle exec sass --scss --watch #{Config.assets_path('css')}:public/css --cache-location tmp/cache/sass")
       end
