@@ -12,8 +12,7 @@ task :console do |t, args|
   require "irb"
   require 'irb/completion'
   ARGV.clear
-  IRB.conf[:IRB_NAME] = "nyara"
-  IRB.start("config/boot")
+  IRB.start
 end
 
 namespace :assets do
