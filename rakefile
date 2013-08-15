@@ -8,7 +8,14 @@ makefile = "ext/Makefile"
 extconf = "ext/extconf.rb"
 
 desc "code generate"
-task :gen => [version_file]
+task :gen => [:remove_version_file, version_file]
+
+desc "remove #{version_file}"
+task :remove_version_file do
+  next unless File.exists?(version_file)
+  puts "removing: #{version_file}"
+  FileUtils.rm_rf version_file
+end
 
 desc "generate #{status_file}"
 file status_file => __FILE__ do
