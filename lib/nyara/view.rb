@@ -171,8 +171,7 @@ module Nyara
           RENDER[meth] = Renderable.make_render_method path, 0, sig, src
         else
           t = Dir.chdir @root do
-            # todo display template error
-            Tilt.new path rescue return
+            Tilt.new path
           end
           # partly precompiled
           RENDER[meth] = TiltRenderable.new t
@@ -209,7 +208,7 @@ module Nyara
       # #### Returns
       #
       # `[meth_obj, ext_without_dot]`
-      def template path, locals={}    
+      def template path, locals={}
         raw_path = path
         if File.extname(path).empty?
           Dir.chdir @root do
@@ -220,7 +219,7 @@ module Nyara
             path = paths.first
           end
         end
-        
+
         if path.blank?
           raise ArgumentError, "template '#{raw_path}' file not found in view dir."
         end
