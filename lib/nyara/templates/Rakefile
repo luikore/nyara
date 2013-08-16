@@ -1,2 +1,20 @@
-require_relative 'config/application'
-require "nyara/task"
+require "rake"
+
+desc "print all routes"
+task :routes do
+  require_relative "config/application"
+  Nyara.setup
+  Nyara::Route.print_routes
+end
+
+namespace :assets do
+  desc "compile assets into public"
+  task :build do
+    sh 'bundle exec linner build'
+  end
+
+  desc "clean assets in public"
+  task :clean do
+    sh 'bundle exec linner clean'
+  end
+end
