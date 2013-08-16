@@ -3,19 +3,8 @@ require "rake"
 Dir.chdir __dir__
 
 status_file = "ext/inc/status_codes.h"
-version_file = "ext/inc/version.inc"
 makefile = "ext/Makefile"
 extconf = "ext/extconf.rb"
-
-desc "code generate"
-task :gen => [:remove_version_file, version_file]
-
-desc "remove #{version_file}"
-task :remove_version_file do
-  next unless File.exists?(version_file)
-  puts "removing: #{version_file}"
-  FileUtils.rm_rf version_file
-end
 
 desc "generate #{status_file}"
 file status_file => __FILE__ do
@@ -34,25 +23,8 @@ file status_file => __FILE__ do
   f.close
 end
 
-desc "generate #{version_file}"
-file version_file => ['nyara.gemspec', __FILE__] do
-  puts "generating: #{version_file}"
-  lines = File.readlines('nyara.gemspec')
-  version = nil
-  lines.each do |line|
-    if line =~ /s\.version =/
-      version = line[/\d+(\.\d+)*(\.pre\.\d+)?/]
-      break
-    end
-  end
-  abort 'version not found' unless version
-  File.open version_file, 'w' do |f|
-    f.puts %Q{#define NYARA_VERSION "#{version}"}
-  end
-end
-
 desc "generate makefile"
-file makefile => extconf do
+file makefile => [extconf, 'nyara.gemspec', __FILE__] do
   Dir.chdir 'ext' do
     sh 'make clean' if File.exist?('Makefile')
     sh 'ruby extconf.rb'
@@ -72,10 +44,10 @@ task :test => :build do
 end
 
 desc "build and test"
-task :default => [:gen, :test]
+task :default => :test
 
 desc "build and install gem"
-task :gem => 'gen' do
+task :gem do
   Dir.glob('*.gem') do |f|
     sh 'rm', f
   end
@@ -153,7 +125,7 @@ end
 desc "audit arity of rb_define_method/rb_define_singleton_method"
 task :audit_arity do
   Dir.glob 'ext/*.{c,cc}' do |f|
-    puts "validatign #{f}"
+    puts "validating #{f}"
     arities = {}
     data = File.read f
     data.scan /^(?:static )?VALUE (\w+)\((.+)\)/ do |func, params|

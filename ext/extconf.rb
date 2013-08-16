@@ -1,4 +1,22 @@
+Dir.chdir __dir__
 require "mkmf"
+
+def generate_version_file
+  version_file = 'inc/version.inc'
+  puts "generating: #{version_file}"
+  lines = File.readlines('../nyara.gemspec')
+  version = nil
+  lines.each do |line|
+    if line =~ /s\.version =/
+      version = line[/\d+(\.\d+)*(\.pre\.\d+)?/]
+      break
+    end
+  end
+  abort 'version not found' unless version
+  File.open version_file, 'w' do |f|
+    f.puts %Q{#define NYARA_VERSION "#{version}"}
+  end
+end
 
 def tweak_include
   dir = File.dirname __FILE__
@@ -35,4 +53,5 @@ have_func('rb_ary_new_capa', 'ruby.h')
 
 tweak_include
 tweak_cflags
+generate_version_file
 create_makefile 'nyara'
