@@ -1,0 +1,24 @@
+paths:
+  public: "public"
+groups:
+  scripts:
+    paths:
+      - app/assets/js
+    concat:
+      "/assets/app.js": "app/assets/**/*.{js,coffee}"
+  styles:
+    paths:
+      - app/assets/css
+    concat:
+      "/assets/app.css": "app/assets/**/[a-z]*.{css,scss,sass}"
+  files:
+    paths:
+      - app/assets/files
+    copy:
+      "/": "app/assets/**/*.{ico,txt}"
+modules:
+  wrapper: "cmd"
+  ignored: "{vendor/**/*,app/assets/scripts/app.{js,coffee}}"
+  definition: "/assets/app.js"
+revision: true
+notification: true

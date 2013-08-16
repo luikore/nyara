@@ -8,7 +8,7 @@ development:
     default:
       hosts:
         - 127.0.0.1:27017
-      database: '<%= app_name %>_dev'
+      database: '<%= @app_name %>_dev'
 
 test:
   <<: *defaults
@@ -16,7 +16,7 @@ test:
     default:
       hosts:
         - 127.0.0.1:27017
-      database: '<%= app_name %>_test'
+      database: '<%= @app_name %>_test'
 
 # set these environment variables on your prod server
 production:
@@ -25,4 +25,4 @@ production:
     default:
       hosts:
         - 127.0.0.1:27017
-      database: '<%= app_name %>'
+      database: '<%= @app_name %>'
