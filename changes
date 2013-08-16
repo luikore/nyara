@@ -1,3 +1,4 @@
+2013-08-17 integrate with linner
 2013-08-16 use thor for `nyara` commands
 2013-08-15 (developers) migrated to git subtree, you don't need to hand-update submodules anymore
 2013-07-18 add automatic reloader for development mode
