@@ -20,7 +20,7 @@ configure do
   set 'session', 'key', File.read(project_path 'config/session.key')
 
   # Routing
-  map '/', 'welcome'
+  map '/', 'WelcomeController'
 
   # Application loading order
   set :app_files, %w|

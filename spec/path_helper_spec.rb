@@ -30,9 +30,9 @@ module Nyara
       Config.configure do
         reset
         set 'host', 'yavaeye.com'
-        map '/', 'foo'
-        map '/bar-prefix', 'foo_controller::bar'
-        map '/baz-prefix', 'foo_controller::baz'
+        map '/', 'FooController'
+        map '/bar-prefix', 'FooController::BarController'
+        map '/baz-prefix', 'FooController::BazController'
       end
       Nyara.setup
     end

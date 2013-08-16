@@ -23,5 +23,5 @@ end
 end
 
 configure do
-  map '/', 'nyara::simple'
+  map '/', 'Nyara::SimpleController'
 end

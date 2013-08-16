@@ -167,7 +167,7 @@ module Nyara
     def routes
       @routes || []
     end
-    
+
     # #### Param
     #
     # * `controller` - string or class which inherits [Nyara::Controller](Controller.html)
@@ -260,6 +260,7 @@ module Nyara
     end
 
     def name2const name
+      return Module.const_get(name) if name[0] =~ /[A-Z]/
       name = name.gsub /(?<=\b|_)[a-z]/, &:upcase
       name.gsub! '_', ''
       name << 'Controller'
