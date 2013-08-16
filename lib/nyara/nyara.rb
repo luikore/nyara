@@ -115,11 +115,7 @@ module Nyara
     def start_watch_assets
       return if Config[:assets].blank?
       Process.fork do
-       exec("bundle exec sass --scss --watch #{Config.assets_path('css')}:public/css --cache-location tmp/cache/sass")
-      end
-
-      Process.fork do
-        exec("bundle exec coffee -w -b -c -o public/js #{Config.assets_path('js')}")
+        exec 'bundle exec linner watch'
       end
     end
 
