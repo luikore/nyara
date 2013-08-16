@@ -1,4 +1,5 @@
 require "thor"
+require "shellwords"
 
 module Nyara
   class Command < Thor
@@ -77,14 +78,25 @@ module Nyara
     method_option :environment, aliases: %w'-e -E', default: 'development'
     def server
       env = options[:environment].shellescape
-      exec "NYARA_ENV=#{env} bundle exec ruby config/boot.rb"
+      exec "NYARA_ENV=#{env} ruby config/boot.rb"
     end
 
     desc "console", "(PROJECT) Start console"
     method_option :environment, aliases: %w'-e -E', default: 'development'
+    method_option :shell, aliases: '-s', desc: "tell me which shell you want to use, pry or irb?"
     def console
       env = options[:environment].shellescape
-      exec "NYARA_ENV=#{env} bundle exec irb -r config/application.rb"
+      cmd = options[:shell]
+      unless cmd
+        if File.read('Gemfile') =~ /\bpry\b/
+          cmd = 'pry'
+        end
+      end
+      cmd ||= 'irb'
+      if cmd != 'irb'
+        cmd = "bundle exec #{cmd}"
+      end
+      exec "NYARA_ENV=#{env} #{cmd} -r./config/application.rb"
     end
 
     private

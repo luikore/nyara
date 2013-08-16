@@ -4,17 +4,6 @@ task :routes do
   Nyara::Route.print_routes
 end
 
-desc "Run Nyara Console"
-task :console do |t, args|
-  Nyara.setup
-  env = ENV['NYARA_ENV'] || 'development'
-  puts "Loading #{env} environment (Nyara #{Nyara::VERSION})"
-  require "irb"
-  require 'irb/completion'
-  ARGV.clear
-  IRB.start
-end
-
 namespace :assets do
   desc "Build asset files to public directory"
   task :build do
