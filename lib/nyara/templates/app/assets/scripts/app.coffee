@@ -1,1 +1,4 @@
-console.log 'nyara started'
+# Linner let you organize script assets more easily.
+# see module-example.coffee for how to define a module
+module = require 'module-example'
+module.bounce()

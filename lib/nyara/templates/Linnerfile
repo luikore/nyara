@@ -4,12 +4,15 @@ paths:
 groups:
   scripts:
     paths:
-      - app/assets/js
+      - app/assets/scripts
     concat:
       "/assets/app.js": "app/assets/**/*.{js,coffee}"
+    order:
+      - "..."
+      - app/assets/scripts/app.coffee
   styles:
     paths:
-      - app/assets/css
+      - app/assets/styles
     concat:
       "/assets/app.css": "app/assets/**/[a-z]*.{css,scss,sass}"
   files:
