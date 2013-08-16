@@ -76,9 +76,7 @@ module Nyara
     def notify leader, files
       return if files.empty?
       data = files.to_query('files')
-      s = Socket.new :INET, :STREAM
-      addr = Socket.pack_sockaddr_in @port, 'localhost'
-      s.connect addr
+      s = TCPSocket.new 'localhost', @port
       s << "POST /reload:#{leader}\r\nContent-Length: #{data.bytesize}\r\n\r\n" << data
       s.close
     end
