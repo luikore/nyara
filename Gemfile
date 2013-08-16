@@ -10,10 +10,7 @@ gem 'haml'
 gem 'liquid'
 gem 'erubis'
 gem 'pry'
-gem 'listen'
-gem 'sass'
-gem 'coffee-script'
-gem 'thor'
+gem 'linner', github: "SaitoWu/linner"
 
 # for performance comparison
 gem 'sinatra', '~>1.4.2'
