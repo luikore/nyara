@@ -13,6 +13,7 @@ gem 'pry'
 gem 'listen'
 gem 'sass'
 gem 'coffee-script'
+gem 'thor'
 
 # for performance comparison
 gem 'sinatra', '~>1.4.2'
