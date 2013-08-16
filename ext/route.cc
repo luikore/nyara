@@ -254,7 +254,8 @@ RouteResult nyara_lookup_route(enum http_method method_num, VALUE vpath, VALUE a
         if (suffix_len) {
           r.format = extract_ext(suffix, suffix_len);
           if (r.format == Qnil) {
-            break;
+            // suffix not match
+            continue;
           }
         }
         r.args = rb_ary_new3(1, i->id);
