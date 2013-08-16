@@ -104,13 +104,11 @@ module Nyara
       end
       case env.to_s
       when 'production'
-        patch_tcp_socket
         start_production_server port
       when 'test'
         # don't
       else
         start_watch_assets
-        patch_tcp_socket
         start_development_server port
       end
     end
@@ -268,6 +266,7 @@ module Nyara
     def incr_workers sig
       Config['before_fork'].call if Config['before_fork']
       pid = fork {
+        patch_tcp_socket
         $0 = "(nyara:worker) ruby #{$0}"
         Config['after_fork'].call if Config['after_fork']
 
