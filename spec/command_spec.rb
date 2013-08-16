@@ -2,15 +2,27 @@ require_relative "spec_helper"
 
 module Nyara
   describe Command do
-    it "#help" do
-      assert_include(capture(:stdout) { Nyara::Command.help }, "Usage")
+    before :all do
+      @command = Command.new
     end
 
     it "#version" do
-      assert_equal(capture(:stdout) { Nyara::Command.version }.strip, "Nyara #{Nyara::VERSION}")
+      assert_equal(capture(:stdout) { @command.version }.strip, "Nyara #{Nyara::VERSION}")
     end
 
-    describe "#new_project" do
+    it "#generate" do
+      pending
+    end
+
+    it "#server" do
+      pending
+    end
+
+    it "#console" do
+      pending
+    end
+
+    describe "#new" do
       before :all do
         @tmp_dir = Dir.mktmpdir 'nyara'
         @old_dir = File.dirname __dir__
@@ -18,7 +30,7 @@ module Nyara
         @app_name = "app_#{Time.now.to_i}"
         @stdout = capture(:stdout) do
           Dir.chdir @tmp_dir do
-            Nyara::Command.new_project(@app_name)
+            @command.new(@app_name)
           end
         end
       end

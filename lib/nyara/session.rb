@@ -133,6 +133,10 @@ module Nyara
       OpenSSL::PKey::DSA.generate 256
     end
 
+    def generate_cipher_key
+      rand(CIPHER_RAND_MAX).to_s(36).ljust CIPHER_BLOCK_SIZE
+    end
+
     # private
 
     def encode64 s

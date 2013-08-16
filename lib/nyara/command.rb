@@ -1,52 +1,24 @@
-require 'optparse'
+require "thor"
+
 module Nyara
-  module Command
-    extend self
-
-    def help
-      puts %Q(Usage:
-  nyara new APP_NAME [options]
-
-commands:
-  nyara help\t\t\tShow this message
-  nyara new APP_NAME\t\tTo initialize a new project with default template in current directory.
-  nyara version\t\t\tDisplay current version
-  nyara server\t\t\tStart Nyara Web Server
-  nyara console\t\t\tStart Interactive console for Nyara
-      )
-    end
-
+  class Command < Thor
+    desc "version", "Show version"
     def version
       puts "Nyara #{Nyara::VERSION}"
     end
 
-    def new_project(*args)
-      args ||= []
-      opts = {
-        force: false
-      }
-      OptionParser.new do |opt|
-        opt.banner = 'Usage: nyara new APP_NAME [options]'
-        opt.on('-f', 'Force override old') do
-          opts[:force] = true
-        end
-      end.parse(args)
-
+    desc "new APP_NAME", "Create a project"
+    method_option :force, aliases: '-f', desc: 'Force override old', type: :boolean, default: false
+    def new name
       require 'fileutils'
       require "erb"
       require 'ostruct'
       require_relative "view_handlers/erb"
 
-      name = args.shift
-      if name.blank?
-        puts "Need project name: \n\tnyara new xxx"
-        return
-      end
-
       app_dir = File.join(Dir.pwd, name)
       templte_dir = File.join(File.dirname(__FILE__), "templates")
 
-      FileUtils.rm_rf(app_dir) if opts[:force]
+      FileUtils.rm_rf(app_dir) if options[:force]
 
       if Dir.exist?(app_dir)
         puts "This has same dir name's '#{name}' existed, Nyara can not override it."
@@ -72,47 +44,47 @@ commands:
       end
 
       Dir.chdir app_dir do
-        puts "config/session.key"
-        File.open 'config/session.key', 'wb' do |f|
-          f << Session.generate_key
-        end
-
+        generate 'session.key'
         puts ".gitignore"
         File.open '.gitignore', 'w' do |f|
           f.puts ".DS_Store"
           f.puts "config/session.key"
+          f.puts "config/session_cipher.key"
         end
       end
-
       puts "Enjoy!"
     end
 
-    def run_server(*args)
-      args ||= []
-      opts = {
-        env: ENV['NYARA_ENV'] || "development"
-      }
-      OptionParser.new do |opt|
-        opt.banner = 'Usage: nyara server [options]'
-        opt.on('-e [enviroment]', [:development, :test, :production], 'Start enviroment') do |value|
-          opts[:env] = value
+    desc "generate THING", "(PROJECT) Generate things, THING can be:
+    session.key        # config/session.key
+    session_cipher.key # config/session_cipher.key"
+    def generate thing
+      case thing
+      when 'session.key'
+        puts "config/session.key"
+        File.open 'config/session.key', 'wb' do |f|
+          f << Session.generate_key
         end
-      end.parse(args)
-      system("NYARA_ENV=#{opts[:env]} bundle exec ruby config/boot.rb")
+      when 'session_cipher.key'
+        puts "config/session_cipher.key"
+        File.open 'config/session_cipher.key', 'wb' do |f|
+          f << Session.generate_cipher_key
+        end
+      end
     end
-    
-    def run_console(*args)
-      args ||= []
-      opts = {
-        env: ENV['NYARA_ENV'] || "development"
-      }
-      OptionParser.new do |opt|
-        opt.banner = 'Usage: nyara console [options]'
-        opt.on('-e [enviroment]', [:development, :test, :production], 'Start enviroment') do |value|
-          opts[:env] = value
-        end
-      end.parse(args)
-      system("NYARA_ENV=#{opts[:env]} bundle exec rake console")
+
+    desc "server", "(PROJECT) Start server"
+    method_option :environment, aliases: %w'-e -E', default: 'development'
+    def server
+      env = options[:environment].shellescape
+      exec "NYARA_ENV=#{env} bundle exec ruby config/boot.rb"
+    end
+
+    desc "console", "(PROJECT) Start console"
+    method_option :environment, aliases: %w'-e -E', default: 'development'
+    def console
+      env = options[:environment].shellescape
+      exec "NYARA_ENV=#{env} bundle exec irb -r config/application.rb"
     end
 
     private

@@ -1,19 +1,5 @@
 #!/usr/bin/env ruby
 require_relative "../lib/nyara/nyara"
+require_relative "../lib/nyara/command"
 
-args = ARGV.dup
-task_name = args.shift || 'help'
-
-
-case task_name
-when 'help', '-h'
-  Nyara::Command.help
-when '-v'
-  Nyara::Command.version
-when 'new'
-  Nyara::Command.new_project(*args)
-when 's','server'
-  Nyara::Command.run_server(*args)
-when 'c', 'console'
-  Nyara::Command.run_console(*args)
-end
+Nyara::Command.start
