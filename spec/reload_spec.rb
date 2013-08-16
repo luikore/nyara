@@ -39,7 +39,7 @@ module Nyara
       assert_equal 'views before', data
 
       touch_files 'app after', 'views after'
-      sleep 0.8
+      sleep 1.2
 
       data = open 'http://localhost:3004/views', &:read
       assert_equal 'views after', data
