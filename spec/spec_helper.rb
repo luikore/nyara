@@ -20,6 +20,7 @@ if ENV['COVERAGE']
 end
 require_relative "../lib/nyara/nyara"
 require_relative "../lib/nyara/test"
+require_relative "../lib/nyara/command"
 
 def capture(stream)
   stream = stream.to_s

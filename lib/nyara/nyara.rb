@@ -26,7 +26,6 @@ require_relative "route"
 require_relative "view"
 require_relative "cpu_counter"
 require_relative "part"
-require_relative "command"
 
 module Nyara
   HTTP_STATUS_FIRST_LINES = Hash[HTTP_STATUS_CODES.map{|k,v|[k, "HTTP/1.1 #{k} #{v}\r\n".freeze]}].freeze
