@@ -209,7 +209,6 @@ module Nyara
       #
       # `[meth_obj, ext_without_dot]`
       def template path, locals={}
-        raw_path = path
         if File.extname(path).empty?
           Dir.chdir @root do
             paths = Dir.glob("#{path}.{#@ext_list}")
@@ -220,16 +219,12 @@ module Nyara
           end
         end
 
-        if path.blank?
-          raise ArgumentError, "template '#{raw_path}' file not found in view dir."
-        end
-
         meth = path2meth path
         ext = @meth2ext[meth]
         return [RENDER[meth], ext] if ext
 
         @meth2sig[meth] = locals.keys
-        ext = on_modified path
+        ext = on_modified path if path
         raise "template not found or not valid in Tilt: #{path}" unless ext
         [RENDER[meth], ext]
       end
