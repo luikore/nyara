@@ -2,7 +2,7 @@ require_relative "spec_helper"
 
 module Nyara
   describe Command do
-    before :all do
+    before :each do
       @command = Command.new
     end
 
@@ -23,25 +23,27 @@ module Nyara
     end
 
     describe "#new" do
-      before :all do
+      before :each do
+        GC.stress = false
         @tmp_dir = Dir.mktmpdir 'nyara'
         @old_dir = File.dirname __dir__
         FileUtils.mkdir_p(@tmp_dir)
         @app_name = "app_#{Time.now.to_i}"
-        @stdout = capture(:stdout) do
-          Dir.chdir @tmp_dir do
+        Dir.chdir @tmp_dir do
+          @stdout = capture(:stdout) do
+            @command = Command.new
             @command.new(@app_name)
           end
         end
       end
 
-      after :all do
+      after :each do
         FileUtils.rm_rf(@tmp_dir)
       end
 
       describe "should create app dir" do
         it "should run finish" do
-          assert_include(@stdout, "Enjoy!")
+          assert_include(@stdout, "👻")
         end
 
         it "should copy same files into new dir" do
