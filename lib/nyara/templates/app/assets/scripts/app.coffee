@@ -1,1 +1,1 @@
-# Put you javascript in here
+console.log 'nyara started'

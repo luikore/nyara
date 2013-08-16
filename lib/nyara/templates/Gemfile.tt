@@ -3,10 +3,10 @@ source 'https://rubygems.org'
 gem 'erubis'
 gem 'nyara', '<%= Nyara::VERSION %>', require: 'nyara/nyara'
 gem 'mongoid', '3.1.4'
-gem 'linner', github: "SaitoWu/linner"
 
-gem "sass"
-gem "coffee-script"
+group :development do
+  gem 'linner', github: "SaitoWu/linner"
+end
 
 group :deploy do
   gem 'rake'
