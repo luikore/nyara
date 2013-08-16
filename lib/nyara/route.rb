@@ -240,9 +240,7 @@ module Nyara
     def print_routes
       puts "All routes:"
       Nyara::Route.routes.each do |route|
-        cname = route.controller.to_s
-        cname.gsub!("Controller", "")
-        cname.downcase!
+        cname = const2name route.controller
         print "#{cname}#{route.id}".rjust(30), " "
         print route.http_method_to_s.ljust(6), " "
         print route.path_template
