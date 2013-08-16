@@ -1,5 +1,5 @@
 language: ruby
-script: rake gen && rake build && SKIP_PERFORMANCE=1 STRESS=1 rspec -f d
+script: rake build && SKIP_PERFORMANCE=1 STRESS=1 rspec -f d
 rvm:
   - 2.0.0
   - ruby-head
