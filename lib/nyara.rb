@@ -4,7 +4,6 @@ require_relative "nyara/nyara"
 END {
   if $!.nil? and !Nyara.config.test?
     Nyara.setup
-    Nyara.load_app
     Nyara.start_server
   end
 }

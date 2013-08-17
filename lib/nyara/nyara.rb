@@ -76,24 +76,6 @@ module Nyara
       View.init
     end
 
-    # load with Config['app_files']
-    def load_app
-      app_files = Config['app_files']
-      return unless app_files
-
-      Dir.chdir Config.root do
-        # NOTE app_files can be an array
-        Dir.glob Config['app_files'] do |file|
-          require Config.project_path file
-        end
-        if Config.development?
-          require_relative "reload"
-          Reload.listen
-          @reload = Reload
-        end
-      end
-    end
-
     def start_server
       port = Config['port']
       env = Config['env']
@@ -107,15 +89,21 @@ module Nyara
       when 'test'
         # don't
       else
-        start_watch_assets
+        start_watch
         start_development_server port
       end
     end
 
-    def start_watch_assets
-      return if Config[:assets].blank?
-      Process.fork do
-        exec 'bundle exec linner watch'
+    def start_watch
+      if Config['watch_assets']
+        Process.fork do
+          exec 'bundle exec linner watch'
+        end
+      end
+      if Config['watch']
+        require_relative "reload"
+        Reload.listen
+        @reload = Reload
       end
     end
 

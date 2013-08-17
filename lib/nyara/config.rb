@@ -1,22 +1,21 @@
 module Nyara
   # #### Options
   #
-  # * `env`         - environment, default is `'development'`
-  # * `port`        - listen port number
-  # * `workers`     - number of workers
-  # * `host`        - host name used in `url_to` helper
-  # * `root`        - root path, default is `Dir.pwd`
-  # * `views`       - views (templates) directory, relative to root, default is `"views"`
-  # * `assets`      - assets directory, relative to root, default is `"assets"`
-  # * `public`      - static files directory, relative to root, default is `"public"`
-  # * `x_send_file` - header field name for `X-Sendfile` or `X-Accel-Redirect`, see [Nyara::Controller#send_file](Controller#send_file.html-instance_method) for details
-  # * `session`     - see [Nyara::Session](Session.html) for sub options
-  # * `prefer_erb`  - use ERB instead of ERubis for `.erb` templates
-  # * `logger`      - if set, every request is logged, and you can use `Nyara.logger` to do your own logging.
-  # * `app_files`   - application source file glob patterns, they will be required automatically.
-  #    In developemnt mode, this option enables automatic reloading for views and app.
-  # * `before_fork` - a proc to run before forking
-  # * `after_fork`  - a proc to run after forking
+  # * `env`          - environment, default is `'development'`
+  # * `port`         - listen port number
+  # * `workers`      - number of workers
+  # * `host`         - host name used in `url_to` helper
+  # * `root`         - root path, default is `Dir.pwd`
+  # * `views`        - views (templates) directory, relative to root, default is `"views"`
+  # * `public`       - static files directory, relative to root, default is `"public"`
+  # * `x_send_file`  - header field name for `X-Sendfile` or `X-Accel-Redirect`, see [Nyara::Controller#send_file](Controller#send_file.html-instance_method) for details
+  # * `session`      - see [Nyara::Session](Session.html) for sub options
+  # * `prefer_erb`   - use ERB instead of ERubis for `.erb` templates
+  # * `logger`       - if set, every request is logged, and you can use `Nyara.logger` to do your own logging.
+  # * `before_fork`  - a proc to run before forking
+  # * `after_fork`   - a proc to run after forking
+  # * `watch`        - if `true`, watch `app` change and reload automaticly, useful for development. default is `false`
+  # * `watch_assets` - if `true`, watch `app/assets` change with linner (you need `gem install linner` first), useful for development. default is `false`
   #
   # #### logger example
   #

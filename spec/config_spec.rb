@@ -128,17 +128,5 @@ module Nyara
       Config.init
       assert_nil Nyara.logger
     end
-
-    it "auto load file" do
-      Config.configure do
-        set :env, 'test'
-        set :root, File.join(__dir__, 'dummy')
-        set :app_files, 'app/**/*.rb'
-      end
-      Config.init
-      Nyara.load_app
-      assert_equal true, Object.const_defined?('DummyModel')
-      assert_equal true, Object.const_defined?('DummyController')
-    end
   end
 end

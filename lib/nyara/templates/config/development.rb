@@ -1,5 +1,14 @@
+# config specific to development environment
 configure do
-  set :port, 3000
+  # enable Nyara.logger
   set :logger, true
+
+  # serve static files in public
   set :public, 'public'
+
+  # auto reload app
+  set :watch, true
+
+  # auto re-compile assets
+  set :watch_assets, true
 end

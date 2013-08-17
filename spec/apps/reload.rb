@@ -23,7 +23,8 @@ end
 configure do
   set :port, 3004
   set :root, ENV['RELOAD_ROOT']
-  set :app_files, 'reloadee.rb'
+  require project_path "reloadee.rb"
+  set :watch, true
 end
 
 get '/views' do

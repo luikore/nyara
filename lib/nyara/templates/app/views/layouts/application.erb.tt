@@ -3,8 +3,8 @@
 <head>
   <meta http-equiv="Content-type" content="text/html; charset=utf-8">
   <title><%= @app_name %></title>
-  <link type="text/css" rel="stylesheet" href="<%%= asset_path("/assets/app.css") %>">
-  <script type="text/javascript" src="<%%= asset_path("/assets/app.js") %>"></script>
+  <link type="text/css" rel="stylesheet" href="<%%= asset_path "/assets/app.css" %>">
+  <script type="text/javascript" src="<%%= asset_path "/assets/app.js" %>"></script>
 </head>
 <body>
   <%%== yield %>

@@ -1,4 +1,7 @@
-2013-08-17 disable the case change for `Config.map`
+0.1
+
+2013-08-17 remove config option `app_files`, add options `watch` and `watch_assets`
+2013-08-17 use un-converted class names in `Config.map`
 2013-08-17 integrate with linner
 2013-08-16 use thor for `nyara` commands
 2013-08-15 (developers) migrated to git subtree, you don't need to hand-update submodules anymore
