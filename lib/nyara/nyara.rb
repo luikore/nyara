@@ -182,23 +182,21 @@ module Nyara
 
     private
 
-    def reconfig_with_command_line_options
-      skip_next = false
-      ARGV.each_cons 2 do |a, b|
-        if skip_next
-          skip_next = false
-          next
-        end
-        skip_next = false
-        case a
-        when '-d'
+    def reconfig_with_command_line_options argv=ARGV.dup
+      until argv.empty?
+        case opt = argv.shift
+        when '-d', '--daemon'
           Config['daemon'] = true
-        when '-p'
-          b = b.to_i
-          Config['port'] = b.to_i
-          skip_next = true
+        when '-p', /--port(?:=(\d+))?/
+          port = ($1 || argv.shift)
+          port = port.to_i if port
+          if port >= 0 && port <= 65535
+            Config['port'] = port
+          else
+            raise "invalid port: #{port.inspect}"
+          end
         else
-          raise "unkown command line option: #{a}"
+          raise "unkown command line option: #{opt}"
         end
       end
     end
