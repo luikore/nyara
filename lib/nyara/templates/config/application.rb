@@ -22,8 +22,8 @@ configure do
   # you can regenerate session key with `nyara g session.key`
   set 'session', 'key', File.read(project_path 'config/session.key')
 
-  # map requests to controllers
-  map '/', 'WelcomeController'
+  # map routing prefix to controllers
+  map '/', 'HomeController'
 
   # environment specific configure at last
   require_relative env

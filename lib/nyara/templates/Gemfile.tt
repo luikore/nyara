@@ -1,6 +1,10 @@
 source 'https://rubygems.org'
 
+<% if template_ext == 'erb' -%>
 gem 'erubis'
+<% else -%>
+gem 'slim'
+<% end -%>
 gem 'nyara', '<%= Nyara::VERSION %>', require: 'nyara/nyara'
 gem 'mongoid', '3.1.4'
 

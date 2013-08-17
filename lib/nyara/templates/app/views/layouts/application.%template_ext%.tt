@@ -1,3 +1,4 @@
+<% if template_ext == 'erb' -%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -10,3 +11,15 @@
   <%%== yield %>
 </body>
 </html>
+<% else -%>
+doctype html
+html
+  head
+  meta http-equiv="Content-type" content="text/html; charset=utf-8"
+  title
+    | <%= @app_name %>
+  link type="text/css" rel="stylesheet" href=asset_path("/assets/app.css")
+  script type="text/javascript" src=asset_path("/assets/app.js")
+body
+  == yield
+<% end -%>

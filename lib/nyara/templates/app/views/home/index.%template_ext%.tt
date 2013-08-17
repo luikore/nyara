@@ -1,0 +1,29 @@
+<% if template_ext == 'erb' -%>
+<h1>Congratulations!<h1>
+<h2>You completed the first step of creating an awesome website!</h2>
+
+You may also like to:
+
+<ul>
+  <li><a href="https://github.com/luikore/nyara/wiki/Manual#configure-options">Learn more about nyara</a></li>
+  <li><a href="http://slim-lang.com/">Switch template engine to slim</a></li>
+  <li><a href="https://github.com/SaitoWu/linner">See how assets work</a></li>
+  <li><a href="https://chrome.google.com/webstore/detail/livereload/jnihajbhpnppcggbcgedagnkighmdlei?hl=en">Install the livereload plugin on Chrome</a></li>
+</ul>
+<% else -%>
+h1 Congratulations!
+h2 You completed the first step of creating an awesome website!
+
+| You may also like to:
+
+ul
+  li
+    a href="https://github.com/luikore/nyara/wiki/Manual#configure-options"
+      | Learn more about nyara
+  li
+    a href="https://github.com/SaitoWu/linner"
+      | See how assets work
+  li
+    a href="https://chrome.google.com/webstore/detail/livereload/jnihajbhpnppcggbcgedagnkighmdlei?hl=en"
+      | Install the livereload plugin on Chrome
+<% end -%>

@@ -4,6 +4,17 @@ require "shellwords"
 module Nyara
   class Command < Thor
     include Thor::Actions
+    module FileNames
+      def template_ext
+        options[:template] == 'slim' ? 'slim' : 'erb'
+      end
+
+      def gitignore
+        '.gitignore'
+      end
+    end
+    include FileNames
+
     map '-v' => :version
 
     def self.source_root
@@ -16,6 +27,10 @@ module Nyara
     end
 
     desc "new APP_NAME", "Create a project"
+    method_option :orm, aliases: %w'-o -O', type: :string, default: 'mongoid',
+                  desc: 'Select object relationship mapping (ORM) engine', enum: %w'mongoid activerecord none'
+    method_option :template, aliases: %w'-t -T', type: :string, default: 'erubis',
+                  desc: 'Select template engine', enum: %w'erubis slim'
     def new name
       require 'fileutils'
 
@@ -25,10 +40,6 @@ module Nyara
       templte_dir = File.join(File.dirname(__FILE__), "templates")
 
       directory 'templates', name
-
-      create_file app_dir + '/.gitignore' do
-        %w".DS_Store config/session.key config/session_cipher.key".join "\n"
-      end
       generate 'session.key'
       puts '          \\ 👻  /'
     ensure
@@ -59,7 +70,8 @@ module Nyara
     desc "server", "(PROJECT) Start server"
     method_option :environment, aliases: %w'-e -E', default: 'development'
     method_option :port, aliases: %w'-p -P', type: :numeric
-    method_option :daemon, aliases: %w'-d -D', type: :boolean, desc: 'run server on the background'
+    method_option :daemon, aliases: %w'-d -D', type: :boolean,
+                  desc: 'run server on the background'
     def server
       env = options[:environment].shellescape
       cmd = "NYARA_ENV=#{env} ruby config/boot.rb"
@@ -75,7 +87,8 @@ module Nyara
 
     desc "console", "(PROJECT) Start console"
     method_option :environment, aliases: %w'-e -E', default: 'development'
-    method_option :shell, aliases: %w'-s -S', desc: "tell me which shell you want to use, pry or irb?"
+    method_option :shell, aliases: %w'-s -S', enum: %w'pry irb',
+                  desc: "Tell me which shell you want to use"
     def console
       env = options[:environment].shellescape
       cmd = options[:shell]
@@ -84,9 +97,9 @@ module Nyara
           cmd = 'pry'
         end
       end
-      cmd ||= 'irb'
+
       if cmd != 'irb'
-        cmd = "bundle exec #{cmd}"
+        cmd = "bundle exec pry"
       end
       exec "NYARA_ENV=#{env} #{cmd} -r./config/application.rb"
     end
