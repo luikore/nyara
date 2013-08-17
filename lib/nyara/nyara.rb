@@ -77,6 +77,8 @@ module Nyara
     end
 
     def start_server
+      reconfig_with_command_line_options
+      Process.daemon if Config['daemon']
       port = Config['port']
       env = Config['env']
 
@@ -179,6 +181,27 @@ module Nyara
     end
 
     private
+
+    def reconfig_with_command_line_options
+      skip_next = false
+      ARGV.each_cons 2 do |a, b|
+        if skip_next
+          skip_next = false
+          next
+        end
+        skip_next = false
+        case a
+        when '-d'
+          Config['daemon'] = true
+        when '-p'
+          b = b.to_i
+          Config['port'] = b.to_i
+          skip_next = true
+        else
+          raise "unkown command line option: #{a}"
+        end
+      end
+    end
 
     def create_tcp_server port
       if (server_fd = ENV['NYARA_FD'].to_i) > 0

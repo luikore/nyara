@@ -2,7 +2,8 @@ module Nyara
   # #### Options
   #
   # * `env`          - environment, default is `'development'`
-  # * `port`         - listen port number
+  # * `port`         - listen port number, default is 3000. you can pass `-p` in the command line to override it
+  # * `daemon`       - whether run in the background, default is false. you can pass `-d` in the command line to override it
   # * `workers`      - number of workers
   # * `host`         - host name used in `url_to` helper
   # * `root`         - root path, default is `Dir.pwd`

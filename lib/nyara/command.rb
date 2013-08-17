@@ -16,7 +16,6 @@ module Nyara
     end
 
     desc "new APP_NAME", "Create a project"
-    method_option :force, aliases: '-f', desc: 'Force override old', type: :boolean, default: false
     def new name
       require 'fileutils'
 
@@ -25,7 +24,6 @@ module Nyara
       @app_name = File.basename app_dir
       templte_dir = File.join(File.dirname(__FILE__), "templates")
 
-      FileUtils.rm_rf(app_dir) if options[:force]
       directory 'templates', name
 
       create_file app_dir + '/.gitignore' do
@@ -60,14 +58,24 @@ module Nyara
 
     desc "server", "(PROJECT) Start server"
     method_option :environment, aliases: %w'-e -E', default: 'development'
+    method_option :port, aliases: %w'-p -P', type: :numeric
+    method_option :daemon, aliases: %w'-d -D', type: :boolean, desc: 'run server on the background'
     def server
       env = options[:environment].shellescape
-      exec "NYARA_ENV=#{env} ruby config/boot.rb"
+      cmd = "NYARA_ENV=#{env} ruby config/boot.rb"
+
+      if options[:port]
+        cmd << " -p" << options[:port].shellescape
+      end
+      if options[:daemon]
+        cmd << " -d"
+      end
+      exec cmd
     end
 
     desc "console", "(PROJECT) Start console"
     method_option :environment, aliases: %w'-e -E', default: 'development'
-    method_option :shell, aliases: '-s', desc: "tell me which shell you want to use, pry or irb?"
+    method_option :shell, aliases: %w'-s -S', desc: "tell me which shell you want to use, pry or irb?"
     def console
       env = options[:environment].shellescape
       cmd = options[:shell]
