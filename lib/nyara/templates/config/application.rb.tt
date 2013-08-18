@@ -28,15 +28,15 @@ configure do
   # environment specific configure at last
   require_relative env
 
-  # establish when worker created
-  set :after_fork, lambda do
+  # invoked after forking a worker
+  set :after_fork, ->{
     <%- case orm -%>
     <%- when 'mongoid' -%>
     Mongoid.load!(Nyara.config.project_path('config/database.yml'), Nyara.config.env)
     <%- when 'activerecord' -%>
     ActiveRecord::Base.establish_connection Nyara.config.project_path('config/database.yml')
     <%- end -%>
-  end
+  }
 end
 
 # load app
@@ -49,3 +49,6 @@ end
 
 # compile routes and finish misc setup stuffs
 Nyara.setup
+
+# connect db in interactive shell
+Nyara.config[:after_fork].call if ENV['NYARA_SHELL']

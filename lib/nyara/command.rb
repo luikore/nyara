@@ -125,7 +125,7 @@ module Nyara
       if cmd != 'irb'
         cmd = "bundle exec pry"
       end
-      exec "NYARA_ENV=#{env} #{cmd} -r./config/application.rb"
+      exec "NYARA_SHELL=1 NYARA_ENV=#{env} #{cmd} -r./config/application.rb"
     end
 
   end
