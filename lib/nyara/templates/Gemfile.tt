@@ -24,7 +24,7 @@ gem 'pg'
 <%- end -%>
 
 group :development do
-  gem 'linner', github: "SaitoWu/linner"
+  gem 'linner', github: "SaitoWu/linner", require: false
 end
 
 group :deploy do
