@@ -122,6 +122,7 @@ module Nyara
         end
       end
 
+      cmd ||= 'irb'
       if cmd != 'irb'
         cmd = "bundle exec pry"
       end
