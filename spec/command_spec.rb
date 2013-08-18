@@ -32,7 +32,7 @@ module Nyara
         Dir.chdir @tmp_dir do
           @stdout = capture(:stdout) do
             @command = Command.new
-            @command.new(@app_name)
+            @command.new @app_name
           end
         end
       end
@@ -47,15 +47,15 @@ module Nyara
         end
 
         it "should copy same files into new dir" do
-          des_files = filter_files Dir.glob(File.join @tmp_dir, @app_name, "**/*")
+          des_files = filter_files Dir.glob(File.join @tmp_dir, @app_name, "**/{*,.*}")
           assert_not_equal(des_files.count, 0)
-          src_files = filter_files Dir.glob("#{@old_dir}/lib/nyara/templates/**/*")
+          src_files = filter_files Dir.glob("#{@old_dir}/lib/nyara/templates/**/{*,.*}")
           assert_equal(des_files.count, src_files.count)
         end
 
         def filter_files files
           files.select do |f|
-            File.basename(f) !~ /\.DS_Store|\.gitignore|session\.key/
+            !(%w[.DS_Store session.key database.yml].include? File.basename f)
           end
         end
       end

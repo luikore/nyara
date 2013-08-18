@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.files += Dir.glob('spec/**/*')
   s.files += Dir.glob('ext/http-parser/{AUTHORS,CONTRIBUTIONS,LICENSE-MIT}')
   s.files += Dir.glob('ext/multipart-parser-c/README.md')
-  s.files += Dir.glob('lib/nyara/templates/**/*') - %w[.DS_Store]
+  s.files += Dir.glob('lib/nyara/{optional_templates,templates}/**/*') - %w[.DS_Store]
   s.files.uniq!
   s.require_paths = ["lib"]
   s.executables << 'nyara'

@@ -27,6 +27,16 @@ configure do
 
   # environment specific configure at last
   require_relative env
+
+  # establish when worker created
+  set :after_fork, lambda do
+    <%- case orm -%>
+    <%- when 'mongoid' -%>
+    Mongoid.load!(Nyara.config.project_path('config/database.yml'), Nyara.config.env)
+    <%- when 'activerecord' -%>
+    ActiveRecord::Base.establish_connection Nyara.config.project_path('config/database.yml')
+    <%- end -%>
+  end
 end
 
 # load app
@@ -36,9 +46,6 @@ Dir.glob %w|
 | do |file|
   require_relative "../#{file}"
 end
-
-# load database
-Mongoid.load!(Nyara.config.project_path('config/database.yml'), Nyara.config.env)
 
 # compile routes and finish misc setup stuffs
 Nyara.setup

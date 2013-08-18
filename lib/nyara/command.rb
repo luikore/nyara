@@ -4,6 +4,7 @@ require "shellwords"
 module Nyara
   class Command < Thor
     include Thor::Actions
+
     module FileNames
       def template_ext
         options[:template] == 'slim' ? 'slim' : 'erb'
@@ -14,6 +15,14 @@ module Nyara
       end
     end
     include FileNames
+
+    module ORM
+      def orm
+        # it can be nil when called as method
+        options[:orm] || 'mongoid'
+      end
+    end
+    include ORM
 
     map '-v' => :version
 
@@ -28,9 +37,9 @@ module Nyara
 
     desc "new APP_NAME", "Create a project"
     method_option :orm, aliases: %w'-o -O', type: :string, default: 'mongoid',
-                  desc: 'Select object relationship mapping (ORM) engine', enum: %w'mongoid activerecord none'
+                  desc: 'Specify object relationship mapping (ORM)', enum: %w'mongoid activerecord none'
     method_option :template, aliases: %w'-t -T', type: :string, default: 'erubis',
-                  desc: 'Select template engine', enum: %w'erubis slim'
+                  desc: 'Specify template engine', enum: %w'erubis slim'
     def new name
       require 'fileutils'
 
@@ -41,6 +50,7 @@ module Nyara
 
       directory 'templates', name
       generate 'session.key'
+      generate 'database.yml'
       puts '          \\ 👻  /'
     ensure
       @app_name = nil
@@ -49,7 +59,10 @@ module Nyara
 
     desc "generate THING", "(PROJECT) Generate things, THING can be:
     session.key        # config/session.key
-    session_cipher.key # config/session_cipher.key"
+    session_cipher.key # config/session_cipher.key
+    database.yml       # config/database.yml"
+    method_option :orm, aliases: %w'-o -O', type: :string, default: 'mongoid',
+                  desc: 'Specify ORM (for generating database.yml)', enum: %w'mongoid activerecord'
     def generate thing, app_dir=nil
       case thing
       when 'session.key'
@@ -63,6 +76,17 @@ module Nyara
         file = File.join @rel_dir, file if @rel_dir
         create_file file do
           Session.generate_cipher_key
+        end
+      when 'database.yml'
+        @app_name ||= File.dirname Dir.pwd
+        file = 'config/database.yml'
+        file = File.join @rel_dir, file if @rel_dir
+        case orm
+        when 'mongoid', 'activerecord'
+          src = "#{__dir__}/optional_templates/#{orm}.yml.erb"
+          create_file file do
+            ERB.new(File.read src).result binding
+          end
         end
       end
     end

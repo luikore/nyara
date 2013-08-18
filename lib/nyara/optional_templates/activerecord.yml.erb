@@ -1,0 +1,26 @@
+# for other databases, see
+# http://guides.rubyonrails.org/configuring.html#configuring-a-database
+
+defaults: &defaults
+  adapter: postgresql
+  encoding: unicode
+  username: postgres
+  ## mysql/mariadb example:
+  # adapter: mysql2
+  # encoding: utf8
+  # username: root
+  password:
+  pool: 5
+  host: localhost
+
+development:
+  <<: *defaults
+  database: <%= @app_name %>_dev
+
+test:
+  <<: *defaults
+  database: <%= @app_name %>_test
+
+production:
+  <<: *defaults
+  database: <%= @app_name %>_prod

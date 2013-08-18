@@ -1,12 +1,27 @@
 source 'https://rubygems.org'
 
-<% if template_ext == 'erb' -%>
-gem 'erubis'
-<% else -%>
-gem 'slim'
-<% end -%>
+# web framework
 gem 'nyara', '<%= Nyara::VERSION %>', require: 'nyara/nyara'
-gem 'mongoid', '3.1.4'
+
+# template engine
+<%- if template_ext == 'erb' -%>
+gem 'erubis'
+<%- else -%>
+gem 'slim'
+<%- end -%>
+
+<%- case orm -%>
+<%- when 'mongoid' -%>
+# orm
+gem 'mongoid', '~> 3.1.4'
+<%- when 'activerecord' -%>
+# orm
+gem 'activerecord', '~> 4.0.0'
+
+# database driver
+gem 'pg'
+# gem 'mysql2'
+<%- end -%>
 
 group :development do
   gem 'linner', github: "SaitoWu/linner"
