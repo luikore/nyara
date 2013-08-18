@@ -1,5 +1,7 @@
 0.1
 
+2013-08-19 project generator now support `--template` and `--orm` options
+           you can see available options with `nyara help new`
 2013-08-17 remove config option `app_files`, add options `watch` and `watch_assets`
 2013-08-17 use un-converted class names in `Config.map`
 2013-08-17 integrate with linner
