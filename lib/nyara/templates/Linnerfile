@@ -2,7 +2,7 @@
 # vim: set syntax=yaml:
 
 paths:
-  # source and watch folder
+  # source and folder to be watched
   app: "app/assets"
   # destination
   public: "public"
@@ -10,23 +10,24 @@ paths:
 groups:
   # js src
   scripts:
-    # load paths for require("some-module")
+    # search paths for require("some-module")
     paths:
       - app/assets/scripts
-    # assemble k with v
+    # assemble .. with ..
     concat:
       "/assets/app.js": "app/assets/scripts/**/*.{js,coffee}"
     # manage js module dependencies by specifying the concat order
     order:
-      # "..." means any other files
+      # any other files
       - "..."
       - app/assets/scripts/app.coffee
 
   # css src
   styles:
-    # load paths for @import "some-module"
+    # search paths for @import "some-module"
     paths:
       - app/assets/styles
+    # assemble .. with ..
     concat:
       "/assets/app.css": "app/assets/styles/**/*.{css,scss,sass}"
 
@@ -35,8 +36,9 @@ groups:
     paths:
       - app/assets/files
     copy:
-      "/": "app/assets/**/*.{ico,txt}"
+      "/": "app/assets/files/**/*"
 
+# js modules
 modules:
   wrapper: "cmd"
   ignored: "{vendor/**/*,app/assets/scripts/app.{js,coffee}}"
