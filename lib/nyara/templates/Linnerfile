@@ -1,28 +1,45 @@
+# -*- mode: yaml -*-
+# vim: set syntax=yaml:
 paths:
+  # source
   app: "app/assets"
+  # destination
   public: "public"
+
 groups:
+  # js src
   scripts:
+    # load paths for require("some-module")
     paths:
       - app/assets/scripts
+    # assemble k with v
     concat:
       "/assets/app.js": "app/assets/**/*.{js,coffee}"
+    # manage js module dependencies by specifying the concat order
     order:
+      # "..." means any other files
       - "..."
       - app/assets/scripts/app.coffee
+
+  # css src
   styles:
+    # load paths for @import "some-module"
     paths:
       - app/assets/styles
     concat:
       "/assets/app.css": "app/assets/**/[a-z]*.{css,scss,sass}"
+
+  # files to copy directly into `public`
   files:
     paths:
       - app/assets/files
     copy:
       "/": "app/assets/**/*.{ico,txt}"
+
 modules:
   wrapper: "cmd"
   ignored: "{vendor/**/*,app/assets/scripts/app.{js,coffee}}"
   definition: "/assets/app.js"
+
 revision: true
 notification: true

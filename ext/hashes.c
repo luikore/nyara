@@ -240,7 +240,6 @@ static VALUE param_hash_nested_aset(VALUE output, VALUE keys, VALUE value) {
 }
 
 // s, len is the raw kv string
-// returns trailing length
 static void _cookie_kv(VALUE output, const char* s, long len) {
   // strip
   for (; len > 0; len--, s++) {
@@ -291,7 +290,6 @@ static VALUE param_hash_parse_cookie(VALUE _, VALUE output, VALUE str) {
 }
 
 // s, len is the raw kv string
-// returns trailing length
 static void _param_kv(VALUE output, const char* s, long len) {
   // strip
   for (; len > 0; len--, s++) {
