@@ -7,7 +7,7 @@ configure do
   set :public, 'public'
 
   # auto reload app
-  set :watch, true
+  set :watch, 'app'
 
   # auto re-compile assets
   set :watch_assets, true

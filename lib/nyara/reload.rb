@@ -30,9 +30,19 @@ module Nyara
     # start listening
     def listen
       @port = Config['port']
-      app_path = Config['root']
+      if Config['watch'] == true
+        app_path = Config['root']
+      else
+        app_path = Config.project_path Config['watch']
+      end
       views_path = Config.views_path('/', false)
+
       if l = Nyara.logger
+        if app_path.nil?
+          l.info "can't find watch path"
+          return
+        end
+
         l.info "watching app and view changes under #{app_path}"
         unless views_path.start_with?(app_path)
           l.warn "views not under project dir, changes not watched"
@@ -44,10 +54,10 @@ module Nyara
 
     # cleanup workers
     def stop
-      if @app_listener.adapter.worker
+      if @app_listener and @app_listener.adapter.worker
         @app_listener.adapter.worker.stop
       end
-      if @views_listener.adapter.worker
+      if @views_listener and @views_listener.adapter.worker
         @views_listener.adapter.worker.stop
       end
     end

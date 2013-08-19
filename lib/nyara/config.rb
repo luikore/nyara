@@ -15,8 +15,10 @@ module Nyara
   # * `logger`       - if set, every request is logged, and you can use `Nyara.logger` to do your own logging.
   # * `before_fork`  - a proc to run before forking
   # * `after_fork`   - a proc to run after forking
-  # * `watch`        - if `true`, watch `app` change and reload automaticly, useful for development. default is `false`
-  # * `watch_assets` - if `true`, watch `app/assets` change with linner (you need `gem install linner` first), useful for development. default is `false`
+  # * `watch`        - if `true`, watch change under project dir and reload automaticly, useful for development. default is `false`.
+  #                    if set to a dir name (under project root), watch only changes under the dir.
+  # * `watch_assets` - if `true`, watch change with linner (you need `gem install linner` first), useful for development. default is `false`.
+  #                    the asset dir to be watched is configured in Linnerfile.
   #
   # #### logger example
   #
