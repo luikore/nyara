@@ -32,9 +32,10 @@ configure do
   set :after_fork, ->{
     <%- case orm -%>
     <%- when 'mongoid' -%>
-    Mongoid.load!(Nyara.config.project_path('config/database.yml'), Nyara.config.env)
+    Mongoid.load! Nyara.project_path('config/database.yml'), Nyara.env
     <%- when 'activerecord' -%>
-    ActiveRecord::Base.establish_connection Nyara.config.project_path('config/database.yml')
+    db_config = YAML.load_file Nyara.project_path 'config/database.yml'
+    ActiveRecord::Base.establish_connection db_config[Nyara.env]
     <%- end -%>
   }
 end

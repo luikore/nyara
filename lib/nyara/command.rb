@@ -58,12 +58,15 @@ module Nyara
     end
 
     desc "generate THING", "(PROJECT) Generate things, THING can be:
-    session.key        # config/session.key
-    session_cipher.key # config/session_cipher.key
-    database.yml       # config/database.yml"
+    session.key            # config/session.key
+    session_cipher.key     # config/session_cipher.key
+    database.yml           # config/database.yml
+    migration create_users # db/migrate/20130901231200_create_users.rb"
     method_option :orm, aliases: %w'-o -O', type: :string, default: 'mongoid',
                   desc: 'Specify ORM (for generating database.yml)', enum: %w'mongoid activerecord'
-    def generate thing, app_dir=nil
+    method_option :version, aliases: %w'-v -V', type: :numeric,
+                  desc: 'Specify VERSION (for generate migration)'
+    def generate thing, migration=nil
       case thing
       when 'session.key'
         file = "config/session.key"
@@ -88,6 +91,17 @@ module Nyara
             ERB.new(File.read src).result binding
           end
         end
+      when 'migration'
+        if migration.nil?
+          abort 'Use: nyara g migration YOUR_MIGRATION_NAME'
+        end
+        version = options[:version] || Time.now.utc.strftime("%Y%m%d%H%M%S")
+        create_file "db/migrate/#{version}_#{migration}.rb" do
+          @name = migration.gsub(/_(.)/) { $1.upcase }.gsub(/^(.)/) { $1.upcase }
+          src = "#{__dir__}/optional_templates/migration.rb.erb"
+          ERB.new(File.read src).result binding
+        end
+        @name = nil
       end
     end
 
