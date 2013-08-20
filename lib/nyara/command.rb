@@ -115,7 +115,7 @@ module Nyara
       cmd = "NYARA_ENV=#{env} ruby config/boot.rb"
 
       if options[:port]
-        cmd << " -p" << options[:port].shellescape
+        cmd << " -p " << options[:port].to_s.shellescape
       end
       if options[:daemon]
         cmd << " -d"
