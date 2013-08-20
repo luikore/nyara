@@ -1,5 +1,6 @@
 require 'bundler'
 Bundler.require :default, ENV['NYARA_ENV'] || 'development'
+require 'yaml'
 
 configure do
   set :env, ENV['NYARA_ENV'] || 'development'
