@@ -10,6 +10,9 @@ module Nyara
       assert_equal(capture(:stdout) { @command.version }.strip, "Nyara #{Nyara::VERSION}")
     end
 
+    # todo
+    # http://stackoverflow.com/questions/8621722/unit-testing-a-ruby-command-line-applications-code-how-to-simulate-pass-argv
+
     it "#generate" do
       pending
     end
