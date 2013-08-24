@@ -1,2 +1,0 @@
-class DummyController
-end
