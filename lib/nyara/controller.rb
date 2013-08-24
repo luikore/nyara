@@ -68,13 +68,18 @@ module Nyara
         @meta_exist = true
       end
 
-      eval %w[GET POST PUT DELETE PATCH OPTIONS].map{|meth|
+      eval %w[POST PUT DELETE PATCH OPTIONS].map{|meth|
         <<-RUBY
           def #{meth.downcase} path, &blk
             http '#{meth}', path, &blk
           end
         RUBY
       }.join "\n"
+
+      def get path, &blk
+        http 'GET', path, &blk
+        http 'HEAD', path, &blk
+      end
 
       # Add *before* processor, invoke order is the same as definition order
       #
