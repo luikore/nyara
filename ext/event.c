@@ -17,9 +17,9 @@ static int tcp_server_fd = 0;
 static st_table* handled_rids; // {rid => nil} for current round
 
 #ifdef HAVE_KQUEUE
-#include "inc/kqueue.h"
+#include "kqueue.h"
 #elif HAVE_EPOLL
-#include "inc/epoll.h"
+#include "epoll.h"
 #endif
 
 #ifndef rb_obj_hide
