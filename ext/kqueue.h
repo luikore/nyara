@@ -16,7 +16,7 @@ static void ADD_E(int fd, VALUE rid) {
   struct kevent e;
   // without EV_CLEAR, it is level-triggered
   // http://www.cs.helsinki.fi/linux/linux-kernel/2001-38/0547.html
-  EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, (void*)rid);
+  EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, (void*)rid);
   if (kevent(qfd, &e, 1, NULL, 0, NULL))
     rb_sys_fail("kevent(2) - EV_ADD");
 }
@@ -46,22 +46,25 @@ static void LOOP_E() {
   // EV_CLEAR, EV_EOF, EV_ERROR);
 
   static struct timespec ts = {0, 1000 * 1000 * 100};
-  while (1) {
+  static st_table* rids; // uniq for every round
+  rids = st_init_numtable();
+
+  while (true) {
     // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
     int sz = kevent(qfd, NULL, 0, qevents, MAX_E, &ts);
-    st_clear(handled_rids);
+    int accept_sz = 0;
 
     for (int i = 0; i < sz; i++) {
-      if (qevents[i].flags & EV_EOF) {
-        int fd = (int)qevents[i].ident;
-        // EV_EOF is set if the read side of the socket is shutdown
-        // the event can keep flipping back to consume cpu if we don't remove it
-        DEL_E_WITH_FILTER(fd, qevents[i].filter);
-      }
       if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
-        loop_body((VALUE)qevents[i].udata);
+        VALUE rid = (VALUE)qevents[i].udata;
+        if (rid == sym_accept) {
+          accept_sz++;
+        } else {
+          st_insert(rids, rid, 0);
+        }
       }
     }
-    loop_check();
+    loop_body(rids, accept_sz);
+    st_clear(rids);
   }
 }

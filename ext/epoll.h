@@ -8,10 +8,7 @@ static struct epoll_event qevents[MAX_E];
 
 static void ADD_E(int fd, VALUE rid) {
   struct epoll_event e;
-  // not using edge trigger flag EPOLLET
-  // because edge trigger only fire once when fd is readable/writable
-  // but the event may not be consumed in our handler
-  e.events = EPOLLIN | EPOLLOUT;
+  e.events = EPOLLIN | EPOLLOUT | EPOLLET;
   e.data.u64 = (uint64_t)rid;
 
   if (epoll_ctl(qfd, EPOLL_CTL_ADD, fd, &e))
@@ -34,21 +31,26 @@ static void INIT_E() {
 }
 
 static void LOOP_E() {
+  static st_table* rids; // uniq for every round
+  rids = st_init_numtable();
+
   while (1) {
     // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
     int sz = epoll_wait(qfd, qevents, MAX_E, 100);
-    st_clear(handled_rids);
+    int accept_sz = 0;
 
     for (int i = 0; i < sz; i++) {
-      VALUE rid = (VALUE)qevents[i].data.u64;
-      if (qevents[i].events & (EPOLLHUP | EPOLLERR)) {
-        nyara_detach_rid(rid);
-      } else if (qevents[i].events & (EPOLLIN | EPOLLOUT)) {
-        loop_body(rid);
-      } else if (qevents[i].events & EPOLLRDHUP) {
-        // do sth?
+      if (qevents[i].events & (EPOLLIN | EPOLLOUT)) {
+        VALUE rid = (VALUE)qevents[i].data.u64;
+        if (rid == sym_accept) {
+          accept_sz++;
+        } else {
+          st_insert(rids, rid, 0);
+        }
       }
+      // do sth to EPOLLHUP | EPOLLERR | EPOLLRDHUP ?
     }
-    loop_check();
+    loop_body(rids, accept_sz);
+    st_clear(rids);
   }
 }
