@@ -10,16 +10,15 @@
 #include <ruby/st.h>
 
 #define MAX_E 1024
-static void loop_body(VALUE rid);
-static void loop_check();
+static void loop_body(st_table* rids, int accept_sz);
 static int qfd = 0;
 static int tcp_server_fd = 0;
-static st_table* handled_rids; // {rid => nil} for current round
+static VALUE sym_accept;
 
 #ifdef HAVE_KQUEUE
-#include "inc/kqueue.h"
+#include "kqueue.h"
 #elif HAVE_EPOLL
-#include "inc/epoll.h"
+#include "epoll.h"
 #endif
 
 #ifndef rb_obj_hide
@@ -33,8 +32,6 @@ extern http_parser_settings nyara_request_parse_settings;
 
 static VALUE rid_request_map;    // {rid(FIXNUM) => request}
 static VALUE to_resume_requests; // [request], for current round
-
-static VALUE sym_accept;
 
 // Fiber.yield
 static VALUE sym_term_close;
@@ -85,22 +82,27 @@ static void _handle_request(VALUE request) {
   // NOTE we don't let http_parser invoke ruby code, because:
   // 1. so the stack is shallower
   // 2. Fiber.yield can pause http_parser, then the unparsed received_data is lost
-  long len = read(p->fd, received_data, MAX_RECEIVE_DATA);
-  if (len < 0) {
-    if (errno != EAGAIN && errno != EWOULDBLOCK) {
-      // this can happen when 2 events are fetched, and first event closes the fd, then second event fails
-      if (p->fd) {
-        nyara_detach_rid(p->rid);
+  if (p->parse_state < PS_MESSAGE_COMPLETE) {
+    while (true) {
+      long len = read(p->fd, received_data, MAX_RECEIVE_DATA);
+      if (len < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          break;
+        } else {
+          // when the other side shutdown
+          return;
+        }
+      } else if (len) {
+        // note: for http_parser, len = 0 means eof reached
+        //       but when in a fd-becomes-writable event it can also be 0
+        http_parser_execute(&(p->hparser), &nyara_request_parse_settings, received_data, len);
+      } else {
+        break;
       }
-      return;
     }
-  } else if (len) {
-    // note: for http_parser, len = 0 means eof reached
-    //       but when in a fd-becomes-writable event it can also be 0
-    http_parser_execute(&(p->hparser), &nyara_request_parse_settings, received_data, len);
   }
 
-  if (!p->parse_state) {
+  if (p->parse_state == PS_INIT) {
     return;
   }
 
@@ -122,32 +124,40 @@ static void _handle_request(VALUE request) {
   _resume_action(p);
 }
 
+static int _loop_body_cb(VALUE rid, VALUE _, VALUE _args) {
+  VALUE request = rb_hash_aref(rid_request_map, rid);
+  if (request != Qnil) {
+    _handle_request(request);
+  }
+  return ST_CONTINUE;
+}
+
 // platform independent, invoked by LOOP_E()
-static void loop_body(VALUE rid) {
-  if (rid == sym_accept) {
+static void loop_body(st_table* rids, int accept_sz) {
+  st_foreach(rids, _loop_body_cb, Qnil);
+
+  // todo: events are stealthly removed if remote client closes connection
+  // we also need to store and check ttl and remove dead rids
+
+  // todo: option to limit rid_request_map capacity
+
+  // loop some more rounds in case we miss some accepts
+  // todo: tweak the number by forks
+  for (int i = 0; i < accept_sz + 5; i++) {
     int cfd = accept(tcp_server_fd, NULL, NULL);
     if (cfd > 0) {
       nyara_set_nonblock(cfd);
       Request* p = nyara_request_new(cfd);
       rb_hash_aset(rid_request_map, p->rid, p->self);
       ADD_E(cfd, p->rid);
-    }
-  } else {
-    // epoll_wait can return multiple results on a same request,
-    // and this request may be closed at previous round.
-    if (st_lookup(handled_rids, rid, NULL)) {
-      return;
-    }
-    st_insert(handled_rids, rid, Qnil);
-
-    VALUE request = rb_hash_aref(rid_request_map, rid);
-    if (request != Qnil) {
-      _handle_request(request);
+      // do first processing after adding event
+      // because there may be unprocessed data in socket buffer
+      _handle_request(p->self);
+    } else {
+      break;
     }
   }
-}
 
-static void loop_check() {
   // execute other thread / interrupts
   rb_thread_schedule();
 
@@ -373,7 +383,6 @@ static VALUE ext_handle_request(VALUE _, VALUE request) {
 void Init_event(VALUE ext) {
   rid_request_map = rb_hash_new();
   rb_gc_register_mark_object(rid_request_map);
-  handled_rids = st_init_numtable();
   to_resume_requests = rb_ary_new();
   rb_gc_register_mark_object(to_resume_requests);
 
