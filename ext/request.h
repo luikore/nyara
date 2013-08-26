@@ -49,6 +49,8 @@ typedef struct {
   VALUE instance;
 
   bool sleeping;
+  long updated_at; // in timestamp seconds
 } Request;
 
 Request* nyara_request_new(int fd);
+void nyara_request_touch(Request*);

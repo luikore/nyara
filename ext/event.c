@@ -73,6 +73,7 @@ static void _resume_action(Request* p) {
 static void _handle_request(VALUE request) {
   Request* p;
   Data_Get_Struct(request, Request, p);
+  nyara_request_touch(p);
   if (p->sleeping) {
     return;
   }
@@ -124,7 +125,7 @@ static void _handle_request(VALUE request) {
   _resume_action(p);
 }
 
-static int _loop_body_cb(VALUE rid, VALUE _, VALUE _args) {
+static int _handle_request_cb(VALUE rid, VALUE _, VALUE _args) {
   VALUE request = rb_hash_aref(rid_request_map, rid);
   if (request != Qnil) {
     _handle_request(request);
@@ -132,17 +133,20 @@ static int _loop_body_cb(VALUE rid, VALUE _, VALUE _args) {
   return ST_CONTINUE;
 }
 
+static int _search_timeout_cb(VALUE rid, VALUE request, VALUE rids) {
+  Request* p;
+  Data_Get_Struct(request, Request, p);
+  if (!p->sleeping && p->updated_at < NUM2LONG(RARRAY_PTR(rids)[0])) {
+    rb_ary_push(rids, rid);
+  }
+  return ST_CONTINUE;
+}
+
 // platform independent, invoked by LOOP_E()
 static void loop_body(st_table* rids, int accept_sz) {
-  st_foreach(rids, _loop_body_cb, Qnil);
-
-  // todo: events are stealthly removed if remote client closes connection
-  // we also need to store and check ttl and remove dead rids
-
-  // todo: option to limit rid_request_map capacity
+  st_foreach(rids, _handle_request_cb, Qnil);
 
   // loop some more rounds in case we miss some accepts
-  // todo: tweak the number by forks
   for (int i = 0; i < accept_sz + 5; i++) {
     int cfd = accept(tcp_server_fd, NULL, NULL);
     if (cfd > 0) {
@@ -155,6 +159,25 @@ static void loop_body(st_table* rids, int accept_sz) {
       _handle_request(p->self);
     } else {
       break;
+    }
+  }
+
+  // sweep timed out requests every 10 rounds (1 second at least)
+  static int round_count = 0;
+  round_count++;
+  if (round_count % 10 == 0) {
+    round_count = 0;
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    volatile VALUE rids = rb_ary_new();
+    rb_ary_push(rids, LONG2NUM(tv.tv_sec - 120));
+
+    rb_hash_foreach(rid_request_map, _search_timeout_cb, rids);
+    long len = RARRAY_LEN(rids);
+    VALUE* ptr = RARRAY_PTR(rids);
+    for (long i = 1; i < len; i++) {
+      rb_hash_delete(rid_request_map, ptr[i]);
     }
   }
 

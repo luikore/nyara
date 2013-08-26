@@ -2,6 +2,7 @@
 
 #include "nyara.h"
 #include "request.h"
+#include <sys/time.h>
 
 static VALUE str_html;
 static VALUE request_class;
@@ -96,6 +97,7 @@ static Request* _request_alloc() {
   p->instance = Qnil;
 
   p->sleeping = false;
+  nyara_request_touch(p);
 
   p->self = Data_Wrap_Struct(request_class, request_mark, request_free, p);
   p->rid = INT2FIX(curr_rid++); // todo synchronize?
@@ -124,6 +126,12 @@ void nyara_request_term_close(VALUE self) {
   if (p->fd) {
     nyara_detach_rid(p->rid);
   }
+}
+
+void nyara_request_touch(Request* p) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  p->updated_at = tv.tv_sec;
 }
 
 static VALUE request_http_method(VALUE self) {
