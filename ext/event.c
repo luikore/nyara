@@ -41,6 +41,7 @@ static VALUE sym_sleep;
 
 static Request* curr_request;
 static bool graceful_quit = false;
+static int inactive_timeout = 120;
 
 static VALUE _fiber_func(VALUE _, VALUE args) {
   static VALUE controller_class = Qnil;
@@ -263,6 +264,12 @@ static VALUE ext_graceful_quit(VALUE _, VALUE v_server_fd) {
   return Qnil;
 }
 
+// if request is inactive after [timeout] seconds, kill it
+static VALUE ext_set_inactive_timeout(VALUE _, VALUE v_timeout) {
+  inactive_timeout = NUM2INT(v_timeout);
+  return Qnil;
+}
+
 // put request into sleep
 static VALUE ext_request_sleep(VALUE _, VALUE request) {
   Request* p;
@@ -418,6 +425,7 @@ void Init_event(VALUE ext) {
   rb_define_singleton_method(ext, "init_queue", ext_init_queue, 0);
   rb_define_singleton_method(ext, "run_queue", ext_run_queue, 1);
   rb_define_singleton_method(ext, "graceful_quit", ext_graceful_quit, 1);
+  rb_define_singleton_method(ext, "set_inactive_timeout", ext_set_inactive_timeout, 1);
 
   rb_define_singleton_method(ext, "request_sleep", ext_request_sleep, 1);
   rb_define_singleton_method(ext, "request_wakeup", ext_request_wakeup, 1);

@@ -19,6 +19,7 @@ module Nyara
   #                    if set to a dir name (under project root), watch only changes under the dir.
   # * `watch_assets` - if `true`, watch change with linner (you need `gem install linner` first), useful for development. default is `false`.
   #                    the asset dir to be watched is configured in Linnerfile.
+  # * `timeout`      - after (at least) how many seconds do we delete an inactive request. default is 120.
   #
   # #### logger example
   #
@@ -72,6 +73,12 @@ module Nyara
 
       assert !self['before_fork'] || self['before_fork'].respond_to?('call')
       assert !self['after_fork'] || self['after_fork'].respond_to?('call')
+
+      self['timeout'] ||= 120
+      timeout = self['timeout'].to_i
+      assert timeout > 0 && timeout < 2**30
+      self['timeout'] = timeout
+      Ext.set_inactive_timeout timeout
     end
 
     attr_accessor :logger

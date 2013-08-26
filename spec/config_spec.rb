@@ -34,6 +34,15 @@ module Nyara
       assert_equal 3000, Config['port']
     end
 
+    it "timeout default" do
+      Config.init
+      assert_equal 120, Config['timeout']
+
+      Config['timeout'] = 12.3
+      Config.init
+      assert_equal 12, Config['timeout']
+    end
+
     it "views, assets and public default" do
       Config[:root] = __dir__
       Config.init
