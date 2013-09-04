@@ -2,6 +2,7 @@ require "listen"
 
 module Nyara
   # listen to fs events and reload code / views
+  # todo: read http://urbanautomaton.com/blog/2013/08/27/rails-autoloading-hell/ and improve it
   module Reload
 
     extend self
