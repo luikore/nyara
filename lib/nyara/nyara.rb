@@ -41,6 +41,7 @@ module Nyara
   OK_RESP_HEADER['X-XSS-Protection'] = '1; mode=block'
   OK_RESP_HEADER['X-Content-Type-Options'] = 'nosniff'
   OK_RESP_HEADER['X-Frame-Options'] = 'SAMEORIGIN'
+  OK_RESP_HEADER['Connection'] = 'close'
 
   START_CTX = {
     0 => $0.dup,
