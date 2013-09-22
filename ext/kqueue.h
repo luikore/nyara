@@ -17,14 +17,14 @@ static void ADD_E(int fd, VALUE rid) {
   // without EV_CLEAR, it is level-triggered
   // http://www.cs.helsinki.fi/linux/linux-kernel/2001-38/0547.html
   EV_SET(&e, fd, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, (void*)rid);
-  if (kevent(qfd, &e, 1, NULL, 0, NULL))
+  if (kevent(q.fd, &e, 1, NULL, 0, NULL))
     rb_sys_fail("kevent(2) - EV_ADD");
 }
 
 static void DEL_E_WITH_FILTER(int fd, int filter) {
   struct kevent e;
   EV_SET(&e, fd, filter, EV_DELETE, 0, 0, NULL);
-  if (kevent(qfd, &e, 1, NULL, 0, NULL))
+  if (kevent(q.fd, &e, 1, NULL, 0, NULL))
     rb_sys_fail("kevent(2) - EV_DELETE");
 }
 
@@ -33,44 +33,28 @@ static void DEL_E(int fd) {
 }
 
 static void INIT_E() {
-  qfd = kqueue();
-  if (qfd == -1) {
+  q.fd = kqueue();
+  if (q.fd == -1) {
     rb_sys_fail("kqueue(2)");
   }
 }
 
-static void LOOP_E() {
+static int SELECT_E(st_table* rids) {
   static struct timespec ts = {0, 1000 * 1000 * 100};
-  static st_table* rids; // uniq for every round
-  static int round_counter;
-  rids = st_init_numtable();
-  round_counter = 0;
 
-  while (true) {
-    // in an edge-trigger system, there can be
-    // invoke full-loop body every 10 rounds
-    round_counter++;
-    if (round_counter % 10 == 0) {
-      round_counter = 0;
-      loop_body_full();
-      continue;
-    }
+  // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
+  int sz = kevent(q.fd, NULL, 0, qevents, MAX_E, &ts);
+  int accept_sz = 0;
 
-    // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
-    int sz = kevent(qfd, NULL, 0, qevents, MAX_E, &ts);
-    int accept_sz = 0;
-
-    for (int i = 0; i < sz; i++) {
-      if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
-        VALUE rid = (VALUE)qevents[i].udata;
-        if (rid == sym_accept) {
-          accept_sz++;
-        } else {
-          st_insert(rids, rid, 0);
-        }
+  for (int i = 0; i < sz; i++) {
+    if (qevents[i].filter & (EVFILT_READ | EVFILT_WRITE)) {
+      VALUE rid = (VALUE)qevents[i].udata;
+      if (rid == sym_accept) {
+        accept_sz++;
+      } else {
+        st_insert(rids, rid, 0);
       }
     }
-    loop_body(rids, accept_sz);
-    st_clear(rids);
   }
+  return accept_sz;
 }

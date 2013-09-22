@@ -10,11 +10,31 @@
 #include <ruby/st.h>
 
 #define MAX_E 1024
-static void loop_body(st_table* rids, int accept_sz);
-static void loop_body_full();
-static int qfd = 0;
-static int tcp_server_fd = 0;
+#define MAX_RECEIVE_DATA 65536 * 2
+
+static struct {
+  int fd;
+  int tcp_server_fd;
+  char received_data[MAX_RECEIVE_DATA];
+  VALUE rid_request_map; // {rid(FIXNUM) => request}
+  VALUE to_resume_requests; // [request], for current round
+  Request* curr_request;
+  bool graceful_quit;
+  int inactive_timeout;
+} q = {
+  .fd = 0,
+  .tcp_server_fd = 0,
+  .graceful_quit = false,
+  .inactive_timeout = 120,
+  .curr_request = NULL
+};
+
 static VALUE sym_accept;
+// Fiber.yield
+static VALUE sym_term_close;
+static VALUE sym_writing;
+static VALUE sym_reading;
+static VALUE sym_sleep;
 
 #ifdef HAVE_KQUEUE
 #include "kqueue.h"
@@ -27,22 +47,7 @@ extern VALUE rb_obj_hide(VALUE obj);
 extern VALUE rb_obj_reveal(VALUE obj, VALUE klass);
 #endif
 
-#define MAX_RECEIVE_DATA 65536 * 2
-static char received_data[MAX_RECEIVE_DATA];
 extern http_parser_settings nyara_request_parse_settings;
-
-static VALUE rid_request_map;    // {rid(FIXNUM) => request}
-static VALUE to_resume_requests; // [request], for current round
-
-// Fiber.yield
-static VALUE sym_term_close;
-static VALUE sym_writing;
-static VALUE sym_reading;
-static VALUE sym_sleep;
-
-static Request* curr_request;
-static bool graceful_quit = false;
-static int inactive_timeout = 120;
 
 static VALUE _fiber_func(VALUE _, VALUE args) {
   static VALUE controller_class = Qnil;
@@ -79,7 +84,7 @@ static void _handle_request(VALUE request) {
   if (p->sleeping) {
     return;
   }
-  curr_request = p;
+  q.curr_request = p;
 
   // read and parse data
   // NOTE we don't let http_parser invoke ruby code, because:
@@ -87,7 +92,7 @@ static void _handle_request(VALUE request) {
   // 2. Fiber.yield can pause http_parser, then the unparsed received_data is lost
   if (p->parse_state < PS_MESSAGE_COMPLETE) {
     while (true) {
-      long len = read(p->fd, received_data, MAX_RECEIVE_DATA);
+      long len = read(p->fd, q.received_data, MAX_RECEIVE_DATA);
       if (len < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           break;
@@ -98,7 +103,7 @@ static void _handle_request(VALUE request) {
       } else if (len) {
         // note: for http_parser, len = 0 means eof reached
         //       but when in a fd-becomes-writable event it can also be 0
-        http_parser_execute(&(p->hparser), &nyara_request_parse_settings, received_data, len);
+        http_parser_execute(&(p->hparser), &nyara_request_parse_settings, q.received_data, len);
       } else {
         break;
       }
@@ -128,7 +133,7 @@ static void _handle_request(VALUE request) {
 }
 
 static int _handle_request_cb(VALUE rid, VALUE _, VALUE _args) {
-  VALUE request = rb_hash_aref(rid_request_map, rid);
+  VALUE request = rb_hash_aref(q.rid_request_map, rid);
   if (request != Qnil) {
     _handle_request(request);
   }
@@ -144,43 +149,51 @@ static int _search_timeout_cb(VALUE rid, VALUE request, VALUE rids) {
   return ST_CONTINUE;
 }
 
-static void loop_body_full() {
-  // resume requests
+static void _loop_body_full() {
+  // resume all requests
+  // TODO
 
   // sweep timed out rids
   struct timeval tv;
   gettimeofday(&tv, NULL);
   volatile VALUE rids = rb_ary_new();
-  rb_ary_push(rids, LONG2NUM(tv.tv_sec - 120));
+  rb_ary_push(rids, LONG2NUM(tv.tv_sec - q.inactive_timeout));
 
-  rb_hash_foreach(rid_request_map, _search_timeout_cb, rids);
+  rb_hash_foreach(q.rid_request_map, _search_timeout_cb, rids);
   long len = RARRAY_LEN(rids);
   VALUE* ptr = RARRAY_PTR(rids);
   for (long i = 1; i < len; i++) {
-    rb_hash_delete(rid_request_map, ptr[i]);
+    rb_hash_delete(q.rid_request_map, ptr[i]);
+  }
+
+  // loop some more rounds in case we miss some accepts
+  for (int i = 0; i < 5; i++) {
+    int cfd = accept(q.tcp_server_fd, NULL, NULL);
+    if (cfd > 0) {
+      nyara_set_nonblock(cfd);
+      Request* p = nyara_request_new(cfd);
+      rb_hash_aset(q.rid_request_map, p->rid, p->self);
+      ADD_E(cfd, p->rid);
+      // do first processing after adding event
+      // because there may be unprocessed data in socket buffer
+      _handle_request(p->self);
+    } else {
+      break;
+    }
   }
 }
 
 // platform independent, invoked by LOOP_E()
-static void loop_body(st_table* rids, int accept_sz) {
-  // do a full check every 10 rounds (1 second at least)
-  static int round_count = 0;
-  round_count++;
-  if (round_count % 10 == 0) {
-    round_count = 0;
-    loop_body_full();
-    return;
-  }
-
+static void _loop_body(st_table* rids, int accept_sz) {
   st_foreach(rids, _handle_request_cb, Qnil);
 
-  // loop some more rounds in case we miss some accepts
-  for (int i = 0; i < accept_sz + 5; i++) {
-    int cfd = accept(tcp_server_fd, NULL, NULL);
+  // accept
+  for (int i = 0; i < accept_sz; i++) {
+    int cfd = accept(q.tcp_server_fd, NULL, NULL);
     if (cfd > 0) {
       nyara_set_nonblock(cfd);
       Request* p = nyara_request_new(cfd);
-      rb_hash_aset(rid_request_map, p->rid, p->self);
+      rb_hash_aset(q.rid_request_map, p->rid, p->self);
       ADD_E(cfd, p->rid);
       // do first processing after adding event
       // because there may be unprocessed data in socket buffer
@@ -194,9 +207,9 @@ static void loop_body(st_table* rids, int accept_sz) {
   rb_thread_schedule();
 
   // wakeup actions which finished sleeping
-  long len = RARRAY_LEN(to_resume_requests);
+  long len = RARRAY_LEN(q.to_resume_requests);
   if (len) {
-    VALUE* ptr = RARRAY_PTR(to_resume_requests);
+    VALUE* ptr = RARRAY_PTR(q.to_resume_requests);
     for (long i = 0; i < len; i++) {
       VALUE request = ptr[i];
       Request* p;
@@ -208,7 +221,7 @@ static void loop_body(st_table* rids, int accept_sz) {
       }
 
       _resume_action(p);
-      if (qfd) {
+      if (q.fd) {
         // printf("%s\n", "no way!");
         // _Exit(1);
         VALUE* v_fds = RARRAY_PTR(p->watched_fds);
@@ -222,18 +235,18 @@ static void loop_body(st_table* rids, int accept_sz) {
       }
     }
 
-    rb_ary_clear(to_resume_requests);
+    rb_ary_clear(q.to_resume_requests);
   }
 
-  if (graceful_quit) {
-    if (RTEST(rb_funcall(rid_request_map, rb_intern("empty?"), 0))) {
+  if (q.graceful_quit) {
+    if (RTEST(rb_funcall(q.rid_request_map, rb_intern("empty?"), 0))) {
       _Exit(0);
     }
   }
 }
 
 void nyara_detach_rid(VALUE rid) {
-  VALUE request = rb_hash_delete(rid_request_map, rid);
+  VALUE request = rb_hash_delete(q.rid_request_map, rid);
   if (request != Qnil) {
     Request* p;
     Data_Get_Struct(request, Request, p);
@@ -256,17 +269,34 @@ static VALUE ext_init_queue(VALUE _) {
 
 // run queue loop with server_fd
 static VALUE ext_run_queue(VALUE _, VALUE v_server_fd) {
-  tcp_server_fd = FIX2INT(v_server_fd);
-  nyara_set_nonblock(tcp_server_fd);
-  ADD_E(tcp_server_fd, sym_accept);
+  q.tcp_server_fd = FIX2INT(v_server_fd);
+  nyara_set_nonblock(q.tcp_server_fd);
+  ADD_E(q.tcp_server_fd, sym_accept);
 
-  LOOP_E();
+  st_table* rids = st_init_numtable(); // to uniq rids for every round
+  int round_counter = 0;
+
+  while (true) {
+    // in an edge-trigger system, there can be
+    // invoke full-loop body every 10 rounds
+    round_counter++;
+    if (round_counter % 10 == 0) {
+      round_counter = 0;
+      _loop_body_full();
+      continue;
+    }
+
+    int accept_sz = SELECT_E(rids);
+    _loop_body(rids, accept_sz);
+    st_clear(rids);
+  }
+
   return Qnil;
 }
 
 // set graceful quit flag and do not accept server_fd anymore
 static VALUE ext_graceful_quit(VALUE _, VALUE v_server_fd) {
-  graceful_quit = true;
+  q.graceful_quit = true;
   int fd = FIX2INT(v_server_fd);
   DEL_E(fd);
   return Qnil;
@@ -274,7 +304,7 @@ static VALUE ext_graceful_quit(VALUE _, VALUE v_server_fd) {
 
 // if request is inactive after [timeout] seconds, kill it
 static VALUE ext_set_inactive_timeout(VALUE _, VALUE v_timeout) {
-  inactive_timeout = NUM2INT(v_timeout);
+  q.inactive_timeout = NUM2INT(v_timeout);
   return Qnil;
 }
 
@@ -284,7 +314,7 @@ static VALUE ext_request_sleep(VALUE _, VALUE request) {
   Data_Get_Struct(request, Request, p);
 
   p->sleeping = true;
-  if (!qfd) {
+  if (!q.fd) {
     // we are in a test
     return Qnil;
   }
@@ -301,7 +331,7 @@ static VALUE ext_request_sleep(VALUE _, VALUE request) {
 // NOTE this will be executed in another thread, resuming fiber in a non-main thread will stuck
 static VALUE ext_request_wakeup(VALUE _, VALUE request) {
   // NOTE should not use curr_request
-  rb_ary_push(to_resume_requests, request);
+  rb_ary_push(q.to_resume_requests, request);
   return Qnil;
 }
 
@@ -313,14 +343,14 @@ static VALUE ext_set_nonblock(VALUE _, VALUE v_fd) {
 
 static VALUE ext_fd_watch(VALUE _, VALUE v_fd) {
   int fd = NUM2INT(v_fd);
-  rb_ary_push(curr_request->watched_fds, v_fd);
-  ADD_E(fd, curr_request->rid);
+  rb_ary_push(q.curr_request->watched_fds, v_fd);
+  ADD_E(fd, q.curr_request->rid);
   return Qnil;
 }
 
 static VALUE ext_fd_unwatch(VALUE _, VALUE v_fd) {
   int fd = NUM2INT(v_fd);
-  rb_ary_delete(curr_request->watched_fds, v_fd);
+  rb_ary_delete(q.curr_request->watched_fds, v_fd);
   DEL_E(fd);
   return Qnil;
 }
@@ -419,10 +449,10 @@ static VALUE ext_handle_request(VALUE _, VALUE request) {
 }
 
 void Init_event(VALUE ext) {
-  rid_request_map = rb_hash_new();
-  rb_gc_register_mark_object(rid_request_map);
-  to_resume_requests = rb_ary_new();
-  rb_gc_register_mark_object(to_resume_requests);
+  q.rid_request_map = rb_hash_new();
+  rb_gc_register_mark_object(q.rid_request_map);
+  q.to_resume_requests = rb_ary_new();
+  rb_gc_register_mark_object(q.to_resume_requests);
 
   sym_accept = ID2SYM(rb_intern("accept"));
   sym_term_close = ID2SYM(rb_intern("term_close"));
