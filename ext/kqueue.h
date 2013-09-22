@@ -40,16 +40,22 @@ static void INIT_E() {
 }
 
 static void LOOP_E() {
-  // printf("%d,%d,%d,\n%d,%d,%d,\n%d,%d,%d,\n",
-  // EV_ADD, EV_ENABLE, EV_DISABLE,
-  // EV_DELETE, EV_RECEIPT, EV_ONESHOT,
-  // EV_CLEAR, EV_EOF, EV_ERROR);
-
   static struct timespec ts = {0, 1000 * 1000 * 100};
   static st_table* rids; // uniq for every round
+  static int round_counter;
   rids = st_init_numtable();
+  round_counter = 0;
 
   while (true) {
+    // in an edge-trigger system, there can be
+    // invoke full-loop body every 10 rounds
+    round_counter++;
+    if (round_counter % 10 == 0) {
+      round_counter = 0;
+      loop_body_full();
+      continue;
+    }
+
     // heart beat of 0.1 sec, allow ruby signal interrupts to be inserted
     int sz = kevent(qfd, NULL, 0, qevents, MAX_E, &ts);
     int accept_sz = 0;

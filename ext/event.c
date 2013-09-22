@@ -11,6 +11,7 @@
 
 #define MAX_E 1024
 static void loop_body(st_table* rids, int accept_sz);
+static void loop_body_full();
 static int qfd = 0;
 static int tcp_server_fd = 0;
 static VALUE sym_accept;
@@ -143,8 +144,34 @@ static int _search_timeout_cb(VALUE rid, VALUE request, VALUE rids) {
   return ST_CONTINUE;
 }
 
+static void loop_body_full() {
+  // resume requests
+
+  // sweep timed out rids
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  volatile VALUE rids = rb_ary_new();
+  rb_ary_push(rids, LONG2NUM(tv.tv_sec - 120));
+
+  rb_hash_foreach(rid_request_map, _search_timeout_cb, rids);
+  long len = RARRAY_LEN(rids);
+  VALUE* ptr = RARRAY_PTR(rids);
+  for (long i = 1; i < len; i++) {
+    rb_hash_delete(rid_request_map, ptr[i]);
+  }
+}
+
 // platform independent, invoked by LOOP_E()
 static void loop_body(st_table* rids, int accept_sz) {
+  // do a full check every 10 rounds (1 second at least)
+  static int round_count = 0;
+  round_count++;
+  if (round_count % 10 == 0) {
+    round_count = 0;
+    loop_body_full();
+    return;
+  }
+
   st_foreach(rids, _handle_request_cb, Qnil);
 
   // loop some more rounds in case we miss some accepts
@@ -160,25 +187,6 @@ static void loop_body(st_table* rids, int accept_sz) {
       _handle_request(p->self);
     } else {
       break;
-    }
-  }
-
-  // sweep timed out requests every 10 rounds (1 second at least)
-  static int round_count = 0;
-  round_count++;
-  if (round_count % 10 == 0) {
-    round_count = 0;
-
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    volatile VALUE rids = rb_ary_new();
-    rb_ary_push(rids, LONG2NUM(tv.tv_sec - 120));
-
-    rb_hash_foreach(rid_request_map, _search_timeout_cb, rids);
-    long len = RARRAY_LEN(rids);
-    VALUE* ptr = RARRAY_PTR(rids);
-    for (long i = 1; i < len; i++) {
-      rb_hash_delete(rid_request_map, ptr[i]);
     }
   }
 
