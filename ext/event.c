@@ -140,33 +140,52 @@ static int _handle_request_cb(VALUE rid, VALUE _, VALUE _args) {
   return ST_CONTINUE;
 }
 
-static int _search_timeout_cb(VALUE rid, VALUE request, VALUE rids) {
+typedef struct {
+  long updated_at;
+  VALUE to_sweep;
+  VALUE to_resume;
+} SweepRidsCbData;
+
+static int _sweep_rids_cb(VALUE rid, VALUE request, VALUE v_data) {
   Request* p;
   Data_Get_Struct(request, Request, p);
-  if (!p->sleeping && p->updated_at < NUM2LONG(RARRAY_PTR(rids)[0])) {
-    rb_ary_push(rids, rid);
+  if (!p->sleeping) {
+    SweepRidsCbData* data = (SweepRidsCbData*)v_data;
+    if (p->updated_at < data->updated_at) {
+      rb_ary_push(data->to_sweep, rid);
+    } else if (p->fiber != Qnil) {
+      rb_ary_push(data->to_resume, request);
+    }
   }
   return ST_CONTINUE;
 }
 
 static void _loop_body_full() {
-  // resume all requests
-  // TODO
-
-  // sweep timed out rids
+  // sweep timed out rids and resume other non sleeping ones
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  volatile VALUE rids = rb_ary_new();
-  rb_ary_push(rids, LONG2NUM(tv.tv_sec - q.inactive_timeout));
+  volatile SweepRidsCbData data = {
+    .updated_at = tv.tv_sec - q.inactive_timeout,
+    .to_sweep = rb_ary_new(),
+    .to_resume = rb_ary_new()
+  };
 
-  rb_hash_foreach(q.rid_request_map, _search_timeout_cb, rids);
-  long len = RARRAY_LEN(rids);
-  VALUE* ptr = RARRAY_PTR(rids);
-  for (long i = 1; i < len; i++) {
+  long len;
+  VALUE* ptr;
+  rb_hash_foreach(q.rid_request_map, _sweep_rids_cb, (VALUE)&data);
+  len = RARRAY_LEN(data.to_sweep);
+  ptr = RARRAY_PTR(data.to_sweep);
+  for (long i = 0; i < len; i++) {
     rb_hash_delete(q.rid_request_map, ptr[i]);
+  }
+  len = RARRAY_LEN(data.to_resume);
+  ptr = RARRAY_PTR(data.to_resume);
+  for (long i = 0; i < len; i++) {
+    _handle_request(ptr[i]);
   }
 
   // loop some more rounds in case we miss some accepts
+  // todo change i according to worker number
   for (int i = 0; i < 5; i++) {
     int cfd = accept(q.tcp_server_fd, NULL, NULL);
     if (cfd > 0) {
@@ -283,12 +302,11 @@ static VALUE ext_run_queue(VALUE _, VALUE v_server_fd) {
     if (round_counter % 10 == 0) {
       round_counter = 0;
       _loop_body_full();
-      continue;
+    } else {
+      int accept_sz = SELECT_E(rids);
+      _loop_body(rids, accept_sz);
+      st_clear(rids);
     }
-
-    int accept_sz = SELECT_E(rids);
-    _loop_body(rids, accept_sz);
-    st_clear(rids);
   }
 
   return Qnil;
