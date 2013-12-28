@@ -1,3 +1,9 @@
+# NOTE
+
+This repo is obsolete. The main point of event based IO is less memory for concurrent connections, and pay less time in CPU context switching, thus leading to higher performance benchmarks. But in real the heavy computation remains in ORMs like active record, the saved CPU time is insignificant while the implementation requires complex tweaks.
+
+---
+
 ニャラ is **Not Yet Another Ruby Async** web framework and server.
 
 [![Build Status](https://travis-ci.org/luikore/nyara.png)](https://travis-ci.org/luikore/nyara)
