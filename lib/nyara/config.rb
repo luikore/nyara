@@ -74,11 +74,11 @@ module Nyara
       assert !self['before_fork'] || self['before_fork'].respond_to?('call')
       assert !self['after_fork'] || self['after_fork'].respond_to?('call')
 
-      self['timeout'] ||= 120
-      timeout = self['timeout'].to_i
-      assert timeout > 0 && timeout < 2**30
-      self['timeout'] = timeout
-      Ext.set_inactive_timeout timeout
+      t = (self['timeout'] ||= 120).to_i
+      assert timeout > 0 && t < 2**30
+      self['timeout'] = t
+      
+      Ext.set_inactive_timeout t
     end
 
     attr_accessor :logger
@@ -167,8 +167,7 @@ module Nyara
     end
 
     def development?
-      e = env
-      e.empty? or e == 'development'
+      env == 'development'
     end
 
     def production?
